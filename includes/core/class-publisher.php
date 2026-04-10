@@ -7,14 +7,14 @@ declare(strict_types=1);
  * Handles both publishing (editor-approved) and saving as draft (editor-rejected).
  * Stores all generation metadata as post_meta for transparency and auditability.
  *
- * Triggered by: Autoblogger::run_generation_pipeline() (step 6).
+ * Triggered by: PRAutoBlogger::run_generation_pipeline() (step 6).
  * Dependencies: WordPress wp_insert_post(), post meta API.
  *
  * @see core/class-chief-editor.php     — Produces the editorial review we consume.
  * @see core/class-content-generator.php — Produces the content we publish.
  * @see ARCHITECTURE.md                  — Data flow step 6.
  */
-class Autoblogger_Publisher {
+class PRAutoBlogger_Publisher {
 
 	/**
 	 * Publish an editor-approved article.
@@ -25,8 +25,8 @@ class Autoblogger_Publisher {
 	 * Side effects: Creates a WordPress post, writes post_meta.
 	 *
 	 * @param string                        $content The final HTML content.
-	 * @param Autoblogger_Article_Idea      $idea    The original article idea.
-	 * @param Autoblogger_Editorial_Review  $review  The editor's review.
+	 * @param PRAutoBlogger_Article_Idea      $idea    The original article idea.
+	 * @param PRAutoBlogger_Editorial_Review  $review  The editor's review.
 	 * @param string|null                   $run_id  Pipeline run ID for log linking.
 	 *
 	 * @return int The created post ID.
@@ -35,8 +35,8 @@ class Autoblogger_Publisher {
 	 */
 	public function publish(
 		string $content,
-		Autoblogger_Article_Idea $idea,
-		Autoblogger_Editorial_Review $review,
+		PRAutoBlogger_Article_Idea $idea,
+		PRAutoBlogger_Editorial_Review $review,
 		?string $run_id = null
 	): int {
 		return $this->create_post( $content, $idea, $review, 'publish', $run_id );
@@ -46,8 +46,8 @@ class Autoblogger_Publisher {
 	 * Save an editor-rejected article as a draft for human review.
 	 *
 	 * @param string                        $content The generated HTML content (pre-revision).
-	 * @param Autoblogger_Article_Idea      $idea    The original article idea.
-	 * @param Autoblogger_Editorial_Review  $review  The editor's review with rejection notes.
+	 * @param PRAutoBlogger_Article_Idea      $idea    The original article idea.
+	 * @param PRAutoBlogger_Editorial_Review  $review  The editor's review with rejection notes.
 	 * @param string|null                   $run_id  Pipeline run ID for log linking.
 	 *
 	 * @return int The created post ID.
@@ -56,8 +56,8 @@ class Autoblogger_Publisher {
 	 */
 	public function save_as_draft(
 		string $content,
-		Autoblogger_Article_Idea $idea,
-		Autoblogger_Editorial_Review $review,
+		PRAutoBlogger_Article_Idea $idea,
+		PRAutoBlogger_Editorial_Review $review,
 		?string $run_id = null
 	): int {
 		return $this->create_post( $content, $idea, $review, 'draft', $run_id );
@@ -67,8 +67,8 @@ class Autoblogger_Publisher {
 	 * Create a WordPress post with generation metadata.
 	 *
 	 * @param string                        $content     HTML content.
-	 * @param Autoblogger_Article_Idea      $idea        Article idea.
-	 * @param Autoblogger_Editorial_Review  $review      Editorial review.
+	 * @param PRAutoBlogger_Article_Idea      $idea        Article idea.
+	 * @param PRAutoBlogger_Editorial_Review  $review      Editorial review.
 	 * @param string                        $post_status 'publish' or 'draft'.
 	 * @param string|null                   $run_id      Pipeline run ID for log linking.
 	 *
@@ -78,8 +78,8 @@ class Autoblogger_Publisher {
 	 */
 	private function create_post(
 		string $content,
-		Autoblogger_Article_Idea $idea,
-		Autoblogger_Editorial_Review $review,
+		PRAutoBlogger_Article_Idea $idea,
+		PRAutoBlogger_Editorial_Review $review,
 		string $post_status,
 		?string $run_id = null
 	): int {
@@ -93,15 +93,15 @@ class Autoblogger_Publisher {
 		];
 
 		/**
-		 * Fires before an AutoBlogger post is created.
+		 * Fires before an PRAutoBlogger post is created.
 		 *
-		 * Listeners registered in: class-autoblogger.php (main loader).
+		 * Listeners registered in: class-prautoblogger.php (main loader).
 		 *
 		 * @param array                        $post_data Post data array.
-		 * @param Autoblogger_Article_Idea     $idea      The article idea.
-		 * @param Autoblogger_Editorial_Review $review    The editorial review.
+		 * @param PRAutoBlogger_Article_Idea     $idea      The article idea.
+		 * @param PRAutoBlogger_Editorial_Review $review    The editorial review.
 		 */
-		$post_data = apply_filters( 'autoblogger_filter_post_data', $post_data, $idea, $review );
+		$post_data = apply_filters( 'prautoblogger_filter_post_data', $post_data, $idea, $review );
 
 		$post_id = wp_insert_post( $post_data, true );
 
@@ -109,7 +109,7 @@ class Autoblogger_Publisher {
 			throw new \RuntimeException(
 				sprintf(
 					/* translators: %s: WordPress error message */
-					__( 'Failed to create post: %s', 'autoblogger' ),
+					__( 'Failed to create post: %s', 'prautoblogger' ),
 					$post_id->get_error_message()
 				)
 			);
@@ -121,20 +121,20 @@ class Autoblogger_Publisher {
 		// Update generation log entries to reference this post.
 		$this->link_generation_logs( $post_id, $run_id );
 
-		Autoblogger_Logger::instance()->info(
+		PRAutoBlogger_Logger::instance()->info(
 			sprintf( 'Post created: ID=%d, status=%s, title="%s"', $post_id, $post_status, $idea->get_suggested_title() ),
 			'publisher'
 		);
 
 		/**
-		 * Fires after an AutoBlogger post is successfully created.
+		 * Fires after an PRAutoBlogger post is successfully created.
 		 *
 		 * @param int                          $post_id     The new post ID.
 		 * @param string                       $post_status 'publish' or 'draft'.
-		 * @param Autoblogger_Article_Idea     $idea        The article idea.
-		 * @param Autoblogger_Editorial_Review $review      The editorial review.
+		 * @param PRAutoBlogger_Article_Idea     $idea        The article idea.
+		 * @param PRAutoBlogger_Editorial_Review $review      The editorial review.
 		 */
-		do_action( 'autoblogger_post_created', $post_id, $post_status, $idea, $review );
+		do_action( 'prautoblogger_post_created', $post_id, $post_status, $idea, $review );
 
 		return $post_id;
 	}
@@ -142,32 +142,32 @@ class Autoblogger_Publisher {
 	/**
 	 * Build post_meta array for generation metadata.
 	 *
-	 * @param Autoblogger_Article_Idea     $idea
-	 * @param Autoblogger_Editorial_Review $review
+	 * @param PRAutoBlogger_Article_Idea     $idea
+	 * @param PRAutoBlogger_Editorial_Review $review
 	 *
 	 * @return array<string, mixed>
 	 */
 	private function build_meta(
-		Autoblogger_Article_Idea $idea,
-		Autoblogger_Editorial_Review $review
+		PRAutoBlogger_Article_Idea $idea,
+		PRAutoBlogger_Editorial_Review $review
 	): array {
-		$pipeline_mode = get_option( 'autoblogger_writing_pipeline', 'multi_step' );
-		$model         = get_option( 'autoblogger_writing_model', AUTOBLOGGER_DEFAULT_WRITING_MODEL );
+		$pipeline_mode = get_option( 'prautoblogger_writing_pipeline', 'multi_step' );
+		$model         = get_option( 'prautoblogger_writing_model', PRAUTOBLOGGER_DEFAULT_WRITING_MODEL );
 
 		return [
-			'_autoblogger_generated'        => '1',
-			'_autoblogger_analysis_id'      => $idea->get_analysis_id(),
-			'_autoblogger_source_ids'       => wp_json_encode( $idea->get_source_ids() ),
-			'_autoblogger_model_used'       => $model,
-			'_autoblogger_pipeline_mode'    => $pipeline_mode,
-			'_autoblogger_editor_verdict'   => $review->get_verdict(),
-			'_autoblogger_editor_notes'     => $review->get_notes(),
-			'_autoblogger_quality_score'    => $review->get_quality_score(),
-			'_autoblogger_seo_score'        => $review->get_seo_score(),
-			'_autoblogger_generated_at'     => gmdate( 'c' ),
-			'_autoblogger_topic'            => $idea->get_topic(),
-			'_autoblogger_article_type'     => $idea->get_article_type(),
-			'_autoblogger_target_keywords'  => wp_json_encode( $idea->get_target_keywords() ),
+			'_prautoblogger_generated'        => '1',
+			'_prautoblogger_analysis_id'      => $idea->get_analysis_id(),
+			'_prautoblogger_source_ids'       => wp_json_encode( $idea->get_source_ids() ),
+			'_prautoblogger_model_used'       => $model,
+			'_prautoblogger_pipeline_mode'    => $pipeline_mode,
+			'_prautoblogger_editor_verdict'   => $review->get_verdict(),
+			'_prautoblogger_editor_notes'     => $review->get_notes(),
+			'_prautoblogger_quality_score'    => $review->get_quality_score(),
+			'_prautoblogger_seo_score'        => $review->get_seo_score(),
+			'_prautoblogger_generated_at'     => gmdate( 'c' ),
+			'_prautoblogger_topic'            => $idea->get_topic(),
+			'_prautoblogger_article_type'     => $idea->get_article_type(),
+			'_prautoblogger_target_keywords'  => wp_json_encode( $idea->get_target_keywords() ),
 		];
 	}
 
@@ -175,11 +175,11 @@ class Autoblogger_Publisher {
 	 * Assign category and tags to a generated post.
 	 *
 	 * @param int                      $post_id
-	 * @param Autoblogger_Article_Idea $idea
+	 * @param PRAutoBlogger_Article_Idea $idea
 	 *
 	 * @return void
 	 */
-	private function assign_taxonomy_terms( int $post_id, Autoblogger_Article_Idea $idea ): void {
+	private function assign_taxonomy_terms( int $post_id, PRAutoBlogger_Article_Idea $idea ): void {
 		$type_category_map = [
 			'guide'      => 'Guides',
 			'solution'   => 'Solutions',
@@ -222,7 +222,7 @@ class Autoblogger_Publisher {
 	 */
 	private function link_generation_logs( int $post_id, ?string $run_id = null ): void {
 		global $wpdb;
-		$table = $wpdb->prefix . 'autoblogger_generation_log';
+		$table = $wpdb->prefix . 'prautoblogger_generation_log';
 
 		if ( null !== $run_id && '' !== $run_id ) {
 			// Precise linking via run_id — no risk of cross-article misattribution.
@@ -253,7 +253,7 @@ class Autoblogger_Publisher {
 	 * @return int WordPress user ID.
 	 */
 	private function get_default_author_id(): int {
-		$author_id = absint( get_option( 'autoblogger_default_author', 0 ) );
+		$author_id = absint( get_option( 'prautoblogger_default_author', 0 ) );
 		if ( $author_id > 0 ) {
 			return $author_id;
 		}

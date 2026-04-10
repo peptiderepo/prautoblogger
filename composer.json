@@ -1,5 +1,5 @@
 {
-	"name": "peptiderepo/autoblogger",
+	"name": "peptiderepo/prautoblogger",
 	"description": "WordPress plugin that auto-researches and publishes blog content using AI.",
 	"type": "wordpress-plugin",
 	"license": "GPL-2.0-or-later",

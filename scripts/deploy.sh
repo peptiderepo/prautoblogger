@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================================
-# AutoBlogger Manual Deploy Script
+# PRAutoBlogger Manual Deploy Script
 #
 # Packages the plugin into a clean zip and deploys it to WordPress via the
 # deploy-receiver REST endpoint. Use this for hotfixes or local deploys when
@@ -16,7 +16,7 @@
 # If not set, the script will look for a .env file in the project root.
 #
 # @see .github/workflows/deploy.yml — Automated pipeline (same deploy step).
-# @see .github/mu-plugins/autoblogger-deploy-receiver.php — Server endpoint.
+# @see ARCHITECTURE.md — Deploy architecture (Code Snippets snippet #8 on server).
 # ============================================================================
 
 set -euo pipefail
@@ -53,8 +53,8 @@ fi
 
 # ── Read version ────────────────────────────────────────────────────────────
 
-VERSION=$(grep -oP 'Version:\s*\K[0-9]+\.[0-9]+\.[0-9]+' "$PROJECT_ROOT/autoblogger.php" || echo "0.0.0")
-info "AutoBlogger v${VERSION}"
+VERSION=$(grep -oP 'Version:\s*\K[0-9]+\.[0-9]+\.[0-9]+' "$PROJECT_ROOT/prautoblogger.php" || echo "0.0.0")
+info "PRAutoBlogger v${VERSION}"
 
 # ── PHP lint check ──────────────────────────────────────────────────────────
 
@@ -77,8 +77,8 @@ info "Lint passed."
 # ── Package ─────────────────────────────────────────────────────────────────
 
 BUILD_DIR=$(mktemp -d)
-PLUGIN_DIR="$BUILD_DIR/autoblogger"
-ZIP_PATH="$BUILD_DIR/autoblogger-${VERSION}.zip"
+PLUGIN_DIR="$BUILD_DIR/prautoblogger"
+ZIP_PATH="$BUILD_DIR/prautoblogger-${VERSION}.zip"
 
 info "Packaging plugin..."
 
@@ -110,7 +110,7 @@ rsync -a \
     "$PROJECT_ROOT/" "$PLUGIN_DIR/"
 
 cd "$BUILD_DIR"
-zip -rq "$ZIP_PATH" autoblogger/
+zip -rq "$ZIP_PATH" prautoblogger/
 
 ZIP_SIZE=$(du -h "$ZIP_PATH" | cut -f1)
 info "Built ${ZIP_PATH} (${ZIP_SIZE})"
@@ -157,4 +157,4 @@ fi
 # ── Cleanup ─────────────────────────────────────────────────────────────────
 
 rm -rf "$BUILD_DIR"
-info "Done. AutoBlogger v${VERSION} is live."
+info "Done. PRAutoBlogger v${VERSION} is live."

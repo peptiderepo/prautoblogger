@@ -11,7 +11,7 @@ declare(strict_types=1);
  * @see providers/interface-source-provider.php — Providers return arrays of these.
  * @see core/class-content-analyzer.php         — Consumes these for pattern detection.
  */
-class Autoblogger_Source_Data {
+class PRAutoBlogger_Source_Data {
 
 	private int $id;
 	private string $source_type;

@@ -5,21 +5,21 @@ declare(strict_types=1);
  * Collects post performance metrics from WordPress native data and Google Analytics 4.
  *
  * Runs on a separate cron schedule (every 6 hours) to gather pageviews, bounce rate,
- * time on page, and comments for AutoBlogger-generated posts. Computes a composite
+ * time on page, and comments for PRAutoBlogger-generated posts. Computes a composite
  * "content score" that feeds back into the analysis engine for self-improvement.
  *
- * Triggered by: WP-Cron hook `autoblogger_collect_metrics` (every 6 hours).
- * Dependencies: WordPress $wpdb, Autoblogger_GA4_Client (for GA4 API calls).
+ * Triggered by: WP-Cron hook `prautoblogger_collect_metrics` (every 6 hours).
+ * Dependencies: WordPress $wpdb, PRAutoBlogger_GA4_Client (for GA4 API calls).
  *
  * @see core/class-ga4-client.php       — Handles GA4 API authentication and requests.
  * @see core/class-content-analyzer.php — Reads scores for self-improvement loop.
  * @see admin/class-metrics-page.php    — Displays collected metrics.
  * @see ARCHITECTURE.md                 — Data flow step 7.
  */
-class Autoblogger_Metrics_Collector {
+class PRAutoBlogger_Metrics_Collector {
 
 	/**
-	 * Collect metrics for all AutoBlogger-generated posts.
+	 * Collect metrics for all PRAutoBlogger-generated posts.
 	 *
 	 * Gathers WordPress native metrics (comments) and GA4 data (if configured),
 	 * then computes composite scores.
@@ -34,7 +34,7 @@ class Autoblogger_Metrics_Collector {
 			return 0;
 		}
 
-		$ga4_client = new Autoblogger_GA4_Client();
+		$ga4_client = new PRAutoBlogger_GA4_Client();
 		$ga4_data = $ga4_client->fetch_data( $posts );
 		$scored   = 0;
 
@@ -54,12 +54,12 @@ class Autoblogger_Metrics_Collector {
 			$scored++;
 		}
 
-		Autoblogger_Logger::instance()->info( sprintf( 'Metrics collected for %d posts.', $scored ), 'metrics' );
+		PRAutoBlogger_Logger::instance()->info( sprintf( 'Metrics collected for %d posts.', $scored ), 'metrics' );
 		return $scored;
 	}
 
 	/**
-	 * Get all AutoBlogger-generated published posts.
+	 * Get all PRAutoBlogger-generated published posts.
 	 *
 	 * @return \WP_Post[]
 	 */
@@ -67,7 +67,7 @@ class Autoblogger_Metrics_Collector {
 		$query = new \WP_Query( [
 			'post_type'      => 'post',
 			'post_status'    => 'publish',
-			'meta_key'       => '_autoblogger_generated',
+			'meta_key'       => '_prautoblogger_generated',
 			'meta_value'     => '1',
 			'posts_per_page' => 100,
 			'orderby'        => 'date',
@@ -89,7 +89,7 @@ class Autoblogger_Metrics_Collector {
 
 		// Post may have been deleted between the WP_Query and this call.
 		if ( null === $post ) {
-			Autoblogger_Logger::instance()->debug( sprintf( 'Metrics: Post ID %d no longer exists, skipping.', $post_id ), 'metrics' );
+			PRAutoBlogger_Logger::instance()->debug( sprintf( 'Metrics: Post ID %d no longer exists, skipping.', $post_id ), 'metrics' );
 			return null;
 		}
 
@@ -160,9 +160,9 @@ class Autoblogger_Metrics_Collector {
 	 */
 	private function store_score( int $post_id, array $wp_metrics, array $ga_metrics, array $score_data ): void {
 		global $wpdb;
-		$table = $wpdb->prefix . 'autoblogger_content_scores';
+		$table = $wpdb->prefix . 'prautoblogger_content_scores';
 
-		$entry = new Autoblogger_Content_Score( [
+		$entry = new PRAutoBlogger_Content_Score( [
 			'post_id'          => $post_id,
 			'pageviews'        => $ga_metrics['pageviews'] ?? 0,
 			'avg_time_on_page' => $ga_metrics['avg_time_on_page'] ?? 0.0,

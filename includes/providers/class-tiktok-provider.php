@@ -13,16 +13,16 @@ declare(strict_types=1);
  * @see interface-source-provider.php — Interface this class implements.
  * @see ARCHITECTURE.md               — Planned source providers.
  */
-class Autoblogger_Tiktok_Provider implements Autoblogger_Source_Provider_Interface {
+class PRAutoBlogger_Tiktok_Provider implements PRAutoBlogger_Source_Provider_Interface {
 
 	/**
 	 * @param array<string, mixed> $config
-	 * @return Autoblogger_Source_Data[]
+	 * @return PRAutoBlogger_Source_Data[]
 	 * @throws \RuntimeException Always — not yet implemented.
 	 */
 	public function collect_data( array $config ): array {
 		throw new \RuntimeException(
-			__( 'TikTok source provider is not yet implemented. Remove "tiktok" from enabled sources.', 'autoblogger' )
+			__( 'TikTok source provider is not yet implemented. Remove "tiktok" from enabled sources.', 'prautoblogger' )
 		);
 	}
 

@@ -9,14 +9,14 @@ declare(strict_types=1);
  * storing them in the ab_source_data table.
  *
  * Triggered by: Source_Collector calls collect_data() on each enabled provider.
- * Dependencies: Autoblogger_Reddit_API_Client (for HTTP calls and auth).
+ * Dependencies: PRAutoBlogger_Reddit_API_Client (for HTTP calls and auth).
  *
  * @see interface-source-provider.php        — Interface this class implements.
  * @see providers/class-reddit-api-client.php — HTTP client for Reddit API.
  * @see core/class-source-collector.php       — Orchestrates collection from all providers.
  * @see ARCHITECTURE.md                       — External API integrations table.
  */
-class Autoblogger_Reddit_Provider implements Autoblogger_Source_Provider_Interface {
+class PRAutoBlogger_Reddit_Provider implements PRAutoBlogger_Source_Provider_Interface {
 
 	/**
 	 * Collect posts and comments from configured subreddits.
@@ -34,16 +34,16 @@ class Autoblogger_Reddit_Provider implements Autoblogger_Source_Provider_Interfa
 	 *     comments_per_post?: int,
 	 * } $config Collection configuration.
 	 *
-	 * @return Autoblogger_Source_Data[]
+	 * @return PRAutoBlogger_Source_Data[]
 	 *
 	 * @throws \RuntimeException On authentication failure or API error.
 	 */
 	public function collect_data( array $config ): array {
-		$api_client = new Autoblogger_Reddit_API_Client();
+		$api_client = new PRAutoBlogger_Reddit_API_Client();
 		$token = $api_client->get_access_token();
 		if ( '' === $token ) {
 			throw new \RuntimeException(
-				__( 'Reddit authentication failed. Check client ID and secret in settings.', 'autoblogger' )
+				__( 'Reddit authentication failed. Check client ID and secret in settings.', 'prautoblogger' )
 			);
 		}
 
@@ -62,7 +62,7 @@ class Autoblogger_Reddit_Provider implements Autoblogger_Source_Provider_Interfa
 				$posts = $api_client->fetch_posts( $token, $subreddit, $limit, $time_filter );
 
 				foreach ( $posts as $post ) {
-					$collected[] = new Autoblogger_Source_Data( [
+					$collected[] = new PRAutoBlogger_Source_Data( [
 						'source_type'   => 'reddit',
 						'source_id'     => 't3_' . $post['id'],
 						'subreddit'     => $subreddit,
@@ -92,7 +92,7 @@ class Autoblogger_Reddit_Provider implements Autoblogger_Source_Provider_Interfa
 						);
 
 						foreach ( $comments as $comment ) {
-							$collected[] = new Autoblogger_Source_Data( [
+							$collected[] = new PRAutoBlogger_Source_Data( [
 								'source_type'   => 'reddit',
 								'source_id'     => 't1_' . $comment['id'],
 								'subreddit'     => $subreddit,
@@ -115,7 +115,7 @@ class Autoblogger_Reddit_Provider implements Autoblogger_Source_Provider_Interfa
 				}
 			} catch ( \Exception $e ) {
 				// Log but continue with other subreddits.
-				Autoblogger_Logger::instance()->error(
+				PRAutoBlogger_Logger::instance()->error(
 					sprintf( 'Reddit: Failed to collect from r/%s: %s', $subreddit, $e->getMessage() ),
 					'reddit'
 				);
@@ -140,7 +140,7 @@ class Autoblogger_Reddit_Provider implements Autoblogger_Source_Provider_Interfa
 	 * @return bool
 	 */
 	public function validate_credentials(): bool {
-		$api_client = new Autoblogger_Reddit_API_Client();
+		$api_client = new PRAutoBlogger_Reddit_API_Client();
 		$token = $api_client->get_access_token( true );
 		return '' !== $token;
 	}
@@ -153,7 +153,7 @@ class Autoblogger_Reddit_Provider implements Autoblogger_Source_Provider_Interfa
 	public function get_rate_limit_status(): array {
 		// Reddit rate limits are tracked per-response via headers.
 		// We store the last seen values in a transient.
-		$status = get_transient( 'autoblogger_reddit_rate_limit' );
+		$status = get_transient( 'prautoblogger_reddit_rate_limit' );
 		if ( is_array( $status ) ) {
 			return $status;
 		}
@@ -171,7 +171,7 @@ class Autoblogger_Reddit_Provider implements Autoblogger_Source_Provider_Interfa
 	 * @return string[]
 	 */
 	private function get_configured_subreddits(): array {
-		$json = get_option( 'autoblogger_target_subreddits', '[]' );
+		$json = get_option( 'prautoblogger_target_subreddits', '[]' );
 		$list = json_decode( $json, true );
 		return is_array( $list ) ? $list : [];
 	}

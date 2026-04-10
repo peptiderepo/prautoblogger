@@ -9,14 +9,14 @@ declare(strict_types=1);
  * separate provider integrations.
  *
  * Triggered by: Content_Analyzer, Content_Generator, Chief_Editor, Metrics_Collector.
- * Dependencies: Autoblogger_Encryption (for API key decryption), wp_remote_post(), Autoblogger_OpenRouter_Pricing.
+ * Dependencies: PRAutoBlogger_Encryption (for API key decryption), wp_remote_post(), PRAutoBlogger_OpenRouter_Pricing.
  *
  * @see interface-llm-provider.php      — Interface this class implements.
  * @see class-openrouter-pricing.php    — Pricing and model list lookups.
  * @see class-cost-tracker.php          — Called after every request to log token usage.
  * @see ARCHITECTURE.md                 — Data flow diagram showing where this fits.
  */
-class Autoblogger_OpenRouter_Provider implements Autoblogger_LLM_Provider_Interface {
+class PRAutoBlogger_OpenRouter_Provider implements PRAutoBlogger_LLM_Provider_Interface {
 
 	private const API_BASE_URL = 'https://openrouter.ai/api/v1';
 
@@ -51,7 +51,7 @@ class Autoblogger_OpenRouter_Provider implements Autoblogger_LLM_Provider_Interf
 		$api_key = $this->get_api_key();
 		if ( '' === $api_key ) {
 			throw new \RuntimeException(
-				__( 'OpenRouter API key is not configured. Go to AutoBlogger → Settings.', 'autoblogger' )
+				__( 'OpenRouter API key is not configured. Go to PRAutoBlogger → Settings.', 'prautoblogger' )
 			);
 		}
 
@@ -72,16 +72,16 @@ class Autoblogger_OpenRouter_Provider implements Autoblogger_LLM_Provider_Interf
 
 		$last_error = '';
 
-		for ( $attempt = 1; $attempt <= AUTOBLOGGER_MAX_RETRIES; $attempt++ ) {
+		for ( $attempt = 1; $attempt <= PRAUTOBLOGGER_MAX_RETRIES; $attempt++ ) {
 			$response = wp_remote_post(
 				self::API_BASE_URL . '/chat/completions',
 				[
-					'timeout' => AUTOBLOGGER_API_TIMEOUT_SECONDS,
+					'timeout' => PRAUTOBLOGGER_API_TIMEOUT_SECONDS,
 					'headers' => [
 						'Authorization' => 'Bearer ' . $api_key,
 						'Content-Type'  => 'application/json',
 						'HTTP-Referer'  => home_url(),
-						'X-Title'       => 'AutoBlogger WordPress Plugin',
+						'X-Title'       => 'PRAutoBlogger WordPress Plugin',
 					],
 					'body'    => wp_json_encode( $body ),
 				]
@@ -89,13 +89,13 @@ class Autoblogger_OpenRouter_Provider implements Autoblogger_LLM_Provider_Interf
 
 			if ( is_wp_error( $response ) ) {
 				$last_error = $response->get_error_message();
-				Autoblogger_Logger::instance()->warning(
-					sprintf( 'OpenRouter request failed (attempt %d/%d): %s', $attempt, AUTOBLOGGER_MAX_RETRIES, $last_error ),
+				PRAutoBlogger_Logger::instance()->warning(
+					sprintf( 'OpenRouter request failed (attempt %d/%d): %s', $attempt, PRAUTOBLOGGER_MAX_RETRIES, $last_error ),
 					'openrouter'
 				);
 
-				if ( $attempt < AUTOBLOGGER_MAX_RETRIES ) {
-					$delay = AUTOBLOGGER_RETRY_BASE_DELAY_SECONDS * pow( 2, $attempt - 1 );
+				if ( $attempt < PRAUTOBLOGGER_MAX_RETRIES ) {
+					$delay = PRAUTOBLOGGER_RETRY_BASE_DELAY_SECONDS * pow( 2, $attempt - 1 );
 					sleep( (int) $delay );
 				}
 				continue;
@@ -108,17 +108,17 @@ class Autoblogger_OpenRouter_Provider implements Autoblogger_LLM_Provider_Interf
 			// Rate limited or server error — retry.
 			if ( $status_code >= 429 || $status_code >= 500 ) {
 				$last_error = sprintf( 'HTTP %d: %s', $status_code, $body_raw );
-				Autoblogger_Logger::instance()->warning(
-					sprintf( 'OpenRouter HTTP %d (attempt %d/%d): %s', $status_code, $attempt, AUTOBLOGGER_MAX_RETRIES, substr( $body_raw, 0, 500 ) ),
+				PRAutoBlogger_Logger::instance()->warning(
+					sprintf( 'OpenRouter HTTP %d (attempt %d/%d): %s', $status_code, $attempt, PRAUTOBLOGGER_MAX_RETRIES, substr( $body_raw, 0, 500 ) ),
 					'openrouter'
 				);
 
-				if ( $attempt < AUTOBLOGGER_MAX_RETRIES ) {
+				if ( $attempt < PRAUTOBLOGGER_MAX_RETRIES ) {
 					// Respect Retry-After header if present.
 					$retry_after = wp_remote_retrieve_header( $response, 'retry-after' );
 					$delay       = $retry_after
 						? min( (int) $retry_after, 60 )
-						: AUTOBLOGGER_RETRY_BASE_DELAY_SECONDS * pow( 2, $attempt - 1 );
+						: PRAUTOBLOGGER_RETRY_BASE_DELAY_SECONDS * pow( 2, $attempt - 1 );
 					sleep( (int) $delay );
 				}
 				continue;
@@ -132,7 +132,7 @@ class Autoblogger_OpenRouter_Provider implements Autoblogger_LLM_Provider_Interf
 				throw new \RuntimeException(
 					sprintf(
 						/* translators: %d: HTTP status code, %s: error message */
-						__( 'OpenRouter API error (HTTP %1$d): %2$s', 'autoblogger' ),
+						__( 'OpenRouter API error (HTTP %1$d): %2$s', 'prautoblogger' ),
 						$status_code,
 						$error_msg
 					)
@@ -142,7 +142,7 @@ class Autoblogger_OpenRouter_Provider implements Autoblogger_LLM_Provider_Interf
 			// Success — parse response.
 			if ( ! isset( $data['choices'][0]['message']['content'] ) ) {
 				throw new \RuntimeException(
-					__( 'OpenRouter returned unexpected response format.', 'autoblogger' )
+					__( 'OpenRouter returned unexpected response format.', 'prautoblogger' )
 				);
 			}
 
@@ -162,8 +162,8 @@ class Autoblogger_OpenRouter_Provider implements Autoblogger_LLM_Provider_Interf
 		throw new \RuntimeException(
 			sprintf(
 				/* translators: %d: max retries, %s: last error message */
-				__( 'OpenRouter API failed after %1$d attempts. Last error: %2$s', 'autoblogger' ),
-				AUTOBLOGGER_MAX_RETRIES,
+				__( 'OpenRouter API failed after %1$d attempts. Last error: %2$s', 'prautoblogger' ),
+				PRAUTOBLOGGER_MAX_RETRIES,
 				$last_error
 			)
 		);
@@ -179,7 +179,7 @@ class Autoblogger_OpenRouter_Provider implements Autoblogger_LLM_Provider_Interf
 	 * @return array<int, array{id: string, name: string, context_length: int, pricing: array{prompt: float, completion: float}}>
 	 */
 	public function get_available_models(): array {
-		$pricing = new Autoblogger_OpenRouter_Pricing();
+		$pricing = new PRAutoBlogger_OpenRouter_Pricing();
 		return $pricing->get_available_models();
 	}
 
@@ -195,7 +195,7 @@ class Autoblogger_OpenRouter_Provider implements Autoblogger_LLM_Provider_Interf
 	 * @return float Estimated cost in USD.
 	 */
 	public function estimate_cost( string $model, int $prompt_tokens, int $completion_tokens ): float {
-		$pricing = new Autoblogger_OpenRouter_Pricing();
+		$pricing = new PRAutoBlogger_OpenRouter_Pricing();
 		return $pricing->estimate_cost( $model, $prompt_tokens, $completion_tokens );
 	}
 
@@ -244,10 +244,10 @@ class Autoblogger_OpenRouter_Provider implements Autoblogger_LLM_Provider_Interf
 	 * @return string Decrypted API key, or empty string if not set.
 	 */
 	private function get_api_key(): string {
-		$encrypted = get_option( 'autoblogger_openrouter_api_key', '' );
+		$encrypted = get_option( 'prautoblogger_openrouter_api_key', '' );
 		if ( '' === $encrypted ) {
 			return '';
 		}
-		return Autoblogger_Encryption::decrypt( $encrypted );
+		return PRAutoBlogger_Encryption::decrypt( $encrypted );
 	}
 }

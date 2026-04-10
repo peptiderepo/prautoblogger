@@ -1,5 +1,5 @@
 /**
- * AutoBlogger admin styles — modern SaaS-inspired UI.
+ * PRAutoBlogger admin styles — modern SaaS-inspired UI.
  *
  * Design language: clean cards, subtle shadows, accent color #4f46e5 (indigo),
  * neutral grays from WordPress admin palette. Follows wp-admin conventions
@@ -72,13 +72,13 @@
 .ab-text-danger { color: var(--ab-danger); }
 
 /* ── Status message ──────────────────────────────────────────────────── */
-#autoblogger-status-message {
+#prautoblogger-status-message {
 	margin: 16px 0; padding: 12px 16px; border-radius: var(--ab-radius);
 	border-left: 4px solid var(--ab-success); background: var(--ab-card-bg);
 	font-size: 13px; box-shadow: var(--ab-shadow);
 }
-#autoblogger-status-message.error { border-left-color: var(--ab-danger); }
-#autoblogger-status-message.hidden { display: none; }
+#prautoblogger-status-message.error { border-left-color: var(--ab-danger); }
+#prautoblogger-status-message.hidden { display: none; }
 
 /* ── Layout: sidebar tabs + content ──────────────────────────────────── */
 .ab-layout {
@@ -176,48 +176,48 @@ input[type="time"].ab-input { max-width: 160px; }
 }
 
 /* ── Metrics page cards (preserved from before) ──────────────────────── */
-.autoblogger-cards { display: flex; gap: 16px; margin: 20px 0; flex-wrap: wrap; }
-.autoblogger-card { background: var(--ab-card-bg); border: 1px solid var(--ab-border); border-radius: var(--ab-radius); padding: 20px; min-width: 200px; flex: 1; }
-.autoblogger-card h3 { margin: 0 0 8px; font-size: 13px; color: var(--ab-text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
-.autoblogger-card-value { font-size: 28px; font-weight: 600; color: var(--ab-text); line-height: 1.2; }
-.autoblogger-card-value-small { font-size: 18px; }
-.autoblogger-card-sub { margin-top: 4px; font-size: 13px; color: var(--ab-text-muted); }
-.autoblogger-card-warning { border-left: 4px solid var(--ab-warning); }
-.autoblogger-card-danger { border-left: 4px solid var(--ab-danger); }
-.autoblogger-budget-bar { margin-top: 12px; height: 8px; background: var(--ab-bg); border-radius: 4px; overflow: hidden; }
-.autoblogger-budget-fill { height: 100%; background: var(--ab-primary); border-radius: 4px; transition: width 0.3s ease; }
-.autoblogger-card-warning .autoblogger-budget-fill { background: var(--ab-warning); }
-.autoblogger-card-danger .autoblogger-budget-fill { background: var(--ab-danger); }
+.prautoblogger-cards { display: flex; gap: 16px; margin: 20px 0; flex-wrap: wrap; }
+.prautoblogger-card { background: var(--ab-card-bg); border: 1px solid var(--ab-border); border-radius: var(--ab-radius); padding: 20px; min-width: 200px; flex: 1; }
+.prautoblogger-card h3 { margin: 0 0 8px; font-size: 13px; color: var(--ab-text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.prautoblogger-card-value { font-size: 28px; font-weight: 600; color: var(--ab-text); line-height: 1.2; }
+.prautoblogger-card-value-small { font-size: 18px; }
+.prautoblogger-card-sub { margin-top: 4px; font-size: 13px; color: var(--ab-text-muted); }
+.prautoblogger-card-warning { border-left: 4px solid var(--ab-warning); }
+.prautoblogger-card-danger { border-left: 4px solid var(--ab-danger); }
+.prautoblogger-budget-bar { margin-top: 12px; height: 8px; background: var(--ab-bg); border-radius: 4px; overflow: hidden; }
+.prautoblogger-budget-fill { height: 100%; background: var(--ab-primary); border-radius: 4px; transition: width 0.3s ease; }
+.prautoblogger-card-warning .prautoblogger-budget-fill { background: var(--ab-warning); }
+.prautoblogger-card-danger .prautoblogger-budget-fill { background: var(--ab-danger); }
 
 /* ── Metabox / verdict (shared) ──────────────────────────────────────── */
-.autoblogger-metabox p { margin: 6px 0; font-size: 12px; }
-.autoblogger-verdict-approved { color: var(--ab-success); font-weight: 600; }
-.autoblogger-verdict-revised { color: var(--ab-warning); font-weight: 600; }
-.autoblogger-verdict-rejected { color: var(--ab-danger); font-weight: 600; }
-.autoblogger-verdict-pending { color: var(--ab-text-muted); font-weight: 600; }
+.prautoblogger-metabox p { margin: 6px 0; font-size: 12px; }
+.prautoblogger-verdict-approved { color: var(--ab-success); font-weight: 600; }
+.prautoblogger-verdict-revised { color: var(--ab-warning); font-weight: 600; }
+.prautoblogger-verdict-rejected { color: var(--ab-danger); font-weight: 600; }
+.prautoblogger-verdict-pending { color: var(--ab-text-muted); font-weight: 600; }
 
 /* ── Metrics tables ──────────────────────────────────────────────────── */
-.autoblogger-metrics .widefat { margin: 10px 0 30px; }
+.prautoblogger-metrics .widefat { margin: 10px 0 30px; }
 
 /* ── Review queue ────────────────────────────────────────────────────── */
-.autoblogger-review-queue .autoblogger-queue-toolbar {
+.prautoblogger-review-queue .prautoblogger-queue-toolbar {
 	display: flex; align-items: center; gap: 10px;
 	margin: 15px 0; padding: 10px 12px; background: var(--ab-card-bg);
 	border: 1px solid var(--ab-border); border-radius: var(--ab-radius);
 }
-.autoblogger-review-queue .autoblogger-queue-count { margin-left: auto; color: var(--ab-text-muted); font-size: 13px; }
-.autoblogger-review-queue .autoblogger-queue-table .check-column { width: 30px; padding: 10px 0 10px 10px; }
-.autoblogger-review-queue .autoblogger-queue-actions { white-space: nowrap; }
-.autoblogger-review-queue .autoblogger-queue-actions .button { margin-right: 4px; }
-.autoblogger-review-queue .autoblogger-editor-notes { margin-top: 4px; font-size: 12px; color: var(--ab-text-muted); font-style: italic; }
-.autoblogger-review-queue .autoblogger-empty-queue { margin: 40px 0; text-align: center; color: var(--ab-text-muted); font-size: 14px; }
-.autoblogger-review-queue .autoblogger-pagination { margin: 20px 0; text-align: center; }
-.autoblogger-review-queue .autoblogger-pagination .page-numbers { display: inline-block; padding: 4px 10px; margin: 0 2px; text-decoration: none; }
-.autoblogger-review-queue .autoblogger-pagination .page-numbers.current { background: var(--ab-primary); color: #fff; border-radius: 3px; }
+.prautoblogger-review-queue .prautoblogger-queue-count { margin-left: auto; color: var(--ab-text-muted); font-size: 13px; }
+.prautoblogger-review-queue .prautoblogger-queue-table .check-column { width: 30px; padding: 10px 0 10px 10px; }
+.prautoblogger-review-queue .prautoblogger-queue-actions { white-space: nowrap; }
+.prautoblogger-review-queue .prautoblogger-queue-actions .button { margin-right: 4px; }
+.prautoblogger-review-queue .prautoblogger-editor-notes { margin-top: 4px; font-size: 12px; color: var(--ab-text-muted); font-style: italic; }
+.prautoblogger-review-queue .prautoblogger-empty-queue { margin: 40px 0; text-align: center; color: var(--ab-text-muted); font-size: 14px; }
+.prautoblogger-review-queue .prautoblogger-pagination { margin: 20px 0; text-align: center; }
+.prautoblogger-review-queue .prautoblogger-pagination .page-numbers { display: inline-block; padding: 4px 10px; margin: 0 2px; text-decoration: none; }
+.prautoblogger-review-queue .prautoblogger-pagination .page-numbers.current { background: var(--ab-primary); color: #fff; border-radius: 3px; }
 
-#autoblogger-queue-status { margin: 10px 0; padding: 10px 15px; border-left: 4px solid var(--ab-success); background: var(--ab-card-bg); }
-#autoblogger-queue-status.error { border-left-color: var(--ab-danger); }
-#autoblogger-queue-status.hidden { display: none; }
+#prautoblogger-queue-status { margin: 10px 0; padding: 10px 15px; border-left: 4px solid var(--ab-success); background: var(--ab-card-bg); }
+#prautoblogger-queue-status.error { border-left-color: var(--ab-danger); }
+#prautoblogger-queue-status.hidden { display: none; }
 
 /* ── Log viewer ──────────────────────────────────────────────────────── */
 .ab-log-filters { display: flex; align-items: center; justify-content: space-between; margin: 16px 0; gap: 12px; flex-wrap: wrap; }
@@ -251,9 +251,9 @@ input[type="time"].ab-input { max-width: 160px; }
 .ab-log-meta-toggle:hover { color: var(--ab-primary); }
 .ab-log-meta { display: none; margin: 8px 0 0; padding: 10px; background: var(--ab-bg); border-radius: 4px; font-size: 12px; overflow-x: auto; max-height: 200px; }
 
-#autoblogger-log-status { margin: 10px 0; padding: 10px 15px; border-left: 4px solid var(--ab-success); background: var(--ab-card-bg); border-radius: 4px; }
-#autoblogger-log-status.error { border-left-color: var(--ab-danger); }
-#autoblogger-log-status.hidden { display: none; }
+#prautoblogger-log-status { margin: 10px 0; padding: 10px 15px; border-left: 4px solid var(--ab-success); background: var(--ab-card-bg); border-radius: 4px; }
+#prautoblogger-log-status.error { border-left-color: var(--ab-danger); }
+#prautoblogger-log-status.hidden { display: none; }
 
 .ab-log-pagination { margin: 20px 0; text-align: center; }
 .ab-log-pagination .page-numbers { display: inline-block; padding: 4px 10px; margin: 0 2px; text-decoration: none; }
@@ -268,6 +268,6 @@ input[type="time"].ab-input { max-width: 160px; }
 	.ab-panel { padding: 20px 16px; }
 	.ab-header { flex-direction: column; gap: 12px; align-items: flex-start; }
 	.ab-stats-bar { flex-direction: column; }
-	.autoblogger-cards { flex-direction: column; }
-	.autoblogger-review-queue .autoblogger-queue-toolbar { flex-wrap: wrap; }
+	.prautoblogger-cards { flex-direction: column; }
+	.prautoblogger-review-queue .prautoblogger-queue-toolbar { flex-wrap: wrap; }
 }

@@ -13,7 +13,7 @@ declare(strict_types=1);
  *
  * @see admin/class-admin-page.php — Uses this to store/retrieve API keys.
  */
-class Autoblogger_Encryption {
+class PRAutoBlogger_Encryption {
 
 	private const METHOD = 'aes-256-cbc';
 
@@ -35,7 +35,7 @@ class Autoblogger_Encryption {
 
 		$ciphertext = openssl_encrypt( $plaintext, self::METHOD, $key, OPENSSL_RAW_DATA, $iv );
 		if ( false === $ciphertext ) {
-			Autoblogger_Logger::instance()->error( 'Encryption failed: ' . openssl_error_string(), 'encryption' );
+			PRAutoBlogger_Logger::instance()->error( 'Encryption failed: ' . openssl_error_string(), 'encryption' );
 			return '';
 		}
 
@@ -62,7 +62,7 @@ class Autoblogger_Encryption {
 		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode
 		$raw = base64_decode( $encrypted, true );
 		if ( false === $raw || strlen( $raw ) <= $iv_len ) {
-			Autoblogger_Logger::instance()->error( 'Decryption failed: invalid ciphertext format.', 'encryption' );
+			PRAutoBlogger_Logger::instance()->error( 'Decryption failed: invalid ciphertext format.', 'encryption' );
 			return '';
 		}
 
@@ -71,7 +71,7 @@ class Autoblogger_Encryption {
 
 		$plaintext = openssl_decrypt( $ciphertext, self::METHOD, $key, OPENSSL_RAW_DATA, $iv );
 		if ( false === $plaintext ) {
-			Autoblogger_Logger::instance()->error( 'Decryption failed: ' . openssl_error_string(), 'encryption' );
+			PRAutoBlogger_Logger::instance()->error( 'Decryption failed: ' . openssl_error_string(), 'encryption' );
 			return '';
 		}
 

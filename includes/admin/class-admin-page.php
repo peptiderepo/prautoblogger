@@ -2,28 +2,28 @@
 declare(strict_types=1);
 
 /**
- * Registers and renders the main AutoBlogger settings page in wp-admin.
+ * Registers and renders the main PRAutoBlogger settings page in wp-admin.
  *
  * Uses the WordPress Settings API for option registration, sanitization, and rendering.
  * Settings are defined as a declarative array — adding a new setting is one array entry.
  *
- * Triggered by: Autoblogger::register_admin_hooks() registers menu and settings hooks.
- * Dependencies: Autoblogger_Encryption (for API key storage), Autoblogger_Settings_Fields.
+ * Triggered by: PRAutoBlogger::register_admin_hooks() registers menu and settings hooks.
+ * Dependencies: PRAutoBlogger_Encryption (for API key storage), PRAutoBlogger_Settings_Fields.
  *
- * @see class-autoblogger.php     — Registers hooks that call this class.
+ * @see class-prautoblogger.php     — Registers hooks that call this class.
  * @see class-settings-fields.php — Defines all settings fields and sections.
  * @see CONVENTIONS.md            — "How To: Add a New Admin Setting".
  */
-class Autoblogger_Admin_Page {
+class PRAutoBlogger_Admin_Page {
 
-	private const PAGE_SLUG    = 'autoblogger-settings';
-	private const OPTION_GROUP = 'autoblogger_settings_group';
+	private const PAGE_SLUG    = 'prautoblogger-settings';
+	private const OPTION_GROUP = 'prautoblogger_settings_group';
 
-	/** Register the top-level AutoBlogger menu item. */
+	/** Register the top-level PRAutoBlogger menu item. */
 	public function on_register_menu(): void {
 		add_menu_page(
-			__( 'AutoBlogger', 'autoblogger' ),
-			__( 'AutoBlogger', 'autoblogger' ),
+			__( 'PRAutoBlogger', 'prautoblogger' ),
+			__( 'PRAutoBlogger', 'prautoblogger' ),
 			'manage_options',
 			self::PAGE_SLUG,
 			[ $this, 'render_page' ],
@@ -34,15 +34,15 @@ class Autoblogger_Admin_Page {
 
 	/** Register all settings with the WordPress Settings API. */
 	public function on_register_settings(): void {
-		$sections = Autoblogger_Settings_Fields::get_sections();
-		$fields   = Autoblogger_Settings_Fields::get_fields();
+		$sections = PRAutoBlogger_Settings_Fields::get_sections();
+		$fields   = PRAutoBlogger_Settings_Fields::get_fields();
 
 		foreach ( $sections as $section_id => $section ) {
 			add_settings_section( $section_id, $section['title'], '__return_empty_string', self::PAGE_SLUG );
 		}
 
 		foreach ( $fields as $field ) {
-			$section = $field['section'] ?? 'autoblogger_api';
+			$section = $field['section'] ?? 'prautoblogger_api';
 			register_setting( self::OPTION_GROUP, $field['id'], [
 				'type'              => $field['wp_type'] ?? 'string',
 				'sanitize_callback' => [ $this, 'sanitize_field' ],
@@ -52,30 +52,30 @@ class Autoblogger_Admin_Page {
 		}
 	}
 
-	/** Enqueue admin CSS and JS on all AutoBlogger admin pages. */
+	/** Enqueue admin CSS and JS on all PRAutoBlogger admin pages. */
 	public function on_enqueue_assets( string $hook_suffix ): void {
 		$pages = [
 			'toplevel_page_' . self::PAGE_SLUG,
-			'autoblogger_page_autoblogger-metrics',
-			'autoblogger_page_autoblogger-review-queue',
-			'autoblogger_page_autoblogger-logs',
+			'prautoblogger_page_prautoblogger-metrics',
+			'prautoblogger_page_prautoblogger-review-queue',
+			'prautoblogger_page_prautoblogger-logs',
 		];
 		if ( ! in_array( $hook_suffix, $pages, true ) ) {
 			return;
 		}
 
-		wp_enqueue_style( 'autoblogger-admin', AUTOBLOGGER_PLUGIN_URL . 'assets/css/admin.css', [], AUTOBLOGGER_VERSION );
-		wp_enqueue_script( 'autoblogger-admin', AUTOBLOGGER_PLUGIN_URL . 'assets/js/admin.js', [ 'jquery' ], AUTOBLOGGER_VERSION, true );
+		wp_enqueue_style( 'prautoblogger-admin', PRAUTOBLOGGER_PLUGIN_URL . 'assets/css/admin.css', [], PRAUTOBLOGGER_VERSION );
+		wp_enqueue_script( 'prautoblogger-admin', PRAUTOBLOGGER_PLUGIN_URL . 'assets/js/admin.js', [ 'jquery' ], PRAUTOBLOGGER_VERSION, true );
 
-		wp_localize_script( 'autoblogger-admin', 'autobloggerAdmin', [
+		wp_localize_script( 'prautoblogger-admin', 'prautobloggerAdmin', [
 			'ajaxUrl'        => admin_url( 'admin-ajax.php' ),
-			'generateNonce'  => wp_create_nonce( 'autoblogger_generate_now' ),
-			'testNonce'      => wp_create_nonce( 'autoblogger_test_connection' ),
-			'reviewNonce'    => wp_create_nonce( 'autoblogger_review_queue' ),
-			'generatingText' => __( 'Generating...', 'autoblogger' ),
-			'generateText'   => __( 'Generate Now', 'autoblogger' ),
-			'testingText'    => __( 'Testing...', 'autoblogger' ),
-			'testText'       => __( 'Test Connections', 'autoblogger' ),
+			'generateNonce'  => wp_create_nonce( 'prautoblogger_generate_now' ),
+			'testNonce'      => wp_create_nonce( 'prautoblogger_test_connection' ),
+			'reviewNonce'    => wp_create_nonce( 'prautoblogger_review_queue' ),
+			'generatingText' => __( 'Generating...', 'prautoblogger' ),
+			'generateText'   => __( 'Generate Now', 'prautoblogger' ),
+			'testingText'    => __( 'Testing...', 'prautoblogger' ),
+			'testText'       => __( 'Test Connections', 'prautoblogger' ),
 		] );
 	}
 
@@ -84,9 +84,9 @@ class Autoblogger_Admin_Page {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
-		$sections = Autoblogger_Settings_Fields::get_sections();
-		$fields   = Autoblogger_Settings_Fields::get_fields();
-		include AUTOBLOGGER_PLUGIN_DIR . 'templates/admin/settings-page.php';
+		$sections = PRAutoBlogger_Settings_Fields::get_sections();
+		$fields   = PRAutoBlogger_Settings_Fields::get_fields();
+		include PRAUTOBLOGGER_PLUGIN_DIR . 'templates/admin/settings-page.php';
 	}
 
 	/**
@@ -102,7 +102,7 @@ class Autoblogger_Admin_Page {
 		$value   = get_option( $args['id'], $default );
 
 		if ( 'password' === $type && '' !== $value ) {
-			$decrypted = Autoblogger_Encryption::decrypt( $value );
+			$decrypted = PRAutoBlogger_Encryption::decrypt( $value );
 			$value     = '' !== $decrypted ? '••••••••' : '';
 		}
 
@@ -120,7 +120,7 @@ class Autoblogger_Admin_Page {
 
 			case 'password':
 				printf( '<input type="password" id="%s" name="%s" value="" class="ab-input" placeholder="%s" autocomplete="off" />',
-					$id, $id, '' !== $value ? esc_attr__( 'Saved (enter new value to change)', 'autoblogger' ) : '' );
+					$id, $id, '' !== $value ? esc_attr__( 'Saved (enter new value to change)', 'prautoblogger' ) : '' );
 				break;
 
 			case 'textarea':
@@ -152,11 +152,11 @@ class Autoblogger_Admin_Page {
 				break;
 
 			case 'author_select':
-				wp_dropdown_users( [ 'name' => $id, 'id' => $id, 'selected' => absint( $value ), 'show_option_none' => __( '— Auto (first admin) —', 'autoblogger' ), 'option_none_value' => '0', 'class' => 'ab-select' ] );
+				wp_dropdown_users( [ 'name' => $id, 'id' => $id, 'selected' => absint( $value ), 'show_option_none' => __( '— Auto (first admin) —', 'prautoblogger' ), 'option_none_value' => '0', 'class' => 'ab-select' ] );
 				break;
 
 			case 'category_select':
-				wp_dropdown_categories( [ 'name' => $id, 'id' => $id, 'selected' => absint( $value ), 'show_option_none' => __( '— Auto-assign by type —', 'autoblogger' ), 'option_none_value' => '0', 'class' => 'ab-select', 'hide_empty' => false ] );
+				wp_dropdown_categories( [ 'name' => $id, 'id' => $id, 'selected' => absint( $value ), 'show_option_none' => __( '— Auto-assign by type —', 'prautoblogger' ), 'option_none_value' => '0', 'class' => 'ab-select', 'hide_empty' => false ] );
 				break;
 		}
 
@@ -181,13 +181,13 @@ class Autoblogger_Admin_Page {
 			$option_name = substr( $filter, strlen( 'sanitize_option_' ) );
 		}
 
-		$encrypted = [ 'autoblogger_openrouter_api_key', 'autoblogger_reddit_client_secret', 'autoblogger_ga4_credentials_json' ];
+		$encrypted = [ 'prautoblogger_openrouter_api_key', 'prautoblogger_reddit_client_secret', 'prautoblogger_ga4_credentials_json' ];
 		if ( in_array( $option_name, $encrypted, true ) ) {
 			if ( '' === $value ) { return get_option( $option_name, '' ); }
-			return Autoblogger_Encryption::encrypt( sanitize_text_field( $value ) );
+			return PRAutoBlogger_Encryption::encrypt( sanitize_text_field( $value ) );
 		}
 
-		$json_fields = [ 'autoblogger_target_subreddits', 'autoblogger_topic_exclusions', 'autoblogger_enabled_sources' ];
+		$json_fields = [ 'prautoblogger_target_subreddits', 'prautoblogger_topic_exclusions', 'prautoblogger_enabled_sources' ];
 		if ( in_array( $option_name, $json_fields, true ) ) {
 			if ( is_array( $value ) ) { return wp_json_encode( array_values( array_map( 'sanitize_text_field', $value ) ) ); }
 			if ( is_string( $value ) && '[' !== substr( trim( $value ), 0, 1 ) ) {
@@ -197,7 +197,7 @@ class Autoblogger_Admin_Page {
 			return sanitize_text_field( $value );
 		}
 
-		$numeric = [ 'autoblogger_daily_article_target', 'autoblogger_monthly_budget_usd', 'autoblogger_min_word_count', 'autoblogger_max_word_count', 'autoblogger_default_author', 'autoblogger_default_category' ];
+		$numeric = [ 'prautoblogger_daily_article_target', 'prautoblogger_monthly_budget_usd', 'prautoblogger_min_word_count', 'prautoblogger_max_word_count', 'prautoblogger_default_author', 'prautoblogger_default_category' ];
 		if ( in_array( $option_name, $numeric, true ) ) {
 			return is_numeric( $value ) ? $value : 0;
 		}

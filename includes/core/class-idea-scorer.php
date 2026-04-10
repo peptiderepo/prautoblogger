@@ -8,25 +8,25 @@ declare(strict_types=1);
  * scores ideas by relevance, frequency, and freshness, then returns
  * the top N ideas matching the daily target.
  *
- * Triggered by: Autoblogger::run_generation_pipeline() (step 3).
+ * Triggered by: PRAutoBlogger::run_generation_pipeline() (step 3).
  * Dependencies: WordPress $wpdb, WP_Query.
  *
  * @see core/class-content-analyzer.php  — Produces the analysis results we consume.
  * @see core/class-content-generator.php — Consumes the ranked ideas we produce.
  * @see ARCHITECTURE.md                  — Data flow step 3.
  */
-class Autoblogger_Idea_Scorer {
+class PRAutoBlogger_Idea_Scorer {
 
 	/**
 	 * Score, deduplicate, and rank article ideas.
 	 *
-	 * @param Autoblogger_Analysis_Result[] $analysis_results Raw analysis output.
+	 * @param PRAutoBlogger_Analysis_Result[] $analysis_results Raw analysis output.
 	 * @param int                           $target_count     Number of ideas to return.
 	 *
-	 * @return Autoblogger_Article_Idea[] Top-ranked ideas, sorted by score descending.
+	 * @return PRAutoBlogger_Article_Idea[] Top-ranked ideas, sorted by score descending.
 	 */
 	public function score_and_rank( array $analysis_results, int $target_count ): array {
-		$exclusions = json_decode( get_option( 'autoblogger_topic_exclusions', '[]' ), true ) ?: [];
+		$exclusions = json_decode( get_option( 'prautoblogger_topic_exclusions', '[]' ), true ) ?: [];
 		$ideas      = [];
 
 		foreach ( $analysis_results as $result ) {
@@ -42,7 +42,7 @@ class Autoblogger_Idea_Scorer {
 
 			$metadata = $result->get_metadata() ?? [];
 
-			$ideas[] = new Autoblogger_Article_Idea( [
+			$ideas[] = new PRAutoBlogger_Article_Idea( [
 				'topic'           => $result->get_topic(),
 				'article_type'    => $this->map_type( $result->get_analysis_type() ),
 				'suggested_title' => $metadata['suggested_title'] ?? $result->get_topic(),
@@ -56,7 +56,7 @@ class Autoblogger_Idea_Scorer {
 		}
 
 		// Sort by score descending.
-		usort( $ideas, static function ( Autoblogger_Article_Idea $a, Autoblogger_Article_Idea $b ): int {
+		usort( $ideas, static function ( PRAutoBlogger_Article_Idea $a, PRAutoBlogger_Article_Idea $b ): int {
 			return $b->get_score() <=> $a->get_score();
 		} );
 
@@ -68,11 +68,11 @@ class Autoblogger_Idea_Scorer {
 	 *
 	 * Factors: LLM relevance score (50%), frequency (30%), recency bonus (20%).
 	 *
-	 * @param Autoblogger_Analysis_Result $result
+	 * @param PRAutoBlogger_Analysis_Result $result
 	 *
 	 * @return float Score between 0 and 1.
 	 */
-	private function compute_score( Autoblogger_Analysis_Result $result ): float {
+	private function compute_score( PRAutoBlogger_Analysis_Result $result ): float {
 		$relevance = min( $result->get_relevance_score(), 1.0 );
 		$frequency = min( $result->get_frequency() / 10.0, 1.0 );
 
@@ -114,7 +114,7 @@ class Autoblogger_Idea_Scorer {
 		$query = new \WP_Query( [
 			'post_type'      => 'post',
 			'post_status'    => [ 'publish', 'draft', 'pending' ],
-			'meta_key'       => '_autoblogger_generated',
+			'meta_key'       => '_prautoblogger_generated',
 			'meta_value'     => '1',
 			's'              => $topic,
 			'posts_per_page' => 1,

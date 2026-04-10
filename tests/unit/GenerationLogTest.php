@@ -5,7 +5,7 @@ use Brain\Monkey;
 use Brain\Monkey\Functions;
 
 /**
- * Unit tests for Autoblogger_Generation_Log value object.
+ * Unit tests for PRAutoBlogger_Generation_Log value object.
  *
  * Verifies construction, getters, and to_db_row() serialization.
  * These are the records that power the cost dashboard — data integrity is critical.
@@ -42,7 +42,7 @@ class GenerationLogTest extends \PHPUnit\Framework\TestCase {
 			'created_at'        => '2026-04-10 10:00:00',
 		];
 
-		$log = new Autoblogger_Generation_Log( $data );
+		$log = new PRAutoBlogger_Generation_Log( $data );
 
 		$this->assertSame( 42, $log->get_id() );
 		$this->assertSame( 100, $log->get_post_id() );
@@ -59,7 +59,7 @@ class GenerationLogTest extends \PHPUnit\Framework\TestCase {
 	}
 
 	public function test_constructor_defaults_for_missing_fields(): void {
-		$log = new Autoblogger_Generation_Log( [] );
+		$log = new PRAutoBlogger_Generation_Log( [] );
 
 		$this->assertSame( 0, $log->get_id() );
 		$this->assertNull( $log->get_post_id() );
@@ -73,7 +73,7 @@ class GenerationLogTest extends \PHPUnit\Framework\TestCase {
 	}
 
 	public function test_to_db_row_excludes_id(): void {
-		$log = new Autoblogger_Generation_Log( [
+		$log = new PRAutoBlogger_Generation_Log( [
 			'id'       => 99,
 			'post_id'  => 50,
 			'run_id'   => 'run-abc',
@@ -95,7 +95,7 @@ class GenerationLogTest extends \PHPUnit\Framework\TestCase {
 	}
 
 	public function test_to_db_row_has_all_expected_keys(): void {
-		$log = new Autoblogger_Generation_Log( [ 'stage' => 'analysis' ] );
+		$log = new PRAutoBlogger_Generation_Log( [ 'stage' => 'analysis' ] );
 		$row = $log->to_db_row();
 
 		$expected_keys = [
@@ -110,7 +110,7 @@ class GenerationLogTest extends \PHPUnit\Framework\TestCase {
 	}
 
 	public function test_numeric_fields_are_cast_correctly(): void {
-		$log = new Autoblogger_Generation_Log( [
+		$log = new PRAutoBlogger_Generation_Log( [
 			'id'                => '42',
 			'post_id'           => '100',
 			'prompt_tokens'     => '1500',

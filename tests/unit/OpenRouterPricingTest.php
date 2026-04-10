@@ -5,7 +5,7 @@ use Brain\Monkey;
 use Brain\Monkey\Functions;
 
 /**
- * Unit tests for Autoblogger_OpenRouter_Pricing cost estimation.
+ * Unit tests for PRAutoBlogger_OpenRouter_Pricing cost estimation.
  *
  * Cost calculation accuracy directly affects budget enforcement and the
  * metrics dashboard. Getting this wrong means either overspending or
@@ -24,7 +24,7 @@ class OpenRouterPricingTest extends \PHPUnit\Framework\TestCase {
 
 		// Mock the Logger singleton so calls don't break.
 		// The pricing class calls Logger::instance()->warning() for unknown models.
-		if ( ! class_exists( 'Autoblogger_Logger' ) ) {
+		if ( ! class_exists( 'PRAutoBlogger_Logger' ) ) {
 			require_once dirname( __DIR__, 2 ) . '/includes/core/class-logger.php';
 		}
 
@@ -32,12 +32,12 @@ class OpenRouterPricingTest extends \PHPUnit\Framework\TestCase {
 		Functions\when( 'current_time' )->justReturn( '2026-04-10 12:00:00' );
 
 		// Mock Encryption class (used by get_api_key).
-		if ( ! class_exists( 'Autoblogger_Encryption' ) ) {
+		if ( ! class_exists( 'PRAutoBlogger_Encryption' ) ) {
 			require_once dirname( __DIR__, 2 ) . '/includes/class-encryption.php';
 		}
 
 		// Load the class under test.
-		if ( ! class_exists( 'Autoblogger_OpenRouter_Pricing' ) ) {
+		if ( ! class_exists( 'PRAutoBlogger_OpenRouter_Pricing' ) ) {
 			require_once dirname( __DIR__, 2 ) . '/includes/providers/class-openrouter-pricing.php';
 		}
 	}
@@ -48,7 +48,7 @@ class OpenRouterPricingTest extends \PHPUnit\Framework\TestCase {
 	}
 
 	public function test_known_model_cost_calculation(): void {
-		$pricing = new Autoblogger_OpenRouter_Pricing();
+		$pricing = new PRAutoBlogger_OpenRouter_Pricing();
 
 		// Claude 3.5 Haiku: $0.80/M prompt, $4.00/M completion
 		// 1000 prompt tokens = 1000 * 0.80 / 1_000_000 = $0.0008
@@ -59,7 +59,7 @@ class OpenRouterPricingTest extends \PHPUnit\Framework\TestCase {
 	}
 
 	public function test_claude_sonnet_cost(): void {
-		$pricing = new Autoblogger_OpenRouter_Pricing();
+		$pricing = new PRAutoBlogger_OpenRouter_Pricing();
 
 		// Claude Sonnet 4: $3.00/M prompt, $15.00/M completion
 		// 2000 prompt + 1000 completion
@@ -70,7 +70,7 @@ class OpenRouterPricingTest extends \PHPUnit\Framework\TestCase {
 	}
 
 	public function test_gpt4o_mini_cost(): void {
-		$pricing = new Autoblogger_OpenRouter_Pricing();
+		$pricing = new PRAutoBlogger_OpenRouter_Pricing();
 
 		// GPT-4o-mini: $0.15/M prompt, $0.60/M completion
 		// 5000 prompt + 2000 completion
@@ -81,13 +81,13 @@ class OpenRouterPricingTest extends \PHPUnit\Framework\TestCase {
 	}
 
 	public function test_zero_tokens_returns_zero_cost(): void {
-		$pricing = new Autoblogger_OpenRouter_Pricing();
+		$pricing = new PRAutoBlogger_OpenRouter_Pricing();
 		$cost = $pricing->estimate_cost( 'anthropic/claude-3.5-haiku', 0, 0 );
 		$this->assertEqualsWithDelta( 0.0, $cost, 0.00001 );
 	}
 
 	public function test_unknown_model_uses_conservative_estimate(): void {
-		$pricing = new Autoblogger_OpenRouter_Pricing();
+		$pricing = new PRAutoBlogger_OpenRouter_Pricing();
 
 		// Unknown model: $10.00/M prompt, $30.00/M completion (conservative fallback)
 		// 1000 prompt + 1000 completion
@@ -97,7 +97,7 @@ class OpenRouterPricingTest extends \PHPUnit\Framework\TestCase {
 	}
 
 	public function test_cost_scales_linearly_with_tokens(): void {
-		$pricing = new Autoblogger_OpenRouter_Pricing();
+		$pricing = new PRAutoBlogger_OpenRouter_Pricing();
 
 		$cost_1x = $pricing->estimate_cost( 'anthropic/claude-3.5-haiku', 1000, 500 );
 		$cost_2x = $pricing->estimate_cost( 'anthropic/claude-3.5-haiku', 2000, 1000 );
@@ -107,7 +107,7 @@ class OpenRouterPricingTest extends \PHPUnit\Framework\TestCase {
 	}
 
 	public function test_prompt_and_completion_priced_separately(): void {
-		$pricing = new Autoblogger_OpenRouter_Pricing();
+		$pricing = new PRAutoBlogger_OpenRouter_Pricing();
 
 		// For a model where prompt and completion prices differ (all of them),
 		// swapping prompt/completion tokens should give a different cost.
@@ -127,7 +127,7 @@ class OpenRouterPricingTest extends \PHPUnit\Framework\TestCase {
 	 * This is a sanity check: if this ever fails, pricing data may be stale.
 	 */
 	public function test_full_article_cost_sanity_check(): void {
-		$pricing = new Autoblogger_OpenRouter_Pricing();
+		$pricing = new PRAutoBlogger_OpenRouter_Pricing();
 
 		// Typical multi-step article: analysis + outline + draft + polish + review
 		// Using Haiku for analysis, Sonnet for the rest.

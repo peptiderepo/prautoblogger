@@ -1,4 +1,4 @@
-=== AutoBlogger ===
+=== PRAutoBlogger ===
 Contributors: peptiderepo
 Tags: ai, content generation, blogging, seo, automation
 Requires at least: 6.0
@@ -12,7 +12,7 @@ Automatically researches trending topics from social media and generates SEO-fri
 
 == Description ==
 
-AutoBlogger monitors social media platforms (starting with Reddit) for recurring questions, complaints, and product comparisons in your niche. It uses AI to analyze these patterns, generate well-structured blog articles, run them through an editorial review agent, and publish them on a configurable daily schedule.
+PRAutoBlogger monitors social media platforms (starting with Reddit) for recurring questions, complaints, and product comparisons in your niche. It uses AI to analyze these patterns, generate well-structured blog articles, run them through an editorial review agent, and publish them on a configurable daily schedule.
 
 **Key Features:**
 
@@ -30,9 +30,9 @@ Uses OpenRouter for access to models from Anthropic, OpenAI, Google, Meta, and m
 
 == Installation ==
 
-1. Upload the `autoblogger` folder to the `/wp-content/plugins/` directory.
+1. Upload the `prautoblogger` folder to the `/wp-content/plugins/` directory.
 2. Activate the plugin through the 'Plugins' menu in WordPress.
-3. Go to AutoBlogger > Settings to configure your API keys and preferences.
+3. Go to PRAutoBlogger > Settings to configure your API keys and preferences.
 4. Add your OpenRouter API key and Reddit app credentials.
 5. Configure your target subreddits and content preferences.
 6. Click "Test Connections" to verify setup.
@@ -50,7 +50,7 @@ By default, articles go through the chief editor agent. Articles that pass revie
 
 = How do I set up Reddit API access? =
 
-Go to reddit.com/prefs/apps, create a "script" type application. Copy the client ID and secret into the AutoBlogger settings page.
+Go to reddit.com/prefs/apps, create a "script" type application. Copy the client ID and secret into the PRAutoBlogger settings page.
 
 == Changelog ==
 

@@ -7,27 +7,27 @@ declare(strict_types=1);
  * Provides approve (publish), edit (opens WP editor), and reject (trash)
  * actions on each draft. Supports bulk approve/reject via checkboxes.
  *
- * Triggered by: Autoblogger::register_admin_hooks() on `admin_menu`.
+ * Triggered by: PRAutoBlogger::register_admin_hooks() on `admin_menu`.
  * Dependencies: WordPress WP_Query, post meta API.
  *
- * @see class-autoblogger.php          — Registers the hook and AJAX handlers.
+ * @see class-prautoblogger.php          — Registers the hook and AJAX handlers.
  * @see core/class-publisher.php       — Creates the drafts this page displays.
  * @see templates/admin/review-queue.php — Renders the HTML.
  */
-class Autoblogger_Review_Queue {
+class PRAutoBlogger_Review_Queue {
 
 	/**
-	 * Register the review queue submenu page under AutoBlogger.
+	 * Register the review queue submenu page under PRAutoBlogger.
 	 *
 	 * @return void
 	 */
 	public function on_register_menu(): void {
 		$hook = add_submenu_page(
-			'autoblogger-settings',
-			__( 'Review Queue', 'autoblogger' ),
-			__( 'Review Queue', 'autoblogger' ),
+			'prautoblogger-settings',
+			__( 'Review Queue', 'prautoblogger' ),
+			__( 'Review Queue', 'prautoblogger' ),
 			'manage_options',
-			'autoblogger-review-queue',
+			'prautoblogger-review-queue',
 			[ $this, 'render_page' ]
 		);
 
@@ -49,7 +49,7 @@ class Autoblogger_Review_Queue {
 		$paged = isset( $_GET['paged'] ) ? absint( $_GET['paged'] ) : 1;
 		$query = $this->get_pending_posts( $paged );
 
-		include AUTOBLOGGER_PLUGIN_DIR . 'templates/admin/review-queue.php';
+		include PRAUTOBLOGGER_PLUGIN_DIR . 'templates/admin/review-queue.php';
 	}
 
 	/**
@@ -67,7 +67,7 @@ class Autoblogger_Review_Queue {
 			'paged'          => $paged,
 			'meta_query'     => [
 				[
-					'key'   => '_autoblogger_generated',
+					'key'   => '_prautoblogger_generated',
 					'value' => '1',
 				],
 			],
@@ -87,19 +87,19 @@ class Autoblogger_Review_Queue {
 	 * @return void
 	 */
 	public function on_handle_bulk_actions(): void {
-		if ( ! isset( $_POST['autoblogger_bulk_action'] ) ) {
+		if ( ! isset( $_POST['prautoblogger_bulk_action'] ) ) {
 			return;
 		}
 
-		check_admin_referer( 'autoblogger_review_queue_bulk', 'autoblogger_review_nonce' );
+		check_admin_referer( 'prautoblogger_review_queue_bulk', 'prautoblogger_review_nonce' );
 
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
 
-		$action   = sanitize_text_field( wp_unslash( $_POST['autoblogger_bulk_action'] ) );
-		$post_ids = isset( $_POST['autoblogger_post_ids'] ) && is_array( $_POST['autoblogger_post_ids'] )
-			? array_map( 'absint', $_POST['autoblogger_post_ids'] )
+		$action   = sanitize_text_field( wp_unslash( $_POST['prautoblogger_bulk_action'] ) );
+		$post_ids = isset( $_POST['prautoblogger_post_ids'] ) && is_array( $_POST['prautoblogger_post_ids'] )
+			? array_map( 'absint', $_POST['prautoblogger_post_ids'] )
 			: [];
 
 		if ( empty( $post_ids ) ) {
@@ -115,7 +115,7 @@ class Autoblogger_Review_Queue {
 			if ( 'approve' === $action ) {
 				$result = wp_update_post( [ 'ID' => $post_id, 'post_status' => 'publish' ], true );
 				if ( ! is_wp_error( $result ) ) {
-					update_post_meta( $post_id, '_autoblogger_approved_at', gmdate( 'c' ) );
+					update_post_meta( $post_id, '_prautoblogger_approved_at', gmdate( 'c' ) );
 					$count++;
 				}
 			} elseif ( 'reject' === $action ) {
@@ -128,9 +128,9 @@ class Autoblogger_Review_Queue {
 
 		$redirect = add_query_arg(
 			[
-				'page'                  => 'autoblogger-review-queue',
-				'autoblogger_bulk_done' => $count,
-				'autoblogger_bulk_type' => $action,
+				'page'                  => 'prautoblogger-review-queue',
+				'prautoblogger_bulk_done' => $count,
+				'prautoblogger_bulk_type' => $action,
 			],
 			admin_url( 'admin.php' )
 		);
@@ -147,16 +147,16 @@ class Autoblogger_Review_Queue {
 	 * @return void
 	 */
 	public function on_ajax_approve_post(): void {
-		check_ajax_referer( 'autoblogger_review_queue', 'nonce' );
+		check_ajax_referer( 'prautoblogger_review_queue', 'nonce' );
 
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'autoblogger' ) ], 403 );
+			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'prautoblogger' ) ], 403 );
 			return;
 		}
 
 		$post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
 		if ( $post_id <= 0 ) {
-			wp_send_json_error( [ 'message' => __( 'Invalid post ID.', 'autoblogger' ) ] );
+			wp_send_json_error( [ 'message' => __( 'Invalid post ID.', 'prautoblogger' ) ] );
 			return;
 		}
 
@@ -167,8 +167,8 @@ class Autoblogger_Review_Queue {
 			return;
 		}
 
-		update_post_meta( $post_id, '_autoblogger_approved_at', gmdate( 'c' ) );
-		wp_send_json_success( [ 'message' => __( 'Post published.', 'autoblogger' ), 'post_id' => $post_id ] );
+		update_post_meta( $post_id, '_prautoblogger_approved_at', gmdate( 'c' ) );
+		wp_send_json_success( [ 'message' => __( 'Post published.', 'prautoblogger' ), 'post_id' => $post_id ] );
 	}
 
 	/**
@@ -179,25 +179,25 @@ class Autoblogger_Review_Queue {
 	 * @return void
 	 */
 	public function on_ajax_reject_post(): void {
-		check_ajax_referer( 'autoblogger_review_queue', 'nonce' );
+		check_ajax_referer( 'prautoblogger_review_queue', 'nonce' );
 
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'autoblogger' ) ], 403 );
+			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'prautoblogger' ) ], 403 );
 			return;
 		}
 
 		$post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
 		if ( $post_id <= 0 ) {
-			wp_send_json_error( [ 'message' => __( 'Invalid post ID.', 'autoblogger' ) ] );
+			wp_send_json_error( [ 'message' => __( 'Invalid post ID.', 'prautoblogger' ) ] );
 			return;
 		}
 
 		$result = wp_trash_post( $post_id );
 		if ( false === $result || null === $result ) {
-			wp_send_json_error( [ 'message' => __( 'Failed to reject post.', 'autoblogger' ) ] );
+			wp_send_json_error( [ 'message' => __( 'Failed to reject post.', 'prautoblogger' ) ] );
 			return;
 		}
 
-		wp_send_json_success( [ 'message' => __( 'Post rejected.', 'autoblogger' ), 'post_id' => $post_id ] );
+		wp_send_json_success( [ 'message' => __( 'Post rejected.', 'prautoblogger' ), 'post_id' => $post_id ] );
 	}
 }

@@ -12,16 +12,16 @@ declare(strict_types=1);
  *
  * @see interface-source-provider.php — Interface this class implements.
  */
-class Autoblogger_Instagram_Provider implements Autoblogger_Source_Provider_Interface {
+class PRAutoBlogger_Instagram_Provider implements PRAutoBlogger_Source_Provider_Interface {
 
 	/**
 	 * @param array<string, mixed> $config
-	 * @return Autoblogger_Source_Data[]
+	 * @return PRAutoBlogger_Source_Data[]
 	 * @throws \RuntimeException Always — not yet implemented.
 	 */
 	public function collect_data( array $config ): array {
 		throw new \RuntimeException(
-			__( 'Instagram source provider is not yet implemented. Remove "instagram" from enabled sources.', 'autoblogger' )
+			__( 'Instagram source provider is not yet implemented. Remove "instagram" from enabled sources.', 'prautoblogger' )
 		);
 	}
 

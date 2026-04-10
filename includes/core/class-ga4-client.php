@@ -7,13 +7,13 @@ declare(strict_types=1);
  * Handles OAuth2 service account authentication and the GA4 Data API.
  * Decoupled from metrics collection logic for testability and reusability.
  *
- * Triggered by: Autoblogger_Metrics_Collector::fetch_ga4_data() calls methods here.
- * Dependencies: Autoblogger_Encryption (for credentials decryption), wp_remote_post/get().
+ * Triggered by: PRAutoBlogger_Metrics_Collector::fetch_ga4_data() calls methods here.
+ * Dependencies: PRAutoBlogger_Encryption (for credentials decryption), wp_remote_post/get().
  *
  * @see core/class-metrics-collector.php — Instantiates this class.
  * @see ARCHITECTURE.md                  — External API integrations table.
  */
-class Autoblogger_GA4_Client {
+class PRAutoBlogger_GA4_Client {
 
 	/**
 	 * Fetch Google Analytics 4 data for given posts.
@@ -27,17 +27,17 @@ class Autoblogger_GA4_Client {
 	 * @return array<int, array{pageviews: int, avg_time_on_page: float, bounce_rate: float}>
 	 */
 	public function fetch_data( array $posts ): array {
-		$property_id = get_option( 'autoblogger_ga4_property_id', '' );
+		$property_id = get_option( 'prautoblogger_ga4_property_id', '' );
 		if ( '' === $property_id ) {
 			return [];
 		}
 
-		$credentials_encrypted = get_option( 'autoblogger_ga4_credentials_json', '' );
+		$credentials_encrypted = get_option( 'prautoblogger_ga4_credentials_json', '' );
 		if ( '' === $credentials_encrypted ) {
 			return [];
 		}
 
-		$credentials = Autoblogger_Encryption::decrypt( $credentials_encrypted );
+		$credentials = PRAutoBlogger_Encryption::decrypt( $credentials_encrypted );
 		if ( '' === $credentials ) {
 			return [];
 		}
@@ -61,7 +61,7 @@ class Autoblogger_GA4_Client {
 		// Using the REST API directly since we don't want a full Google SDK dependency.
 		$access_token = $this->get_access_token( $credentials );
 		if ( '' === $access_token ) {
-			Autoblogger_Logger::instance()->error( 'GA4: Failed to get access token. Possible causes: invalid service account JSON, expired or revoked private key, or network error reaching oauth2.googleapis.com. Verify credentials in AutoBlogger → Settings.', 'ga4' );
+			PRAutoBlogger_Logger::instance()->error( 'GA4: Failed to get access token. Possible causes: invalid service account JSON, expired or revoked private key, or network error reaching oauth2.googleapis.com. Verify credentials in PRAutoBlogger → Settings.', 'ga4' );
 			return [];
 		}
 
@@ -94,14 +94,14 @@ class Autoblogger_GA4_Client {
 		);
 
 		if ( is_wp_error( $response ) ) {
-			Autoblogger_Logger::instance()->error( 'GA4 API request failed (WP HTTP error): ' . $response->get_error_message(), 'ga4' );
+			PRAutoBlogger_Logger::instance()->error( 'GA4 API request failed (WP HTTP error): ' . $response->get_error_message(), 'ga4' );
 			return [];
 		}
 
 		$ga4_status = wp_remote_retrieve_response_code( $response );
 		if ( 200 !== $ga4_status ) {
 			$ga4_body = wp_remote_retrieve_body( $response );
-			Autoblogger_Logger::instance()->error(
+			PRAutoBlogger_Logger::instance()->error(
 				sprintf( 'GA4 API request failed (HTTP %d): %s', $ga4_status, substr( $ga4_body, 0, 500 ) ),
 				'ga4'
 			);
@@ -159,7 +159,7 @@ class Autoblogger_GA4_Client {
 
 		$key = openssl_pkey_get_private( $creds['private_key'] );
 		if ( false === $key ) {
-			Autoblogger_Logger::instance()->error( 'GA4: Failed to parse private key from service account credentials. The key may be malformed or the OpenSSL extension may be misconfigured.', 'ga4' );
+			PRAutoBlogger_Logger::instance()->error( 'GA4: Failed to parse private key from service account credentials. The key may be malformed or the OpenSSL extension may be misconfigured.', 'ga4' );
 			return '';
 		}
 
@@ -181,7 +181,7 @@ class Autoblogger_GA4_Client {
 		);
 
 		if ( is_wp_error( $response ) ) {
-			Autoblogger_Logger::instance()->error( 'GA4: OAuth token exchange failed (WP HTTP error): ' . $response->get_error_message(), 'ga4' );
+			PRAutoBlogger_Logger::instance()->error( 'GA4: OAuth token exchange failed (WP HTTP error): ' . $response->get_error_message(), 'ga4' );
 			return '';
 		}
 
@@ -190,7 +190,7 @@ class Autoblogger_GA4_Client {
 
 		if ( 200 !== $token_status || ! isset( $data['access_token'] ) ) {
 			$error_desc = $data['error_description'] ?? $data['error'] ?? 'unknown';
-			Autoblogger_Logger::instance()->error(
+			PRAutoBlogger_Logger::instance()->error(
 				sprintf( 'GA4: OAuth token exchange failed (HTTP %d): %s', $token_status, $error_desc ),
 				'ga4'
 			);

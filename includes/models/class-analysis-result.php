@@ -11,7 +11,7 @@ declare(strict_types=1);
  * @see core/class-content-analyzer.php — Creates these from source data + LLM analysis.
  * @see core/class-idea-scorer.php      — Ranks these into article ideas.
  */
-class Autoblogger_Analysis_Result {
+class PRAutoBlogger_Analysis_Result {
 
 	private int $id;
 	private string $analysis_type;

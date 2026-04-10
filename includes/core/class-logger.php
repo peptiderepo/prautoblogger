@@ -6,7 +6,7 @@ declare(strict_types=1);
  *
  * Writes log entries to a custom database table and optionally forwards
  * to PHP's error_log() for server-level monitoring. The log level is
- * user-configurable via Settings → AutoBlogger → General.
+ * user-configurable via Settings → PRAutoBlogger → General.
  *
  * Levels (ascending verbosity): error → warning → info → debug.
  * Setting the level to "info" captures error, warning, and info — not debug.
@@ -15,10 +15,10 @@ declare(strict_types=1);
  * Dependencies: WordPress $wpdb.
  *
  * @see admin/class-log-viewer.php  — Reads and displays log entries.
- * @see class-activator.php         — Creates the ab_event_log table.
+ * @see class-activator.php         — Creates the prab_event_log table.
  * @see ARCHITECTURE.md             — Logging architecture section.
  */
-class Autoblogger_Logger {
+class PRAutoBlogger_Logger {
 
 	/** Log levels, lower = more severe. */
 	public const LEVEL_ERROR   = 0;
@@ -47,7 +47,7 @@ class Autoblogger_Logger {
 	private int $threshold;
 
 	private function __construct() {
-		$setting         = get_option( 'autoblogger_log_level', 'info' );
+		$setting         = get_option( 'prautoblogger_log_level', 'info' );
 		$this->threshold = self::LEVEL_MAP[ $setting ] ?? self::LEVEL_INFO;
 	}
 
@@ -122,11 +122,11 @@ class Autoblogger_Logger {
 
 		// Always forward errors to PHP error_log for server-level monitoring.
 		if ( $level <= self::LEVEL_WARNING ) {
-			error_log( sprintf( '[AutoBlogger][%s] %s — %s', strtoupper( $label ), $context, $message ) );
+			error_log( sprintf( '[PRAutoBlogger][%s] %s — %s', strtoupper( $label ), $context, $message ) );
 		}
 
 		global $wpdb;
-		$table = $wpdb->prefix . 'autoblogger_event_log';
+		$table = $wpdb->prefix . 'prautoblogger_event_log';
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$wpdb->insert( $table, [
@@ -155,7 +155,7 @@ class Autoblogger_Logger {
 		int $per_page = 50
 	): array {
 		global $wpdb;
-		$table  = $wpdb->prefix . 'autoblogger_event_log';
+		$table  = $wpdb->prefix . 'prautoblogger_event_log';
 		$where  = [];
 		$params = [];
 
@@ -207,7 +207,7 @@ class Autoblogger_Logger {
 	 */
 	public static function prune( int $days = 30 ): int {
 		global $wpdb;
-		$table = $wpdb->prefix . 'autoblogger_event_log';
+		$table = $wpdb->prefix . 'prautoblogger_event_log';
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		return (int) $wpdb->query(

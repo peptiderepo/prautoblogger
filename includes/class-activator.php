@@ -5,13 +5,13 @@ declare(strict_types=1);
  * Handles plugin activation: creates database tables, sets default options,
  * and schedules the initial cron job.
  *
- * Triggered by: WordPress `register_activation_hook` in autoblogger.php.
+ * Triggered by: WordPress `register_activation_hook` in prautoblogger.php.
  * Dependencies: WordPress $wpdb, dbDelta().
  *
  * @see class-deactivator.php — Reverses transient/cron setup on deactivation.
  * @see ARCHITECTURE.md       — Database schema definitions.
  */
-class Autoblogger_Activator {
+class PRAutoBlogger_Activator {
 
 	/**
 	 * Run activation tasks.
@@ -30,7 +30,7 @@ class Autoblogger_Activator {
 		self::schedule_cron();
 
 		// Store the DB version so we can run migrations on future updates.
-		update_option( 'autoblogger_db_version', AUTOBLOGGER_DB_VERSION, false );
+		update_option( 'prautoblogger_db_version', PRAUTOBLOGGER_DB_VERSION, false );
 	}
 
 	/**
@@ -44,7 +44,7 @@ class Autoblogger_Activator {
 		global $wpdb;
 
 		$charset_collate = $wpdb->get_charset_collate();
-		$prefix          = $wpdb->prefix . 'autoblogger_';
+		$prefix          = $wpdb->prefix . 'prautoblogger_';
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
@@ -156,21 +156,21 @@ class Autoblogger_Activator {
 	 */
 	private static function set_default_options(): void {
 		$defaults = [
-			'autoblogger_analysis_model'       => AUTOBLOGGER_DEFAULT_ANALYSIS_MODEL,
-			'autoblogger_writing_model'        => AUTOBLOGGER_DEFAULT_WRITING_MODEL,
-			'autoblogger_editor_model'         => AUTOBLOGGER_DEFAULT_EDITOR_MODEL,
-			'autoblogger_daily_article_target'  => 1,
-			'autoblogger_writing_pipeline'      => 'multi_step',
-			'autoblogger_niche_description'     => '',
-			'autoblogger_target_subreddits'     => '[]',
-			'autoblogger_monthly_budget_usd'    => 50.00,
-			'autoblogger_tone'                  => 'informational',
-			'autoblogger_min_word_count'        => 800,
-			'autoblogger_max_word_count'        => 2000,
-			'autoblogger_topic_exclusions'      => '[]',
-			'autoblogger_enabled_sources'       => '["reddit"]',
-			'autoblogger_schedule_time'         => '03:00',
-			'autoblogger_log_level'             => 'info',
+			'prautoblogger_analysis_model'       => PRAUTOBLOGGER_DEFAULT_ANALYSIS_MODEL,
+			'prautoblogger_writing_model'        => PRAUTOBLOGGER_DEFAULT_WRITING_MODEL,
+			'prautoblogger_editor_model'         => PRAUTOBLOGGER_DEFAULT_EDITOR_MODEL,
+			'prautoblogger_daily_article_target'  => 1,
+			'prautoblogger_writing_pipeline'      => 'multi_step',
+			'prautoblogger_niche_description'     => '',
+			'prautoblogger_target_subreddits'     => '[]',
+			'prautoblogger_monthly_budget_usd'    => 50.00,
+			'prautoblogger_tone'                  => 'informational',
+			'prautoblogger_min_word_count'        => 800,
+			'prautoblogger_max_word_count'        => 2000,
+			'prautoblogger_topic_exclusions'      => '[]',
+			'prautoblogger_enabled_sources'       => '["reddit"]',
+			'prautoblogger_schedule_time'         => '03:00',
+			'prautoblogger_log_level'             => 'info',
 		];
 
 		foreach ( $defaults as $key => $value ) {
@@ -181,8 +181,8 @@ class Autoblogger_Activator {
 	/**
 	 * Schedule the daily generation cron event if not already scheduled.
 	 *
-	 * The custom 'autoblogger_six_hours' schedule is normally registered via
-	 * the `cron_schedules` filter in class-autoblogger.php. However, activation
+	 * The custom 'prautoblogger_six_hours' schedule is normally registered via
+	 * the `cron_schedules` filter in class-prautoblogger.php. However, activation
 	 * runs before `plugins_loaded`, so the filter may not be registered yet.
 	 * We register it inline here to ensure it exists at scheduling time.
 	 *
@@ -191,36 +191,36 @@ class Autoblogger_Activator {
 	 * @return void
 	 */
 	private static function schedule_cron(): void {
-		if ( ! wp_next_scheduled( 'autoblogger_daily_generation' ) ) {
+		if ( ! wp_next_scheduled( 'prautoblogger_daily_generation' ) ) {
 			// Schedule for the configured time tomorrow.
-			$time_str  = get_option( 'autoblogger_schedule_time', '03:00' );
+			$time_str  = get_option( 'prautoblogger_schedule_time', '03:00' );
 			$parts     = explode( ':', $time_str );
 			$hour      = isset( $parts[0] ) ? absint( $parts[0] ) : 3;
 			$minute    = isset( $parts[1] ) ? absint( $parts[1] ) : 0;
 			$timestamp = strtotime( "tomorrow {$hour}:{$minute}" );
 
 			if ( false !== $timestamp ) {
-				wp_schedule_event( $timestamp, 'daily', 'autoblogger_daily_generation' );
+				wp_schedule_event( $timestamp, 'daily', 'prautoblogger_daily_generation' );
 			}
 		}
 
 		// Ensure the six-hour schedule exists before referencing it.
 		// Activation can fire before plugins_loaded, so the cron_schedules filter
-		// in class-autoblogger.php may not be hooked yet.
+		// in class-prautoblogger.php may not be hooked yet.
 		$schedules = wp_get_schedules();
-		if ( ! isset( $schedules['autoblogger_six_hours'] ) ) {
+		if ( ! isset( $schedules['prautoblogger_six_hours'] ) ) {
 			add_filter( 'cron_schedules', static function ( array $scheds ): array {
-				$scheds['autoblogger_six_hours'] = [
+				$scheds['prautoblogger_six_hours'] = [
 					'interval' => 6 * HOUR_IN_SECONDS,
-					'display'  => __( 'Every Six Hours', 'autoblogger' ),
+					'display'  => __( 'Every Six Hours', 'prautoblogger' ),
 				];
 				return $scheds;
 			} );
 		}
 
 		// Schedule a separate metrics collection job (runs every 6 hours).
-		if ( ! wp_next_scheduled( 'autoblogger_collect_metrics' ) ) {
-			wp_schedule_event( time() + HOUR_IN_SECONDS, 'autoblogger_six_hours', 'autoblogger_collect_metrics' );
+		if ( ! wp_next_scheduled( 'prautoblogger_collect_metrics' ) ) {
+			wp_schedule_event( time() + HOUR_IN_SECONDS, 'prautoblogger_six_hours', 'prautoblogger_collect_metrics' );
 		}
 	}
 }

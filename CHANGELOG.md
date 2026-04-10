@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to AutoBlogger will be documented in this file.
+All notable changes to PRAutoBlogger will be documented in this file.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
@@ -20,7 +20,7 @@ and this project uses [Semantic Versioning](https://semver.org/).
 - Metrics collector: WordPress native + GA4 integration + composite content scoring.
 - Admin settings page with sections for API keys, models, content, sources, schedule, and analytics.
 - Metrics dashboard showing monthly spend, budget utilization, cost by stage, and daily spend.
-- Post metabox showing generation metadata on AutoBlogger-generated posts.
+- Post metabox showing generation metadata on PRAutoBlogger-generated posts.
 - Admin notices for missing API keys, budget warnings, and configuration hints.
 - Stub providers for TikTok, Instagram, and YouTube (future implementation).
 - Encrypted storage for API keys using AES-256-CBC with wp_salt().

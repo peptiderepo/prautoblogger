@@ -11,7 +11,7 @@ declare(strict_types=1);
  * @see CONVENTIONS.md                — "How To: Add a New LLM Provider".
  * @see ARCHITECTURE.md               — External API integrations table.
  */
-interface Autoblogger_LLM_Provider_Interface {
+interface PRAutoBlogger_LLM_Provider_Interface {
 
 	/**
 	 * Send a chat completion request to the LLM.

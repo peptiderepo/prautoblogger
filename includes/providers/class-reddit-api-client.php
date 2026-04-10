@@ -7,17 +7,17 @@ declare(strict_types=1);
  * Encapsulates OAuth2 token management, rate limit tracking, and HTTP methods
  * for the Reddit API. Decoupled from collection logic for testability.
  *
- * Triggered by: Autoblogger_Reddit_Provider calls fetch methods here.
- * Dependencies: Autoblogger_Encryption (for client secret), wp_remote_post/get().
+ * Triggered by: PRAutoBlogger_Reddit_Provider calls fetch methods here.
+ * Dependencies: PRAutoBlogger_Encryption (for client secret), wp_remote_post/get().
  *
  * @see providers/class-reddit-provider.php — Instantiates this class.
  * @see ARCHITECTURE.md                     — External API integrations table.
  */
-class Autoblogger_Reddit_API_Client {
+class PRAutoBlogger_Reddit_API_Client {
 
 	private const AUTH_URL = 'https://www.reddit.com/api/v1/access_token';
 	private const API_BASE = 'https://oauth.reddit.com';
-	private const USER_AGENT = 'AutoBlogger/0.1.0 (WordPress Plugin)';
+	private const USER_AGENT = 'PRAutoBlogger/0.1.0 (WordPress Plugin)';
 
 	/**
 	 * Get an OAuth2 access token, using cached transient if available.
@@ -32,15 +32,15 @@ class Autoblogger_Reddit_API_Client {
 	 */
 	public function get_access_token( bool $force_refresh = false ): string {
 		if ( ! $force_refresh ) {
-			$cached = get_transient( 'autoblogger_reddit_token' );
+			$cached = get_transient( 'prautoblogger_reddit_token' );
 			if ( false !== $cached && is_string( $cached ) ) {
 				return $cached;
 			}
 		}
 
-		$client_id     = get_option( 'autoblogger_reddit_client_id', '' );
-		$client_secret = Autoblogger_Encryption::decrypt(
-			get_option( 'autoblogger_reddit_client_secret', '' )
+		$client_id     = get_option( 'prautoblogger_reddit_client_id', '' );
+		$client_secret = PRAutoBlogger_Encryption::decrypt(
+			get_option( 'prautoblogger_reddit_client_secret', '' )
 		);
 
 		if ( '' === $client_id || '' === $client_secret ) {
@@ -63,25 +63,25 @@ class Autoblogger_Reddit_API_Client {
 		);
 
 		if ( is_wp_error( $response ) ) {
-			Autoblogger_Logger::instance()->error( 'Reddit OAuth failed: ' . $response->get_error_message(), 'reddit' );
+			PRAutoBlogger_Logger::instance()->error( 'Reddit OAuth failed: ' . $response->get_error_message(), 'reddit' );
 			return '';
 		}
 
 		if ( 200 !== wp_remote_retrieve_response_code( $response ) ) {
-			Autoblogger_Logger::instance()->error( 'Reddit OAuth HTTP ' . wp_remote_retrieve_response_code( $response ), 'reddit' );
+			PRAutoBlogger_Logger::instance()->error( 'Reddit OAuth HTTP ' . wp_remote_retrieve_response_code( $response ), 'reddit' );
 			return '';
 		}
 
 		$data = json_decode( wp_remote_retrieve_body( $response ), true );
 		if ( ! isset( $data['access_token'] ) ) {
-			Autoblogger_Logger::instance()->error( 'Reddit OAuth response missing access_token.', 'reddit' );
+			PRAutoBlogger_Logger::instance()->error( 'Reddit OAuth response missing access_token.', 'reddit' );
 			return '';
 		}
 
 		$token   = $data['access_token'];
 		$expires = isset( $data['expires_in'] ) ? (int) $data['expires_in'] - 60 : 3540;
 
-		set_transient( 'autoblogger_reddit_token', $token, $expires );
+		set_transient( 'prautoblogger_reddit_token', $token, $expires );
 
 		return $token;
 	}
@@ -179,7 +179,7 @@ class Autoblogger_Reddit_API_Client {
 		);
 
 		if ( is_wp_error( $response ) ) {
-			Autoblogger_Logger::instance()->error( 'Reddit API GET failed: ' . $response->get_error_message(), 'reddit' );
+			PRAutoBlogger_Logger::instance()->error( 'Reddit API GET failed: ' . $response->get_error_message(), 'reddit' );
 			return null;
 		}
 
@@ -189,7 +189,7 @@ class Autoblogger_Reddit_API_Client {
 		$rate_reset     = wp_remote_retrieve_header( $response, 'x-ratelimit-reset' );
 
 		if ( '' !== $rate_remaining ) {
-			set_transient( 'autoblogger_reddit_rate_limit', [
+			set_transient( 'prautoblogger_reddit_rate_limit', [
 				'remaining' => (int) $rate_remaining,
 				'limit'     => (int) $rate_limit + (int) $rate_remaining,
 				'resets_at' => gmdate( 'Y-m-d H:i:s', time() + (int) $rate_reset ),
@@ -198,7 +198,7 @@ class Autoblogger_Reddit_API_Client {
 
 		$status_code = wp_remote_retrieve_response_code( $response );
 		if ( 200 !== $status_code ) {
-			Autoblogger_Logger::instance()->error( sprintf( 'Reddit API HTTP %d: %s', $status_code, substr( wp_remote_retrieve_body( $response ), 0, 300 ) ), 'reddit' );
+			PRAutoBlogger_Logger::instance()->error( sprintf( 'Reddit API HTTP %d: %s', $status_code, substr( wp_remote_retrieve_body( $response ), 0, 300 ) ), 'reddit' );
 			return null;
 		}
 

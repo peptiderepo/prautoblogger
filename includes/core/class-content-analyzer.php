@@ -8,7 +8,7 @@ declare(strict_types=1);
  * Uses a cheap model (configurable) to keep analysis costs low.
  * Batches source data into manageable chunks for the LLM context window.
  *
- * Triggered by: Autoblogger::run_generation_pipeline() (step 2).
+ * Triggered by: PRAutoBlogger::run_generation_pipeline() (step 2).
  * Dependencies: LLM_Provider_Interface, Cost_Tracker, WordPress $wpdb.
  *
  * @see providers/interface-llm-provider.php — LLM used for analysis.
@@ -16,14 +16,14 @@ declare(strict_types=1);
  * @see core/class-idea-scorer.php           — Consumes analysis results.
  * @see ARCHITECTURE.md                      — Data flow step 2.
  */
-class Autoblogger_Content_Analyzer {
+class PRAutoBlogger_Content_Analyzer {
 
-	private Autoblogger_LLM_Provider_Interface $llm;
-	private Autoblogger_Cost_Tracker $cost_tracker;
+	private PRAutoBlogger_LLM_Provider_Interface $llm;
+	private PRAutoBlogger_Cost_Tracker $cost_tracker;
 
 	public function __construct(
-		Autoblogger_LLM_Provider_Interface $llm,
-		Autoblogger_Cost_Tracker $cost_tracker
+		PRAutoBlogger_LLM_Provider_Interface $llm,
+		PRAutoBlogger_Cost_Tracker $cost_tracker
 	) {
 		$this->llm          = $llm;
 		$this->cost_tracker = $cost_tracker;
@@ -37,18 +37,18 @@ class Autoblogger_Content_Analyzer {
 	 *
 	 * Side effects: LLM API call, database reads/writes.
 	 *
-	 * @return Autoblogger_Analysis_Result[] Detected patterns.
+	 * @return PRAutoBlogger_Analysis_Result[] Detected patterns.
 	 */
 	public function analyze_recent_data(): array {
 		$source_items = $this->fetch_recent_source_data();
 
 		if ( empty( $source_items ) ) {
-			Autoblogger_Logger::instance()->info( 'No new source data to analyze.', 'analyzer' );
+			PRAutoBlogger_Logger::instance()->info( 'No new source data to analyze.', 'analyzer' );
 			return [];
 		}
 
-		$niche = get_option( 'autoblogger_niche_description', '' );
-		$model = get_option( 'autoblogger_analysis_model', AUTOBLOGGER_DEFAULT_ANALYSIS_MODEL );
+		$niche = get_option( 'prautoblogger_niche_description', '' );
+		$model = get_option( 'prautoblogger_analysis_model', PRAUTOBLOGGER_DEFAULT_ANALYSIS_MODEL );
 
 		// Build the source data summary for the LLM (trim to avoid huge contexts).
 		$summary = $this->build_source_summary( $source_items );
@@ -98,7 +98,7 @@ class Autoblogger_Content_Analyzer {
 	 */
 	private function fetch_recent_source_data(): array {
 		global $wpdb;
-		$table = $wpdb->prefix . 'autoblogger_source_data';
+		$table = $wpdb->prefix . 'prautoblogger_source_data';
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		return $wpdb->get_results(
@@ -153,7 +153,7 @@ class Autoblogger_Content_Analyzer {
 	 */
 	private function get_performance_context(): string {
 		global $wpdb;
-		$scores_table = $wpdb->prefix . 'autoblogger_content_scores';
+		$scores_table = $wpdb->prefix . 'prautoblogger_content_scores';
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$top_posts = $wpdb->get_results(
@@ -239,12 +239,12 @@ class Autoblogger_Content_Analyzer {
 	 * @param string                          $content      LLM response content (JSON).
 	 * @param array<int, array<string, mixed>> $source_items Original source data for ID mapping.
 	 *
-	 * @return Autoblogger_Analysis_Result[]
+	 * @return PRAutoBlogger_Analysis_Result[]
 	 */
 	private function parse_analysis_response( string $content, array $source_items ): array {
 		$data = json_decode( $content, true );
 		if ( ! isset( $data['patterns'] ) || ! is_array( $data['patterns'] ) ) {
-			Autoblogger_Logger::instance()->error( 'Analysis response was not valid JSON or missing patterns key.', 'analyzer' );
+			PRAutoBlogger_Logger::instance()->error( 'Analysis response was not valid JSON or missing patterns key.', 'analyzer' );
 			return [];
 		}
 
@@ -252,7 +252,7 @@ class Autoblogger_Content_Analyzer {
 		$results    = [];
 
 		foreach ( $data['patterns'] as $pattern ) {
-			$results[] = new Autoblogger_Analysis_Result( [
+			$results[] = new PRAutoBlogger_Analysis_Result( [
 				'analysis_type'   => sanitize_text_field( $pattern['type'] ?? 'question' ),
 				'topic'           => sanitize_text_field( $pattern['topic'] ?? '' ),
 				'summary'         => sanitize_textarea_field( $pattern['summary'] ?? '' ),
@@ -276,13 +276,13 @@ class Autoblogger_Content_Analyzer {
 	 *
 	 * Side effects: database inserts.
 	 *
-	 * @param Autoblogger_Analysis_Result[] $results
+	 * @param PRAutoBlogger_Analysis_Result[] $results
 	 *
 	 * @return void
 	 */
 	private function store_results( array $results ): void {
 		global $wpdb;
-		$table = $wpdb->prefix . 'autoblogger_analysis_results';
+		$table = $wpdb->prefix . 'prautoblogger_analysis_results';
 
 		foreach ( $results as $result ) {
 			$row = $result->to_db_row();

@@ -2,7 +2,7 @@
 /**
  * Log viewer template — displays structured application log entries.
  *
- * Variables from Autoblogger_Log_Viewer::render_page():
+ * Variables from PRAutoBlogger_Log_Viewer::render_page():
  *   $rows        — array of log entry rows.
  *   $total       — total matching entries.
  *   $total_pages — total pages.
@@ -17,30 +17,30 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-$base_url    = admin_url( 'admin.php?page=autoblogger-logs' );
+$base_url    = admin_url( 'admin.php?page=prautoblogger-logs' );
 $level_counts = [
-	'all'     => __( 'All', 'autoblogger' ),
-	'error'   => __( 'Errors', 'autoblogger' ),
-	'warning' => __( 'Warnings', 'autoblogger' ),
-	'info'    => __( 'Info', 'autoblogger' ),
-	'debug'   => __( 'Debug', 'autoblogger' ),
+	'all'     => __( 'All', 'prautoblogger' ),
+	'error'   => __( 'Errors', 'prautoblogger' ),
+	'warning' => __( 'Warnings', 'prautoblogger' ),
+	'info'    => __( 'Info', 'prautoblogger' ),
+	'debug'   => __( 'Debug', 'prautoblogger' ),
 ];
 ?>
 <div class="wrap ab-wrap">
 	<div class="ab-header">
 		<div class="ab-header-left">
 			<span class="dashicons dashicons-list-view ab-header-icon"></span>
-			<h1 class="ab-header-title"><?php esc_html_e( 'Activity Log', 'autoblogger' ); ?></h1>
+			<h1 class="ab-header-title"><?php esc_html_e( 'Activity Log', 'prautoblogger' ); ?></h1>
 		</div>
 		<div class="ab-header-actions">
-			<button type="button" id="autoblogger-clear-logs" class="ab-btn ab-btn-outline" data-nonce="<?php echo esc_attr( wp_create_nonce( 'autoblogger_clear_logs' ) ); ?>">
+			<button type="button" id="prautoblogger-clear-logs" class="ab-btn ab-btn-outline" data-nonce="<?php echo esc_attr( wp_create_nonce( 'prautoblogger_clear_logs' ) ); ?>">
 				<span class="dashicons dashicons-trash"></span>
-				<?php esc_html_e( 'Clear Logs (30d+)', 'autoblogger' ); ?>
+				<?php esc_html_e( 'Clear Logs (30d+)', 'prautoblogger' ); ?>
 			</button>
 		</div>
 	</div>
 
-	<div id="autoblogger-log-status" class="hidden"></div>
+	<div id="prautoblogger-log-status" class="hidden"></div>
 
 	<!-- Filters -->
 	<div class="ab-log-filters">
@@ -54,10 +54,10 @@ $level_counts = [
 		</div>
 
 		<form method="get" action="<?php echo esc_url( $base_url ); ?>" class="ab-log-search">
-			<input type="hidden" name="page" value="autoblogger-logs" />
+			<input type="hidden" name="page" value="prautoblogger-logs" />
 			<input type="hidden" name="level" value="<?php echo esc_attr( $level ); ?>" />
-			<input type="text" name="s" value="<?php echo esc_attr( $search ); ?>" placeholder="<?php esc_attr_e( 'Search logs...', 'autoblogger' ); ?>" class="ab-input ab-log-search-input" />
-			<button type="submit" class="ab-btn ab-btn-outline ab-btn-small"><?php esc_html_e( 'Search', 'autoblogger' ); ?></button>
+			<input type="text" name="s" value="<?php echo esc_attr( $search ); ?>" placeholder="<?php esc_attr_e( 'Search logs...', 'prautoblogger' ); ?>" class="ab-input ab-log-search-input" />
+			<button type="submit" class="ab-btn ab-btn-outline ab-btn-small"><?php esc_html_e( 'Search', 'prautoblogger' ); ?></button>
 		</form>
 	</div>
 
@@ -66,7 +66,7 @@ $level_counts = [
 		<?php
 		printf(
 			/* translators: %s: total count */
-			esc_html__( '%s entries found', 'autoblogger' ),
+			esc_html__( '%s entries found', 'prautoblogger' ),
 			'<strong>' . esc_html( number_format( $total ) ) . '</strong>'
 		);
 		?>
@@ -75,16 +75,16 @@ $level_counts = [
 	<?php if ( empty( $rows ) ) : ?>
 		<div class="ab-log-empty">
 			<span class="dashicons dashicons-yes-alt"></span>
-			<p><?php esc_html_e( 'No log entries match your filters.', 'autoblogger' ); ?></p>
+			<p><?php esc_html_e( 'No log entries match your filters.', 'prautoblogger' ); ?></p>
 		</div>
 	<?php else : ?>
 		<table class="widefat striped ab-log-table">
 			<thead>
 				<tr>
-					<th class="ab-log-col-level"><?php esc_html_e( 'Level', 'autoblogger' ); ?></th>
-					<th class="ab-log-col-time"><?php esc_html_e( 'Time', 'autoblogger' ); ?></th>
-					<th class="ab-log-col-context"><?php esc_html_e( 'Context', 'autoblogger' ); ?></th>
-					<th><?php esc_html_e( 'Message', 'autoblogger' ); ?></th>
+					<th class="ab-log-col-level"><?php esc_html_e( 'Level', 'prautoblogger' ); ?></th>
+					<th class="ab-log-col-time"><?php esc_html_e( 'Time', 'prautoblogger' ); ?></th>
+					<th class="ab-log-col-context"><?php esc_html_e( 'Context', 'prautoblogger' ); ?></th>
+					<th><?php esc_html_e( 'Message', 'prautoblogger' ); ?></th>
 				</tr>
 			</thead>
 			<tbody>
@@ -105,7 +105,7 @@ $level_counts = [
 						<td>
 							<?php echo esc_html( $row['message'] ?? '' ); ?>
 							<?php if ( ! empty( $row['meta_json'] ) ) : ?>
-								<button type="button" class="ab-log-meta-toggle" title="<?php esc_attr_e( 'Show details', 'autoblogger' ); ?>">
+								<button type="button" class="ab-log-meta-toggle" title="<?php esc_attr_e( 'Show details', 'prautoblogger' ); ?>">
 									<span class="dashicons dashicons-arrow-down-alt2"></span>
 								</button>
 								<pre class="ab-log-meta"><?php echo esc_html( wp_json_encode( json_decode( $row['meta_json'], true ), JSON_PRETTY_PRINT ) ); ?></pre>

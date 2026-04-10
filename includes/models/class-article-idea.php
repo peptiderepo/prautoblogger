@@ -12,7 +12,7 @@ declare(strict_types=1);
  * @see core/class-idea-scorer.php      — Creates and ranks these.
  * @see core/class-content-generator.php — Uses these as generation input.
  */
-class Autoblogger_Article_Idea {
+class PRAutoBlogger_Article_Idea {
 
 	private string $topic;
 	private string $article_type;

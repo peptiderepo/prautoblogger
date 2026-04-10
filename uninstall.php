@@ -23,7 +23,7 @@ global $wpdb;
 |--------------------------------------------------------------------------
 */
 
-$prefix = $wpdb->prefix . 'autoblogger_';
+$prefix = $wpdb->prefix . 'prautoblogger_';
 $tables = [
 	$prefix . 'source_data',
 	$prefix . 'analysis_results',
@@ -44,7 +44,7 @@ foreach ( $tables as $table ) {
 */
 
 $options = $wpdb->get_col(
-	"SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE 'autoblogger\_%'"
+	"SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE 'prautoblogger\_%'"
 );
 
 foreach ( $options as $option ) {
@@ -58,7 +58,7 @@ foreach ( $options as $option ) {
 */
 
 $wpdb->query(
-	"DELETE FROM {$wpdb->postmeta} WHERE meta_key LIKE '\\_autoblogger\\_%'"
+	"DELETE FROM {$wpdb->postmeta} WHERE meta_key LIKE '\\_prautoblogger\\_%'"
 );
 
 /*
@@ -68,7 +68,7 @@ $wpdb->query(
 */
 
 $wpdb->query(
-	"DELETE FROM {$wpdb->options} WHERE option_name LIKE '\\_transient\\_autoblogger\\_%' OR option_name LIKE '\\_transient\\_timeout\\_autoblogger\\_%'"
+	"DELETE FROM {$wpdb->options} WHERE option_name LIKE '\\_transient\\_prautoblogger\\_%' OR option_name LIKE '\\_transient\\_timeout\\_prautoblogger\\_%'"
 );
 
 /*
@@ -78,8 +78,8 @@ $wpdb->query(
 */
 
 $hooks = [
-	'autoblogger_daily_generation',
-	'autoblogger_collect_metrics',
+	'prautoblogger_daily_generation',
+	'prautoblogger_collect_metrics',
 ];
 
 foreach ( $hooks as $hook ) {

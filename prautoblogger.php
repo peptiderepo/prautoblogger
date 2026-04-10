@@ -2,11 +2,11 @@
 declare(strict_types=1);
 
 /**
- * AutoBlogger — Automated Content Research & Publishing
+ * PRAutoBlogger — Automated Content Research & Publishing
  *
  * @wordpress-plugin
- * Plugin Name:       AutoBlogger
- * Plugin URI:        https://peptiderepo.com/autoblogger
+ * Plugin Name:       PRAutoBlogger
+ * Plugin URI:        https://peptiderepo.com/prautoblogger
  * Description:       Monitors social media for trending topics, generates SEO-friendly blog posts using AI, and publishes them on a daily schedule with full cost tracking and self-improvement metrics.
  * Version:           0.1.0
  * Requires at least: 6.0
@@ -15,7 +15,7 @@ declare(strict_types=1);
  * Author URI:        https://peptiderepo.com
  * License:           GPL v2 or later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain:       autoblogger
+ * Text Domain:       prautoblogger
  * Domain Path:       /languages
  *
  * @see ARCHITECTURE.md — Full data flow and file tree
@@ -35,23 +35,23 @@ if ( ! defined( 'ABSPATH' ) ) {
 | and limits without magic strings.
 */
 
-define( 'AUTOBLOGGER_VERSION', '0.1.0' );
-define( 'AUTOBLOGGER_DB_VERSION', '1.1.0' );
-define( 'AUTOBLOGGER_PLUGIN_FILE', __FILE__ );
-define( 'AUTOBLOGGER_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
-define( 'AUTOBLOGGER_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
-define( 'AUTOBLOGGER_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
+define( 'PRAUTOBLOGGER_VERSION', '0.1.0' );
+define( 'PRAUTOBLOGGER_DB_VERSION', '1.1.0' );
+define( 'PRAUTOBLOGGER_PLUGIN_FILE', __FILE__ );
+define( 'PRAUTOBLOGGER_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+define( 'PRAUTOBLOGGER_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+define( 'PRAUTOBLOGGER_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
 
 // API and retry limits — named constants instead of magic numbers.
-define( 'AUTOBLOGGER_MAX_RETRIES', 3 );
-define( 'AUTOBLOGGER_RETRY_BASE_DELAY_SECONDS', 2 );
-define( 'AUTOBLOGGER_API_TIMEOUT_SECONDS', 120 );
-define( 'AUTOBLOGGER_CACHE_TTL_SECONDS', 3600 );
+define( 'PRAUTOBLOGGER_MAX_RETRIES', 3 );
+define( 'PRAUTOBLOGGER_RETRY_BASE_DELAY_SECONDS', 2 );
+define( 'PRAUTOBLOGGER_API_TIMEOUT_SECONDS', 120 );
+define( 'PRAUTOBLOGGER_CACHE_TTL_SECONDS', 3600 );
 
 // Default models for OpenRouter (user can override in settings).
-define( 'AUTOBLOGGER_DEFAULT_ANALYSIS_MODEL', 'anthropic/claude-3.5-haiku' );
-define( 'AUTOBLOGGER_DEFAULT_WRITING_MODEL', 'anthropic/claude-sonnet-4' );
-define( 'AUTOBLOGGER_DEFAULT_EDITOR_MODEL', 'anthropic/claude-sonnet-4' );
+define( 'PRAUTOBLOGGER_DEFAULT_ANALYSIS_MODEL', 'anthropic/claude-3.5-haiku' );
+define( 'PRAUTOBLOGGER_DEFAULT_WRITING_MODEL', 'anthropic/claude-sonnet-4' );
+define( 'PRAUTOBLOGGER_DEFAULT_EDITOR_MODEL', 'anthropic/claude-sonnet-4' );
 
 /*
 |--------------------------------------------------------------------------
@@ -59,8 +59,13 @@ define( 'AUTOBLOGGER_DEFAULT_EDITOR_MODEL', 'anthropic/claude-sonnet-4' );
 |--------------------------------------------------------------------------
 */
 
-require_once AUTOBLOGGER_PLUGIN_DIR . 'includes/class-autoloader.php';
-Autoblogger_Autoloader::register();
+require_once PRAUTOBLOGGER_PLUGIN_DIR . 'includes/class-autoloader.php';
+PRAutoBlogger_Autoloader::register();
+
+// The main orchestrator class is loaded explicitly because its CamelCase name
+// (PRAutoBlogger) doesn't map cleanly to a filename via the autoloader's
+// kebab-case convention (it would look for class-pr-auto-blogger.php).
+require_once PRAUTOBLOGGER_PLUGIN_DIR . 'includes/class-prautoblogger.php';
 
 /*
 |--------------------------------------------------------------------------
@@ -68,8 +73,8 @@ Autoblogger_Autoloader::register();
 |--------------------------------------------------------------------------
 */
 
-register_activation_hook( __FILE__, [ 'Autoblogger_Activator', 'activate' ] );
-register_deactivation_hook( __FILE__, [ 'Autoblogger_Deactivator', 'deactivate' ] );
+register_activation_hook( __FILE__, [ 'PRAutoBlogger_Activator', 'activate' ] );
+register_deactivation_hook( __FILE__, [ 'PRAutoBlogger_Deactivator', 'deactivate' ] );
 
 /*
 |--------------------------------------------------------------------------
@@ -82,17 +87,17 @@ register_deactivation_hook( __FILE__, [ 'Autoblogger_Deactivator', 'deactivate' 
 /**
  * Returns the singleton instance of the main plugin class.
  *
- * @return Autoblogger
+ * @return PRAutoBlogger
  */
-function autoblogger(): Autoblogger {
+function prautoblogger(): PRAutoBlogger {
 	static $instance = null;
 	if ( null === $instance ) {
-		$instance = new Autoblogger();
+		$instance = new PRAutoBlogger();
 	}
 	return $instance;
 }
 
 // Initialize on plugins_loaded so all dependencies are available.
 add_action( 'plugins_loaded', static function (): void {
-	autoblogger()->run();
+	prautoblogger()->run();
 } );

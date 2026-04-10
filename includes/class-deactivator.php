@@ -7,13 +7,13 @@ declare(strict_types=1);
  * Note: does NOT delete data or options — that happens in uninstall.php.
  * Deactivation should be reversible (user can reactivate and pick up where they left off).
  *
- * Triggered by: WordPress `register_deactivation_hook` in autoblogger.php.
+ * Triggered by: WordPress `register_deactivation_hook` in prautoblogger.php.
  * Dependencies: None.
  *
  * @see class-activator.php — Sets up what this class tears down.
  * @see uninstall.php       — Permanent data removal on plugin deletion.
  */
-class Autoblogger_Deactivator {
+class PRAutoBlogger_Deactivator {
 
 	/**
 	 * Run deactivation tasks.
@@ -34,8 +34,8 @@ class Autoblogger_Deactivator {
 	 */
 	private static function clear_cron(): void {
 		$hooks = [
-			'autoblogger_daily_generation',
-			'autoblogger_collect_metrics',
+			'prautoblogger_daily_generation',
+			'prautoblogger_collect_metrics',
 		];
 
 		foreach ( $hooks as $hook ) {
@@ -55,9 +55,9 @@ class Autoblogger_Deactivator {
 	 */
 	private static function clear_transients(): void {
 		$transients = [
-			'autoblogger_reddit_token',
-			'autoblogger_generation_lock',
-			'autoblogger_openrouter_models',
+			'prautoblogger_reddit_token',
+			'prautoblogger_generation_lock',
+			'prautoblogger_openrouter_models',
 		];
 
 		foreach ( $transients as $transient ) {

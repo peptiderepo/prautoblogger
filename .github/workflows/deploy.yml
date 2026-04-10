@@ -1,17 +1,17 @@
-# AutoBlogger CI/CD Pipeline
+# PRAutoBlogger CI/CD Pipeline
 #
 # Triggers on every push to main. Runs PHP lint and coding standards checks,
 # packages the plugin into a clean zip (excluding dev files), and deploys it
 # to the live WordPress site via the deploy-receiver mu-plugin REST endpoint.
 #
 # Required GitHub Secrets:
-#   DEPLOY_URL  — https://peptiderepo.com/wp-json/autoblogger-deploy/v1/deploy
-#   DEPLOY_KEY  — The token matching AUTOBLOGGER_DEPLOY_KEY in wp-config.php
+#   DEPLOY_URL  — https://peptiderepo.com/wp-json/prautoblogger-deploy/v1/deploy
+#   DEPLOY_KEY  — The token matching PRAUTOBLOGGER_DEPLOY_KEY in wp-config.php
 #
-# @see .github/mu-plugins/autoblogger-deploy-receiver.php — Server-side endpoint.
+# @see .github/mu-plugins/prautoblogger-deploy-receiver.php — Server-side endpoint.
 # @see scripts/deploy.sh                                   — Manual deploy script.
 
-name: Deploy AutoBlogger
+name: Deploy PRAutoBlogger
 
 on:
   push:
@@ -106,22 +106,22 @@ jobs:
       - name: Read plugin version
         id: version
         run: |
-          VERSION=$(grep -oP "Version:\s*\K[0-9]+\.[0-9]+\.[0-9]+" autoblogger.php)
+          VERSION=$(grep -oP "Version:\s*\K[0-9]+\.[0-9]+\.[0-9]+" prautoblogger.php)
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Plugin version: $VERSION"
 
       - name: Build plugin zip
         run: |
           # Create a clean build directory
-          mkdir -p build/autoblogger
+          mkdir -p build/prautoblogger
 
           # Copy only production files (exclude dev/CI artifacts)
-          rsync -av --exclude-from='.distignore' ./ build/autoblogger/
+          rsync -av --exclude-from='.distignore' ./ build/prautoblogger/
 
           # Create the zip
           cd build
-          zip -r "autoblogger-${{ steps.version.outputs.version }}.zip" autoblogger/
-          ls -lh "autoblogger-${{ steps.version.outputs.version }}.zip"
+          zip -r "prautoblogger-${{ steps.version.outputs.version }}.zip" prautoblogger/
+          ls -lh "prautoblogger-${{ steps.version.outputs.version }}.zip"
 
       - name: Deploy to WordPress
         env:
@@ -129,9 +129,9 @@ jobs:
           DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          ZIP_PATH="build/autoblogger-${VERSION}.zip"
+          ZIP_PATH="build/prautoblogger-${VERSION}.zip"
 
-          echo "Deploying AutoBlogger v${VERSION} to production..."
+          echo "Deploying PRAutoBlogger v${VERSION} to production..."
 
           RESPONSE=$(curl -sS -w "\n%{http_code}" \
             -X POST "${DEPLOY_URL}" \
@@ -154,6 +154,6 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: autoblogger-${{ steps.version.outputs.version }}
-          path: build/autoblogger-${{ steps.version.outputs.version }}.zip
+          name: prautoblogger-${{ steps.version.outputs.version }}
+          path: build/prautoblogger-${{ steps.version.outputs.version }}.zip
           retention-days: 30

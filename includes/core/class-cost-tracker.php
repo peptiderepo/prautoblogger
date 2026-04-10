@@ -11,15 +11,15 @@ declare(strict_types=1);
  *
  * Triggered by: Every class that makes an LLM API call (Content_Analyzer,
  *               Content_Generator, Chief_Editor, Metrics_Collector).
- * Dependencies: WordPress $wpdb, Autoblogger_OpenRouter_Provider (for cost estimation).
+ * Dependencies: WordPress $wpdb, PRAutoBlogger_OpenRouter_Provider (for cost estimation).
  *
  * @see core/class-content-analyzer.php  — Calls log_api_call() after analysis.
  * @see core/class-content-generator.php — Calls log_api_call() after each stage.
  * @see core/class-chief-editor.php      — Calls log_api_call() after review.
  * @see admin/class-metrics-page.php     — Displays cost data from this class.
- * @see ARCHITECTURE.md                  — ab_generation_log table schema.
+ * @see ARCHITECTURE.md                  — prab_generation_log table schema.
  */
-class Autoblogger_Cost_Tracker {
+class PRAutoBlogger_Cost_Tracker {
 
 	/**
 	 * Running cost for the current pipeline execution.
@@ -59,7 +59,7 @@ class Autoblogger_Cost_Tracker {
 	/**
 	 * Log an API call with its token usage and estimated cost.
 	 *
-	 * Side effects: database insert into ab_generation_log.
+	 * Side effects: database insert into prab_generation_log.
 	 *
 	 * @param int|null $post_id           WordPress post ID (null during generation, set later).
 	 * @param string   $stage             Pipeline stage: 'analysis', 'outline', 'draft', 'polish', 'review'.
@@ -82,12 +82,12 @@ class Autoblogger_Cost_Tracker {
 		string $response_status = 'success',
 		string $error_message = ''
 	): void {
-		$llm  = new Autoblogger_OpenRouter_Provider();
+		$llm  = new PRAutoBlogger_OpenRouter_Provider();
 		$cost = $llm->estimate_cost( $model, $prompt_tokens, $completion_tokens );
 
 		$this->current_run_cost += $cost;
 
-		$log_entry = new Autoblogger_Generation_Log( [
+		$log_entry = new PRAutoBlogger_Generation_Log( [
 			'post_id'           => $post_id,
 			'run_id'            => $this->run_id,
 			'stage'             => $stage,
@@ -102,13 +102,13 @@ class Autoblogger_Cost_Tracker {
 		] );
 
 		global $wpdb;
-		$table = $wpdb->prefix . 'autoblogger_generation_log';
+		$table = $wpdb->prefix . 'prautoblogger_generation_log';
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$wpdb->insert( $table, $log_entry->to_db_row() );
 
 		if ( false === $wpdb->insert_id ) {
-			Autoblogger_Logger::instance()->error( 'Failed to log API call: ' . $wpdb->last_error, 'cost-tracker' );
+			PRAutoBlogger_Logger::instance()->error( 'Failed to log API call: ' . $wpdb->last_error, 'cost-tracker' );
 		}
 	}
 
@@ -121,7 +121,7 @@ class Autoblogger_Cost_Tracker {
 	 * @return bool True if monthly spend >= configured budget.
 	 */
 	public function is_budget_exceeded(): bool {
-		$budget = (float) get_option( 'autoblogger_monthly_budget_usd', 50.00 );
+		$budget = (float) get_option( 'prautoblogger_monthly_budget_usd', 50.00 );
 		if ( $budget <= 0 ) {
 			// Budget of 0 means no limit.
 			return false;
@@ -141,7 +141,7 @@ class Autoblogger_Cost_Tracker {
 	 */
 	public function get_monthly_spend(): float {
 		global $wpdb;
-		$table = $wpdb->prefix . 'autoblogger_generation_log';
+		$table = $wpdb->prefix . 'prautoblogger_generation_log';
 
 		$first_of_month = gmdate( 'Y-m-01 00:00:00' );
 
@@ -174,7 +174,7 @@ class Autoblogger_Cost_Tracker {
 	 */
 	public function get_daily_spend( int $days = 30 ): array {
 		global $wpdb;
-		$table = $wpdb->prefix . 'autoblogger_generation_log';
+		$table = $wpdb->prefix . 'prautoblogger_generation_log';
 
 		$start_date = gmdate( 'Y-m-d', time() - ( $days * DAY_IN_SECONDS ) );
 
@@ -209,7 +209,7 @@ class Autoblogger_Cost_Tracker {
 	 */
 	public function get_spend_by_stage( string $start_date, string $end_date ): array {
 		global $wpdb;
-		$table = $wpdb->prefix . 'autoblogger_generation_log';
+		$table = $wpdb->prefix . 'prautoblogger_generation_log';
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$results = $wpdb->get_results(
@@ -245,7 +245,7 @@ class Autoblogger_Cost_Tracker {
 	 * @return float Percentage (0-100+). Can exceed 100 if overspent.
 	 */
 	public function get_budget_utilization(): float {
-		$budget = (float) get_option( 'autoblogger_monthly_budget_usd', 50.00 );
+		$budget = (float) get_option( 'prautoblogger_monthly_budget_usd', 50.00 );
 		if ( $budget <= 0 ) {
 			return 0.0;
 		}

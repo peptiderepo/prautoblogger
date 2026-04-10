@@ -8,21 +8,21 @@ declare(strict_types=1);
  * Can approve, request revisions (and produce them), or reject content.
  * Rejected content is saved as a draft for human review.
  *
- * Triggered by: Autoblogger::run_generation_pipeline() (step 5).
+ * Triggered by: PRAutoBlogger::run_generation_pipeline() (step 5).
  * Dependencies: LLM_Provider_Interface, Cost_Tracker.
  *
  * @see core/class-content-generator.php — Produces the content we review.
  * @see core/class-publisher.php         — Publishes approved content.
  * @see ARCHITECTURE.md                  — Data flow step 5.
  */
-class Autoblogger_Chief_Editor {
+class PRAutoBlogger_Chief_Editor {
 
-	private Autoblogger_LLM_Provider_Interface $llm;
-	private Autoblogger_Cost_Tracker $cost_tracker;
+	private PRAutoBlogger_LLM_Provider_Interface $llm;
+	private PRAutoBlogger_Cost_Tracker $cost_tracker;
 
 	public function __construct(
-		Autoblogger_LLM_Provider_Interface $llm,
-		Autoblogger_Cost_Tracker $cost_tracker
+		PRAutoBlogger_LLM_Provider_Interface $llm,
+		PRAutoBlogger_Cost_Tracker $cost_tracker
 	) {
 		$this->llm          = $llm;
 		$this->cost_tracker = $cost_tracker;
@@ -38,13 +38,13 @@ class Autoblogger_Chief_Editor {
 	 * Side effects: LLM API call(s), cost logging.
 	 *
 	 * @param string                     $content The generated HTML content.
-	 * @param Autoblogger_Article_Idea   $idea    The original article idea.
+	 * @param PRAutoBlogger_Article_Idea   $idea    The original article idea.
 	 *
-	 * @return Autoblogger_Editorial_Review
+	 * @return PRAutoBlogger_Editorial_Review
 	 */
-	public function review( string $content, Autoblogger_Article_Idea $idea ): Autoblogger_Editorial_Review {
-		$model = get_option( 'autoblogger_editor_model', AUTOBLOGGER_DEFAULT_EDITOR_MODEL );
-		$niche = get_option( 'autoblogger_niche_description', '' );
+	public function review( string $content, PRAutoBlogger_Article_Idea $idea ): PRAutoBlogger_Editorial_Review {
+		$model = get_option( 'prautoblogger_editor_model', PRAUTOBLOGGER_DEFAULT_EDITOR_MODEL );
+		$niche = get_option( 'prautoblogger_niche_description', '' );
 
 		$system_prompt = $this->build_system_prompt( $niche );
 		$user_prompt   = $this->build_review_prompt( $content, $idea );
@@ -114,11 +114,11 @@ class Autoblogger_Chief_Editor {
 
 	/**
 	 * @param string                     $content
-	 * @param Autoblogger_Article_Idea   $idea
+	 * @param PRAutoBlogger_Article_Idea   $idea
 	 *
 	 * @return string
 	 */
-	private function build_review_prompt( string $content, Autoblogger_Article_Idea $idea ): string {
+	private function build_review_prompt( string $content, PRAutoBlogger_Article_Idea $idea ): string {
 		return sprintf(
 			"Review this article draft:\n\n" .
 			"ORIGINAL BRIEF:\n" .
@@ -142,14 +142,14 @@ class Autoblogger_Chief_Editor {
 	 *
 	 * @param string $content JSON response from LLM.
 	 *
-	 * @return Autoblogger_Editorial_Review
+	 * @return PRAutoBlogger_Editorial_Review
 	 */
-	private function parse_review_response( string $content ): Autoblogger_Editorial_Review {
+	private function parse_review_response( string $content ): PRAutoBlogger_Editorial_Review {
 		$data = json_decode( $content, true );
 
 		if ( ! is_array( $data ) || ! isset( $data['verdict'] ) ) {
-			Autoblogger_Logger::instance()->error( 'Chief editor response was not valid JSON. Defaulting to rejected.', 'editor' );
-			return new Autoblogger_Editorial_Review( [
+			PRAutoBlogger_Logger::instance()->error( 'Chief editor response was not valid JSON. Defaulting to rejected.', 'editor' );
+			return new PRAutoBlogger_Editorial_Review( [
 				'verdict'       => 'rejected',
 				'notes'         => 'Editor response could not be parsed.',
 				'quality_score' => 0.0,
@@ -163,7 +163,7 @@ class Autoblogger_Chief_Editor {
 			$verdict = 'rejected';
 		}
 
-		return new Autoblogger_Editorial_Review( [
+		return new PRAutoBlogger_Editorial_Review( [
 			'verdict'          => $verdict,
 			'notes'            => sanitize_textarea_field( $data['notes'] ?? '' ),
 			'revised_content'  => isset( $data['revised_content'] ) ? wp_kses_post( $data['revised_content'] ) : null,

@@ -1,6 +1,6 @@
-# AutoBlogger — Architecture
+# PRAutoBlogger — Architecture
 
-AutoBlogger is a WordPress plugin that monitors social media (starting with Reddit) for recurring questions, complaints, and comparisons in a configured niche, uses LLM agents (via OpenRouter) to generate high-quality blog articles from those insights, runs them through a chief editor agent for quality review, and auto-publishes them on a configurable daily schedule. All collected data and generation metrics are stored for a self-improvement feedback loop.
+PRAutoBlogger is a WordPress plugin that monitors social media (starting with Reddit) for recurring questions, complaints, and comparisons in a configured niche, uses LLM agents (via OpenRouter) to generate high-quality blog articles from those insights, runs them through a chief editor agent for quality review, and auto-publishes them on a configurable daily schedule. All collected data and generation metrics are stored for a self-improvement feedback loop.
 
 ---
 
@@ -57,7 +57,7 @@ AutoBlogger is a WordPress plugin that monitors social media (starting with Redd
 │   6. Publisher           │  Creates/updates WordPress post
 │                         │  Sets categories, tags, featured image
 │                         │  Stores generation metadata in post_meta
-│                         │  Logs cost/tokens in `ab_generation_log` table
+│                         │  Logs cost/tokens in `prab_generation_log` table
 └────────────┬────────────┘
              │
              ▼
@@ -75,8 +75,8 @@ AutoBlogger is a WordPress plugin that monitors social media (starting with Redd
 ## File Tree
 
 ```
-autoblogger/
-├── autoblogger.php                       # Plugin bootstrap — minimal, only hook registration
+prautoblogger/
+├── prautoblogger.php                       # Plugin bootstrap — minimal, only hook registration
 ├── uninstall.php                         # Clean removal of ALL plugin data
 ├── readme.txt                            # WordPress.org standard readme
 ├── composer.json                         # Autoloading (PSR-4) and dependencies
@@ -86,12 +86,14 @@ autoblogger/
 │
 ├── assets/
 │   ├── css/
-│   │   └── admin.css                     # Admin page styles (wp-admin conventions)
+│   │   ├── admin.css                     # Admin page styles (wp-admin conventions)
+│   │   └── posts-widget.css              # Frontend posts widget styles (uses theme CSS vars)
 │   └── js/
-│       └── admin.js                      # Admin page interactivity (vanilla JS / Alpine.js)
+│       ├── admin.js                      # Admin page interactivity (vanilla JS / Alpine.js)
+│       └── posts-widget.js               # React component for frontend post cards (wp.element)
 │
 ├── includes/
-│   ├── class-autoblogger.php             # Main orchestrator — registers all hooks via loader
+│   ├── class-prautoblogger.php             # Main orchestrator — registers all hooks via loader
 │   ├── class-activator.php               # Activation: create DB tables, set defaults, schedule cron
 │   ├── class-deactivator.php             # Deactivation: clear cron, cleanup transients
 │   ├── class-autoloader.php              # PSR-4-style autoloader for plugin classes
@@ -131,6 +133,9 @@ autoblogger/
 │   │   ├── class-instagram-provider.php  # Instagram — stub/future implementation
 │   │   └── class-youtube-provider.php    # YouTube — stub/future implementation
 │   │
+│   ├── frontend/
+│   │   └── class-posts-widget.php        # [prautoblogger_posts] shortcode + REST endpoint
+│   │
 │   └── models/
 │       ├── class-source-data.php         # Value object: raw social media post/comment
 │       ├── class-analysis-result.php     # Value object: analyzed topic with scores
@@ -149,7 +154,7 @@ autoblogger/
 │       └── metabox-generation-info.php   # Post metabox template
 │
 ├── languages/
-│   └── autoblogger.pot                   # i18n translation template
+│   └── prautoblogger.pot                   # i18n translation template
 │
 └── tests/
     ├── unit/                             # PHPUnit tests (mocked dependencies)
@@ -158,11 +163,56 @@ autoblogger/
 
 ---
 
+## Frontend Widget Data Flow
+
+```
+┌──────────────────────────────┐
+│  WordPress Page/Post         │  Contains [prautoblogger_posts] shortcode
+│  (e.g. Home page)            │
+└────────────┬─────────────────┘
+             │  Shortcode renders:
+             │  1. <div id="prab-posts-root"></div>
+             │  2. Enqueues posts-widget.js + posts-widget.css
+             │  3. Passes config via wp_localize_script
+             ▼
+┌──────────────────────────────┐
+│  React Component (wp.element)│  Mounts into #prab-posts-root
+│  posts-widget.js             │  Shows loading skeleton on mount
+└────────────┬─────────────────┘
+             │  Fetches asynchronously
+             ▼
+┌──────────────────────────────┐
+│  REST API Endpoint           │  GET /wp-json/prautoblogger/v1/posts
+│  class-posts-widget.php      │  Queries published posts with
+│                              │  _prautoblogger_generated = '1' meta
+│                              │  Returns slim JSON (id, title, excerpt,
+│                              │  url, date, category, image, word_count)
+│                              │  5-minute Cache-Control header
+└──────────────────────────────┘
+```
+
+### Shortcode Attributes
+
+| Attribute  | Default | Description |
+|------------|---------|-------------|
+| `count`    | 6       | Posts to display (max 12) |
+| `category` | (all)   | Filter by category slug |
+| `title`    | "Latest Research & Insights" | Widget heading |
+| `subtitle` | "Evidence-based articles..." | Widget subheading |
+
+### CSS Integration
+
+The widget CSS (`posts-widget.css`) uses the Peptide Starter theme's CSS custom properties (`--color-*`, `--spacing-*`, `--text-*`, `--radius-*`, `--transition-*`) with hardcoded fallbacks. This means:
+- On sites using Peptide Starter: widget automatically adapts to light/dark mode via `data-theme`.
+- On other themes: fallback values render a sensible dark-themed design.
+
+---
+
 ## Database Schema
 
 ### Custom Tables
 
-All tables use `$wpdb->prefix` + `autoblogger_` prefix.
+All tables use `$wpdb->prefix` + `prautoblogger_` prefix.
 
 #### `ab_source_data` — Raw social media data
 | Column          | Type              | Description                                    |
@@ -197,7 +247,7 @@ All tables use `$wpdb->prefix` + `autoblogger_` prefix.
 | INDEX           | analysis_type, relevance_score                                   |
 | INDEX           | analyzed_at                                                      |
 
-#### `ab_generation_log` — API cost and generation tracking
+#### `prab_generation_log` — API cost and generation tracking
 | Column           | Type              | Description                                   |
 |------------------|-------------------|-----------------------------------------------|
 | id               | BIGINT UNSIGNED   | Auto-increment PK                             |
@@ -218,7 +268,7 @@ All tables use `$wpdb->prefix` + `autoblogger_` prefix.
 | INDEX            | created_at                                                      |
 | INDEX            | stage                                                           |
 
-#### `ab_event_log` — Structured application logging
+#### `prab_event_log` — Structured application logging
 | Column           | Type              | Description                                   |
 |------------------|-------------------|-----------------------------------------------|
 | id               | BIGINT UNSIGNED   | Auto-increment PK                             |
@@ -248,53 +298,53 @@ All tables use `$wpdb->prefix` + `autoblogger_` prefix.
 
 ### WordPress Options (`wp_options`)
 
-All prefixed with `autoblogger_`:
+All prefixed with `prautoblogger_`:
 
 | Option Key                          | Description                                          |
 |-------------------------------------|------------------------------------------------------|
-| `autoblogger_openrouter_api_key`    | Encrypted OpenRouter API key                         |
-| `autoblogger_reddit_client_id`      | Reddit OAuth client ID                               |
-| `autoblogger_reddit_client_secret`  | Encrypted Reddit client secret                       |
-| `autoblogger_reddit_access_token`   | Reddit OAuth access token (transient-backed)         |
-| `autoblogger_ga4_property_id`       | Google Analytics 4 property ID                       |
-| `autoblogger_ga4_credentials_json`  | Encrypted GA4 service account credentials            |
-| `autoblogger_analysis_model`        | OpenRouter model for analysis (default: cheap)       |
-| `autoblogger_writing_model`         | OpenRouter model for writing (default: quality)      |
-| `autoblogger_editor_model`          | OpenRouter model for chief editor (default: quality) |
-| `autoblogger_daily_article_target`  | Number of articles per day (1-10, default: 1)        |
-| `autoblogger_writing_pipeline`      | 'single_pass' or 'multi_step' (default: multi_step)  |
-| `autoblogger_niche_description`     | Text description of the site's niche                 |
-| `autoblogger_target_subreddits`     | JSON array of subreddits to monitor                  |
-| `autoblogger_monthly_budget_usd`    | Monthly API spend limit in USD                       |
-| `autoblogger_tone`                  | Content tone (informational, conversational, etc.)   |
-| `autoblogger_min_word_count`        | Minimum article word count (default: 800)            |
-| `autoblogger_max_word_count`        | Maximum article word count (default: 2000)           |
-| `autoblogger_topic_exclusions`      | JSON array of topics to never write about            |
-| `autoblogger_enabled_sources`       | JSON array of active source types                    |
-| `autoblogger_auto_publish`          | Toggle: auto-publish approved posts (default: '0')   |
-| `autoblogger_default_author`        | WP user ID for generated post authorship             |
-| `autoblogger_default_category`      | WP category ID fallback for generated posts          |
-| `autoblogger_log_level`             | Logging threshold: error/warning/info/debug          |
-| `autoblogger_db_version`            | Schema version for migrations                        |
-| `autoblogger_schedule_time`         | Daily generation time (HH:MM, default: '03:00')      |
+| `prautoblogger_openrouter_api_key`    | Encrypted OpenRouter API key                         |
+| `prautoblogger_reddit_client_id`      | Reddit OAuth client ID                               |
+| `prautoblogger_reddit_client_secret`  | Encrypted Reddit client secret                       |
+| `prautoblogger_reddit_access_token`   | Reddit OAuth access token (transient-backed)         |
+| `prautoblogger_ga4_property_id`       | Google Analytics 4 property ID                       |
+| `prautoblogger_ga4_credentials_json`  | Encrypted GA4 service account credentials            |
+| `prautoblogger_analysis_model`        | OpenRouter model for analysis (default: cheap)       |
+| `prautoblogger_writing_model`         | OpenRouter model for writing (default: quality)      |
+| `prautoblogger_editor_model`          | OpenRouter model for chief editor (default: quality) |
+| `prautoblogger_daily_article_target`  | Number of articles per day (1-10, default: 1)        |
+| `prautoblogger_writing_pipeline`      | 'single_pass' or 'multi_step' (default: multi_step)  |
+| `prautoblogger_niche_description`     | Text description of the site's niche                 |
+| `prautoblogger_target_subreddits`     | JSON array of subreddits to monitor                  |
+| `prautoblogger_monthly_budget_usd`    | Monthly API spend limit in USD                       |
+| `prautoblogger_tone`                  | Content tone (informational, conversational, etc.)   |
+| `prautoblogger_min_word_count`        | Minimum article word count (default: 800)            |
+| `prautoblogger_max_word_count`        | Maximum article word count (default: 2000)           |
+| `prautoblogger_topic_exclusions`      | JSON array of topics to never write about            |
+| `prautoblogger_enabled_sources`       | JSON array of active source types                    |
+| `prautoblogger_auto_publish`          | Toggle: auto-publish approved posts (default: '0')   |
+| `prautoblogger_default_author`        | WP user ID for generated post authorship             |
+| `prautoblogger_default_category`      | WP category ID fallback for generated posts          |
+| `prautoblogger_log_level`             | Logging threshold: error/warning/info/debug          |
+| `prautoblogger_db_version`            | Schema version for migrations                        |
+| `prautoblogger_schedule_time`         | Daily generation time (HH:MM, default: '03:00')      |
 
 ### Post Meta
 
-Stored on every AutoBlogger-generated post:
+Stored on every PRAutoBlogger-generated post:
 
 | Meta Key                              | Description                                  |
 |---------------------------------------|----------------------------------------------|
-| `_autoblogger_generated`              | Boolean flag — '1' if generated by plugin    |
-| `_autoblogger_analysis_id`            | FK to ab_analysis_results.id                 |
-| `_autoblogger_source_ids`             | JSON array of source data IDs used           |
-| `_autoblogger_model_used`             | Model that generated the content             |
-| `_autoblogger_pipeline_mode`          | 'single_pass' or 'multi_step'                |
-| `_autoblogger_total_cost`             | Total USD cost for this post                 |
-| `_autoblogger_total_tokens`           | Total tokens consumed for this post          |
-| `_autoblogger_editor_verdict`         | 'approved', 'revised', 'rejected'            |
-| `_autoblogger_editor_notes`           | Chief editor's review notes                  |
-| `_autoblogger_generated_at`           | ISO 8601 timestamp of generation             |
-| `_autoblogger_research_sources`       | JSON array of source URLs used               |
+| `_prautoblogger_generated`              | Boolean flag — '1' if generated by plugin    |
+| `_prautoblogger_analysis_id`            | FK to ab_analysis_results.id                 |
+| `_prautoblogger_source_ids`             | JSON array of source data IDs used           |
+| `_prautoblogger_model_used`             | Model that generated the content             |
+| `_prautoblogger_pipeline_mode`          | 'single_pass' or 'multi_step'                |
+| `_prautoblogger_total_cost`             | Total USD cost for this post                 |
+| `_prautoblogger_total_tokens`           | Total tokens consumed for this post          |
+| `_prautoblogger_editor_verdict`         | 'approved', 'revised', 'rejected'            |
+| `_prautoblogger_editor_notes`           | Chief editor's review notes                  |
+| `_prautoblogger_generated_at`           | ISO 8601 timestamp of generation             |
+| `_prautoblogger_research_sources`       | JSON array of source URLs used               |
 
 ---
 
@@ -326,8 +376,12 @@ Stored on every AutoBlogger-generated post:
 
 8. **All API keys encrypted at rest.** Using `wp_salt()` as encryption key with OpenSSL. Not bulletproof (salt is in wp-config.php) but significantly better than plaintext in wp_options. Trade-off: adds complexity to option get/set, but necessary for security.
 
-9. **Structured logger instead of raw error_log().** All application logging flows through `Autoblogger_Logger` singleton, which writes to the `ab_event_log` table and forwards errors/warnings to PHP's `error_log()`. This gives users an in-admin Activity Log page with filtering by level, search, and pagination — much more accessible than server logs. Trade-off: one extra DB write per log entry, but the table is prunable and indexed.
+9. **Structured logger instead of raw error_log().** All application logging flows through `PRAutoBlogger_Logger` singleton, which writes to the `prab_event_log` table and forwards errors/warnings to PHP's `error_log()`. This gives users an in-admin Activity Log page with filtering by level, search, and pagination — much more accessible than server logs. Trade-off: one extra DB write per log entry, but the table is prunable and indexed.
 
 10. **Database-level atomic mutex for generation lock.** Uses `INSERT IGNORE` on `wp_options` (which has a UNIQUE index on `option_name`) instead of transient-based locking. This eliminates the TOCTOU race condition where two concurrent cron runs could both read the transient as "not locked" before either sets it. Expired locks older than 1 hour are cleaned up first to prevent permanent deadlock.
 
-11. **Run-ID based log linking.** Each pipeline execution generates a UUID (`run_id`) that tags every `ab_generation_log` entry. When a post is published, `link_generation_logs()` uses `UPDATE WHERE run_id = X` to associate entries with the post_id. This is more reliable than the previous timestamp-window approach, especially in batch runs where multiple posts are generated in quick succession.
+12. **wp.element for frontend React (no build step).** The posts widget uses WordPress-bundled React (`wp.element`) with raw `createElement` calls instead of JSX. This avoids requiring a Node.js build pipeline for what is a simple card grid. Trade-off: more verbose component code, but zero tooling dependencies for the plugin consumer.
+
+13. **REST API for frontend data fetching.** The widget fetches posts asynchronously from a dedicated REST endpoint rather than rendering server-side. This keeps initial page load fast and allows the endpoint to be cached independently (5-minute `Cache-Control`). The permission callback uses a filter (`prautoblogger_rest_posts_public`) so sites can restrict access if needed.
+
+11. **Run-ID based log linking.** Each pipeline execution generates a UUID (`run_id`) that tags every `prab_generation_log` entry. When a post is published, `link_generation_logs()` uses `UPDATE WHERE run_id = X` to associate entries with the post_id. This is more reliable than the previous timestamp-window approach, especially in batch runs where multiple posts are generated in quick succession.

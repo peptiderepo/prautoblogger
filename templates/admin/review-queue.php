@@ -2,7 +2,7 @@
 /**
  * Review queue template — lists generated drafts awaiting editorial approval.
  *
- * Variables available from Autoblogger_Review_Queue::render_page():
+ * Variables available from PRAutoBlogger_Review_Queue::render_page():
  *   $query (WP_Query) — the pending draft posts.
  *
  * @see admin/class-review-queue.php — Renders this template.
@@ -12,11 +12,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-$bulk_done = isset( $_GET['autoblogger_bulk_done'] ) ? absint( $_GET['autoblogger_bulk_done'] ) : 0;
-$bulk_type = isset( $_GET['autoblogger_bulk_type'] ) ? sanitize_text_field( wp_unslash( $_GET['autoblogger_bulk_type'] ) ) : '';
+$bulk_done = isset( $_GET['prautoblogger_bulk_done'] ) ? absint( $_GET['prautoblogger_bulk_done'] ) : 0;
+$bulk_type = isset( $_GET['prautoblogger_bulk_type'] ) ? sanitize_text_field( wp_unslash( $_GET['prautoblogger_bulk_type'] ) ) : '';
 ?>
-<div class="wrap autoblogger-review-queue">
-	<h1><?php esc_html_e( 'AutoBlogger — Review Queue', 'autoblogger' ); ?></h1>
+<div class="wrap prautoblogger-review-queue">
+	<h1><?php esc_html_e( 'PRAutoBlogger — Review Queue', 'prautoblogger' ); ?></h1>
 
 	<?php if ( $bulk_done > 0 && '' !== $bulk_type ) : ?>
 		<div class="notice notice-success is-dismissible">
@@ -25,13 +25,13 @@ $bulk_type = isset( $_GET['autoblogger_bulk_type'] ) ? sanitize_text_field( wp_u
 				if ( 'approve' === $bulk_type ) {
 					printf(
 						/* translators: %d: number of posts */
-						esc_html( _n( '%d post published.', '%d posts published.', $bulk_done, 'autoblogger' ) ),
+						esc_html( _n( '%d post published.', '%d posts published.', $bulk_done, 'prautoblogger' ) ),
 						$bulk_done
 					);
 				} else {
 					printf(
 						/* translators: %d: number of posts */
-						esc_html( _n( '%d post rejected.', '%d posts rejected.', $bulk_done, 'autoblogger' ) ),
+						esc_html( _n( '%d post rejected.', '%d posts rejected.', $bulk_done, 'prautoblogger' ) ),
 						$bulk_done
 					);
 				}
@@ -40,71 +40,71 @@ $bulk_type = isset( $_GET['autoblogger_bulk_type'] ) ? sanitize_text_field( wp_u
 		</div>
 	<?php endif; ?>
 
-	<div id="autoblogger-queue-status" class="autoblogger-status-message hidden"></div>
+	<div id="prautoblogger-queue-status" class="prautoblogger-status-message hidden"></div>
 
 	<?php if ( ! $query->have_posts() ) : ?>
-		<div class="autoblogger-empty-queue">
-			<p><?php esc_html_e( 'No generated drafts awaiting review. New posts will appear here after the next generation run.', 'autoblogger' ); ?></p>
+		<div class="prautoblogger-empty-queue">
+			<p><?php esc_html_e( 'No generated drafts awaiting review. New posts will appear here after the next generation run.', 'prautoblogger' ); ?></p>
 		</div>
 	<?php else : ?>
-		<form method="post" id="autoblogger-review-form">
-			<?php wp_nonce_field( 'autoblogger_review_queue_bulk', 'autoblogger_review_nonce' ); ?>
+		<form method="post" id="prautoblogger-review-form">
+			<?php wp_nonce_field( 'prautoblogger_review_queue_bulk', 'prautoblogger_review_nonce' ); ?>
 
-			<div class="autoblogger-queue-toolbar">
+			<div class="prautoblogger-queue-toolbar">
 				<label>
-					<input type="checkbox" id="autoblogger-select-all" />
-					<?php esc_html_e( 'Select All', 'autoblogger' ); ?>
+					<input type="checkbox" id="prautoblogger-select-all" />
+					<?php esc_html_e( 'Select All', 'prautoblogger' ); ?>
 				</label>
-				<button type="submit" name="autoblogger_bulk_action" value="approve" class="button button-primary">
-					<?php esc_html_e( 'Approve Selected', 'autoblogger' ); ?>
+				<button type="submit" name="prautoblogger_bulk_action" value="approve" class="button button-primary">
+					<?php esc_html_e( 'Approve Selected', 'prautoblogger' ); ?>
 				</button>
-				<button type="submit" name="autoblogger_bulk_action" value="reject" class="button">
-					<?php esc_html_e( 'Reject Selected', 'autoblogger' ); ?>
+				<button type="submit" name="prautoblogger_bulk_action" value="reject" class="button">
+					<?php esc_html_e( 'Reject Selected', 'prautoblogger' ); ?>
 				</button>
-				<span class="autoblogger-queue-count">
+				<span class="prautoblogger-queue-count">
 					<?php
 					printf(
 						/* translators: %d: number of drafts */
-						esc_html( _n( '%d draft', '%d drafts', $query->found_posts, 'autoblogger' ) ),
+						esc_html( _n( '%d draft', '%d drafts', $query->found_posts, 'prautoblogger' ) ),
 						$query->found_posts
 					);
 					?>
 				</span>
 			</div>
 
-			<table class="widefat striped autoblogger-queue-table">
+			<table class="widefat striped prautoblogger-queue-table">
 				<thead>
 					<tr>
-						<th class="check-column"><span class="screen-reader-text"><?php esc_html_e( 'Select', 'autoblogger' ); ?></span></th>
-						<th><?php esc_html_e( 'Title', 'autoblogger' ); ?></th>
-						<th><?php esc_html_e( 'Topic', 'autoblogger' ); ?></th>
-						<th><?php esc_html_e( 'Type', 'autoblogger' ); ?></th>
-						<th><?php esc_html_e( 'Editor Verdict', 'autoblogger' ); ?></th>
-						<th><?php esc_html_e( 'Quality', 'autoblogger' ); ?></th>
-						<th><?php esc_html_e( 'Generated', 'autoblogger' ); ?></th>
-						<th><?php esc_html_e( 'Actions', 'autoblogger' ); ?></th>
+						<th class="check-column"><span class="screen-reader-text"><?php esc_html_e( 'Select', 'prautoblogger' ); ?></span></th>
+						<th><?php esc_html_e( 'Title', 'prautoblogger' ); ?></th>
+						<th><?php esc_html_e( 'Topic', 'prautoblogger' ); ?></th>
+						<th><?php esc_html_e( 'Type', 'prautoblogger' ); ?></th>
+						<th><?php esc_html_e( 'Editor Verdict', 'prautoblogger' ); ?></th>
+						<th><?php esc_html_e( 'Quality', 'prautoblogger' ); ?></th>
+						<th><?php esc_html_e( 'Generated', 'prautoblogger' ); ?></th>
+						<th><?php esc_html_e( 'Actions', 'prautoblogger' ); ?></th>
 					</tr>
 				</thead>
 				<tbody>
 					<?php while ( $query->have_posts() ) : $query->the_post(); ?>
 						<?php
 						$post_id       = get_the_ID();
-						$verdict       = get_post_meta( $post_id, '_autoblogger_editor_verdict', true );
-						$topic         = get_post_meta( $post_id, '_autoblogger_topic', true );
-						$article_type  = get_post_meta( $post_id, '_autoblogger_article_type', true );
-						$quality_score = get_post_meta( $post_id, '_autoblogger_quality_score', true );
-						$generated_at  = get_post_meta( $post_id, '_autoblogger_generated_at', true );
-						$editor_notes  = get_post_meta( $post_id, '_autoblogger_editor_notes', true );
-						$verdict_class = 'autoblogger-verdict-' . sanitize_html_class( $verdict ?: 'pending' );
+						$verdict       = get_post_meta( $post_id, '_prautoblogger_editor_verdict', true );
+						$topic         = get_post_meta( $post_id, '_prautoblogger_topic', true );
+						$article_type  = get_post_meta( $post_id, '_prautoblogger_article_type', true );
+						$quality_score = get_post_meta( $post_id, '_prautoblogger_quality_score', true );
+						$generated_at  = get_post_meta( $post_id, '_prautoblogger_generated_at', true );
+						$editor_notes  = get_post_meta( $post_id, '_prautoblogger_editor_notes', true );
+						$verdict_class = 'prautoblogger-verdict-' . sanitize_html_class( $verdict ?: 'pending' );
 						?>
 						<tr data-post-id="<?php echo esc_attr( (string) $post_id ); ?>">
 							<td class="check-column">
-								<input type="checkbox" name="autoblogger_post_ids[]" value="<?php echo esc_attr( (string) $post_id ); ?>" />
+								<input type="checkbox" name="prautoblogger_post_ids[]" value="<?php echo esc_attr( (string) $post_id ); ?>" />
 							</td>
 							<td>
 								<strong><?php the_title(); ?></strong>
 								<?php if ( $editor_notes ) : ?>
-									<div class="autoblogger-editor-notes"><?php echo esc_html( $editor_notes ); ?></div>
+									<div class="prautoblogger-editor-notes"><?php echo esc_html( $editor_notes ); ?></div>
 								<?php endif; ?>
 							</td>
 							<td><?php echo esc_html( $topic ?: '—' ); ?></td>
@@ -112,18 +112,18 @@ $bulk_type = isset( $_GET['autoblogger_bulk_type'] ) ? sanitize_text_field( wp_u
 							<td><span class="<?php echo esc_attr( $verdict_class ); ?>"><?php echo esc_html( ucfirst( $verdict ?: 'pending' ) ); ?></span></td>
 							<td><?php echo '' !== $quality_score ? esc_html( $quality_score . '/10' ) : '—'; ?></td>
 							<td><?php echo $generated_at ? esc_html( wp_date( 'M j, g:i A', strtotime( $generated_at ) ) ) : '—'; ?></td>
-							<td class="autoblogger-queue-actions">
-								<button type="button" class="button button-small button-primary autoblogger-approve-btn" data-post-id="<?php echo esc_attr( (string) $post_id ); ?>">
-									<?php esc_html_e( 'Approve', 'autoblogger' ); ?>
+							<td class="prautoblogger-queue-actions">
+								<button type="button" class="button button-small button-primary prautoblogger-approve-btn" data-post-id="<?php echo esc_attr( (string) $post_id ); ?>">
+									<?php esc_html_e( 'Approve', 'prautoblogger' ); ?>
 								</button>
 								<a href="<?php echo esc_url( get_edit_post_link( $post_id ) ); ?>" class="button button-small">
-									<?php esc_html_e( 'Edit', 'autoblogger' ); ?>
+									<?php esc_html_e( 'Edit', 'prautoblogger' ); ?>
 								</a>
 								<a href="<?php echo esc_url( get_preview_post_link( $post_id ) ); ?>" class="button button-small" target="_blank">
-									<?php esc_html_e( 'Preview', 'autoblogger' ); ?>
+									<?php esc_html_e( 'Preview', 'prautoblogger' ); ?>
 								</a>
-								<button type="button" class="button button-small autoblogger-reject-btn" data-post-id="<?php echo esc_attr( (string) $post_id ); ?>">
-									<?php esc_html_e( 'Reject', 'autoblogger' ); ?>
+								<button type="button" class="button button-small prautoblogger-reject-btn" data-post-id="<?php echo esc_attr( (string) $post_id ); ?>">
+									<?php esc_html_e( 'Reject', 'prautoblogger' ); ?>
 								</button>
 							</td>
 						</tr>
@@ -138,7 +138,7 @@ $bulk_type = isset( $_GET['autoblogger_bulk_type'] ) ? sanitize_text_field( wp_u
 		$total_pages = $query->max_num_pages;
 		if ( $total_pages > 1 ) :
 			$current_page = isset( $_GET['paged'] ) ? absint( $_GET['paged'] ) : 1;
-			echo '<div class="autoblogger-pagination">';
+			echo '<div class="prautoblogger-pagination">';
 			echo wp_kses_post( paginate_links( [
 				'base'      => add_query_arg( 'paged', '%#%' ),
 				'format'    => '',

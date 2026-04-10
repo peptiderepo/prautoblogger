@@ -1,19 +1,19 @@
 <?php
 /**
- * Plugin Name: AutoBlogger Deploy Receiver
+ * Plugin Name: PRAutoBlogger Deploy Receiver
  * Description: REST endpoint that accepts authenticated plugin zip uploads for automated deployment.
  * Version:     1.0.0
- * Author:      AutoBlogger CI/CD
+ * Author:      PRAutoBlogger CI/CD
  *
  * INSTALLATION:
- *   1. Upload this file to wp-content/mu-plugins/autoblogger-deploy-receiver.php
+ *   1. Upload this file to wp-content/mu-plugins/prautoblogger-deploy-receiver.php
  *   2. Add to wp-config.php (above "That's all, stop editing!"):
- *        define('AUTOBLOGGER_DEPLOY_KEY', 'your-random-64-char-token');
+ *        define('PRAUTOBLOGGER_DEPLOY_KEY', 'your-random-64-char-token');
  *   3. Generate a key: php -r "echo bin2hex(random_bytes(32));"
  *
  * SECURITY:
  *   - Deploy key validated with hash_equals() (timing-safe comparison).
- *   - Only accepts zip files containing autoblogger/autoblogger.php.
+ *   - Only accepts zip files containing prautoblogger/prautoblogger.php.
  *   - Backs up current plugin before extraction; rolls back on failure.
  *   - Rate limited: max 1 deploy per 60 seconds.
  *   - All actions logged to PHP error_log for audit trail.
@@ -25,34 +25,34 @@
 declare(strict_types=1);
 
 // Hard requirement: deploy key must be defined in wp-config.php.
-if ( ! defined( 'AUTOBLOGGER_DEPLOY_KEY' ) || '' === AUTOBLOGGER_DEPLOY_KEY ) {
+if ( ! defined( 'PRAUTOBLOGGER_DEPLOY_KEY' ) || '' === PRAUTOBLOGGER_DEPLOY_KEY ) {
 	return;
 }
 
-add_action( 'rest_api_init', 'autoblogger_deploy_register_route' );
+add_action( 'rest_api_init', 'prautoblogger_deploy_register_route' );
 
 /**
  * Register the deploy REST route.
  */
-function autoblogger_deploy_register_route(): void {
-	register_rest_route( 'autoblogger-deploy/v1', '/deploy', [
+function prautoblogger_deploy_register_route(): void {
+	register_rest_route( 'prautoblogger-deploy/v1', '/deploy', [
 		'methods'             => 'POST',
-		'callback'            => 'autoblogger_deploy_handle',
-		'permission_callback' => 'autoblogger_deploy_check_auth',
+		'callback'            => 'prautoblogger_deploy_handle',
+		'permission_callback' => 'prautoblogger_deploy_check_auth',
 	] );
 
 	// Health check endpoint (GET) — useful for monitoring.
-	register_rest_route( 'autoblogger-deploy/v1', '/status', [
+	register_rest_route( 'prautoblogger-deploy/v1', '/status', [
 		'methods'             => 'GET',
 		'callback'            => function () {
 			return [
 				'status'  => 'ready',
-				'plugin'  => is_dir( WP_PLUGIN_DIR . '/autoblogger' ) ? 'installed' : 'not_installed',
-				'active'  => is_plugin_active( 'autoblogger/autoblogger.php' ),
-				'version' => autoblogger_deploy_get_installed_version(),
+				'plugin'  => is_dir( WP_PLUGIN_DIR . '/prautoblogger' ) ? 'installed' : 'not_installed',
+				'active'  => is_plugin_active( 'prautoblogger/prautoblogger.php' ),
+				'version' => prautoblogger_deploy_get_installed_version(),
 			];
 		},
-		'permission_callback' => 'autoblogger_deploy_check_auth',
+		'permission_callback' => 'prautoblogger_deploy_check_auth',
 	] );
 }
 
@@ -60,20 +60,20 @@ function autoblogger_deploy_register_route(): void {
  * Validate the deploy key from the request header.
  * Uses hash_equals() for timing-safe comparison.
  */
-function autoblogger_deploy_check_auth( WP_REST_Request $request ): bool {
+function prautoblogger_deploy_check_auth( WP_REST_Request $request ): bool {
 	$key = $request->get_header( 'X-Deploy-Key' );
 	if ( null === $key || '' === $key ) {
 		return false;
 	}
-	return hash_equals( (string) AUTOBLOGGER_DEPLOY_KEY, $key );
+	return hash_equals( (string) PRAUTOBLOGGER_DEPLOY_KEY, $key );
 }
 
 /**
  * Handle a deploy request: receive zip, validate, extract, activate.
  */
-function autoblogger_deploy_handle( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+function prautoblogger_deploy_handle( WP_REST_Request $request ): WP_REST_Response|WP_Error {
 	// Rate limit: 1 deploy per 60 seconds.
-	$lock = get_transient( 'autoblogger_deploy_lock' );
+	$lock = get_transient( 'prautoblogger_deploy_lock' );
 	if ( false !== $lock ) {
 		return new WP_Error(
 			'rate_limited',
@@ -81,12 +81,12 @@ function autoblogger_deploy_handle( WP_REST_Request $request ): WP_REST_Response
 			[ 'status' => 429 ]
 		);
 	}
-	set_transient( 'autoblogger_deploy_lock', time(), 60 );
+	set_transient( 'prautoblogger_deploy_lock', time(), 60 );
 
 	// 1. Validate uploaded file exists.
 	$files = $request->get_file_params();
 	if ( empty( $files['plugin']['tmp_name'] ) || ! is_uploaded_file( $files['plugin']['tmp_name'] ) ) {
-		delete_transient( 'autoblogger_deploy_lock' );
+		delete_transient( 'prautoblogger_deploy_lock' );
 		return new WP_Error( 'no_file', 'No plugin zip uploaded.', [ 'status' => 400 ] );
 	}
 
@@ -95,13 +95,13 @@ function autoblogger_deploy_handle( WP_REST_Request $request ): WP_REST_Response
 	// 2. Validate it's a real zip and contains our plugin.
 	$zip = new ZipArchive();
 	if ( true !== $zip->open( $tmp_file ) ) {
-		delete_transient( 'autoblogger_deploy_lock' );
+		delete_transient( 'prautoblogger_deploy_lock' );
 		return new WP_Error( 'invalid_zip', 'Uploaded file is not a valid zip.', [ 'status' => 400 ] );
 	}
 
 	$has_main_file = false;
 	for ( $i = 0; $i < $zip->numFiles; $i++ ) {
-		if ( 'autoblogger/autoblogger.php' === $zip->getNameIndex( $i ) ) {
+		if ( 'prautoblogger/prautoblogger.php' === $zip->getNameIndex( $i ) ) {
 			$has_main_file = true;
 			break;
 		}
@@ -109,40 +109,40 @@ function autoblogger_deploy_handle( WP_REST_Request $request ): WP_REST_Response
 
 	if ( ! $has_main_file ) {
 		$zip->close();
-		delete_transient( 'autoblogger_deploy_lock' );
+		delete_transient( 'prautoblogger_deploy_lock' );
 		return new WP_Error(
 			'invalid_plugin',
-			'Zip must contain autoblogger/autoblogger.php at root.',
+			'Zip must contain prautoblogger/prautoblogger.php at root.',
 			[ 'status' => 400 ]
 		);
 	}
 
 	// 3. Read version from the incoming zip before extraction.
-	$incoming_main = $zip->getFromName( 'autoblogger/autoblogger.php' );
+	$incoming_main = $zip->getFromName( 'prautoblogger/prautoblogger.php' );
 	$incoming_version = 'unknown';
 	if ( $incoming_main && preg_match( '/Version:\s*([0-9]+\.[0-9]+\.[0-9]+)/', $incoming_main, $m ) ) {
 		$incoming_version = $m[1];
 	}
 
-	$plugin_dir = WP_PLUGIN_DIR . '/autoblogger';
+	$plugin_dir = WP_PLUGIN_DIR . '/prautoblogger';
 	$backup_dir = null;
 
 	// 4. Deactivate plugin before file operations (prevent fatal errors).
-	$was_active = is_plugin_active( 'autoblogger/autoblogger.php' );
+	$was_active = is_plugin_active( 'prautoblogger/prautoblogger.php' );
 	if ( $was_active ) {
-		deactivate_plugins( 'autoblogger/autoblogger.php', true );
+		deactivate_plugins( 'prautoblogger/prautoblogger.php', true );
 	}
 
 	// 5. Backup current installation if it exists.
 	if ( is_dir( $plugin_dir ) ) {
-		$backup_dir = WP_PLUGIN_DIR . '/autoblogger-backup-' . time();
+		$backup_dir = WP_PLUGIN_DIR . '/prautoblogger-backup-' . time();
 		if ( ! rename( $plugin_dir, $backup_dir ) ) {
 			$zip->close();
 			// Re-activate if we deactivated.
 			if ( $was_active ) {
-				activate_plugin( 'autoblogger/autoblogger.php' );
+				activate_plugin( 'prautoblogger/prautoblogger.php' );
 			}
-			delete_transient( 'autoblogger_deploy_lock' );
+			delete_transient( 'prautoblogger_deploy_lock' );
 			return new WP_Error( 'backup_failed', 'Could not backup current plugin.', [ 'status' => 500 ] );
 		}
 	}
@@ -151,30 +151,30 @@ function autoblogger_deploy_handle( WP_REST_Request $request ): WP_REST_Response
 	$extract_ok = $zip->extractTo( WP_PLUGIN_DIR );
 	$zip->close();
 
-	if ( ! $extract_ok || ! file_exists( $plugin_dir . '/autoblogger.php' ) ) {
+	if ( ! $extract_ok || ! file_exists( $plugin_dir . '/prautoblogger.php' ) ) {
 		// Rollback: restore backup.
 		if ( $backup_dir && is_dir( $backup_dir ) ) {
 			rename( $backup_dir, $plugin_dir );
 		}
 		if ( $was_active ) {
-			activate_plugin( 'autoblogger/autoblogger.php' );
+			activate_plugin( 'prautoblogger/prautoblogger.php' );
 		}
-		delete_transient( 'autoblogger_deploy_lock' );
-		error_log( '[AutoBlogger Deploy] Extraction failed. Rolled back to previous version.' );
+		delete_transient( 'prautoblogger_deploy_lock' );
+		error_log( '[PRAutoBlogger Deploy] Extraction failed. Rolled back to previous version.' );
 		return new WP_Error( 'extract_failed', 'Zip extraction failed. Rolled back.', [ 'status' => 500 ] );
 	}
 
 	// 7. Activate plugin.
-	$activation_result = activate_plugin( 'autoblogger/autoblogger.php' );
+	$activation_result = activate_plugin( 'prautoblogger/prautoblogger.php' );
 	if ( is_wp_error( $activation_result ) ) {
 		// Activation failed — rollback.
-		autoblogger_deploy_rmdir_recursive( $plugin_dir );
+		prautoblogger_deploy_rmdir_recursive( $plugin_dir );
 		if ( $backup_dir && is_dir( $backup_dir ) ) {
 			rename( $backup_dir, $plugin_dir );
-			activate_plugin( 'autoblogger/autoblogger.php' );
+			activate_plugin( 'prautoblogger/prautoblogger.php' );
 		}
-		delete_transient( 'autoblogger_deploy_lock' );
-		error_log( '[AutoBlogger Deploy] Activation failed: ' . $activation_result->get_error_message() . '. Rolled back.' );
+		delete_transient( 'prautoblogger_deploy_lock' );
+		error_log( '[PRAutoBlogger Deploy] Activation failed: ' . $activation_result->get_error_message() . '. Rolled back.' );
 		return new WP_Error(
 			'activation_failed',
 			'Plugin activation failed: ' . $activation_result->get_error_message() . '. Rolled back.',
@@ -184,12 +184,12 @@ function autoblogger_deploy_handle( WP_REST_Request $request ): WP_REST_Response
 
 	// 8. Clean up backup.
 	if ( $backup_dir && is_dir( $backup_dir ) ) {
-		autoblogger_deploy_rmdir_recursive( $backup_dir );
+		prautoblogger_deploy_rmdir_recursive( $backup_dir );
 	}
 
-	$old_version = autoblogger_deploy_get_installed_version();
+	$old_version = prautoblogger_deploy_get_installed_version();
 	error_log( sprintf(
-		'[AutoBlogger Deploy] Successfully deployed v%s (was: %s) at %s',
+		'[PRAutoBlogger Deploy] Successfully deployed v%s (was: %s) at %s',
 		$incoming_version,
 		$old_version ?: 'fresh install',
 		gmdate( 'Y-m-d H:i:s' )
@@ -198,15 +198,15 @@ function autoblogger_deploy_handle( WP_REST_Request $request ): WP_REST_Response
 	return new WP_REST_Response( [
 		'success' => true,
 		'version' => $incoming_version,
-		'message' => "AutoBlogger v{$incoming_version} deployed and activated.",
+		'message' => "PRAutoBlogger v{$incoming_version} deployed and activated.",
 	], 200 );
 }
 
 /**
  * Get the currently installed plugin version from the main file header.
  */
-function autoblogger_deploy_get_installed_version(): string {
-	$main_file = WP_PLUGIN_DIR . '/autoblogger/autoblogger.php';
+function prautoblogger_deploy_get_installed_version(): string {
+	$main_file = WP_PLUGIN_DIR . '/prautoblogger/prautoblogger.php';
 	if ( ! file_exists( $main_file ) ) {
 		return '';
 	}
@@ -217,7 +217,7 @@ function autoblogger_deploy_get_installed_version(): string {
 /**
  * Recursively delete a directory.
  */
-function autoblogger_deploy_rmdir_recursive( string $dir ): void {
+function prautoblogger_deploy_rmdir_recursive( string $dir ): void {
 	if ( ! is_dir( $dir ) ) {
 		return;
 	}

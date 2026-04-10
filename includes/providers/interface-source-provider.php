@@ -11,7 +11,7 @@ declare(strict_types=1);
  * @see core/class-source-collector.php — Orchestrates collection from all providers.
  * @see CONVENTIONS.md                — "How To: Add a New Source Provider".
  */
-interface Autoblogger_Source_Provider_Interface {
+interface PRAutoBlogger_Source_Provider_Interface {
 
 	/**
 	 * Collect posts/comments from this social platform.
@@ -23,7 +23,7 @@ interface Autoblogger_Source_Provider_Interface {
 	 *     keywords?: string[],
 	 * } $config Source-specific configuration.
 	 *
-	 * @return Autoblogger_Source_Data[] Array of collected data objects.
+	 * @return PRAutoBlogger_Source_Data[] Array of collected data objects.
 	 *
 	 * @throws \RuntimeException On API error after retries exhausted.
 	 */

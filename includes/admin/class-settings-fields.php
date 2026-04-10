@@ -2,18 +2,18 @@
 declare(strict_types=1);
 
 /**
- * Declarative settings fields and sections for the AutoBlogger admin page.
+ * Declarative settings fields and sections for the PRAutoBlogger admin page.
  *
  * Centralizes all field and section definitions in one place, making it trivial
  * to add new settings (just add one array entry). Decoupled from page rendering logic.
  *
- * Triggered by: Autoblogger_Admin_Page::on_register_settings() calls static methods here.
+ * Triggered by: PRAutoBlogger_Admin_Page::on_register_settings() calls static methods here.
  * Dependencies: None — contains only data definitions and static methods.
  *
  * @see admin/class-admin-page.php — Calls get_sections() and get_fields() to register settings.
  * @see CONVENTIONS.md             — "How To: Add a New Admin Setting".
  */
-class Autoblogger_Settings_Fields {
+class PRAutoBlogger_Settings_Fields {
 
 	/**
 	 * Get all settings sections. Each section maps to a tab in the admin UI.
@@ -22,40 +22,40 @@ class Autoblogger_Settings_Fields {
 	 */
 	public static function get_sections(): array {
 		return [
-			'autoblogger_api' => [
-				'title'       => __( 'API Keys', 'autoblogger' ),
+			'prautoblogger_api' => [
+				'title'       => __( 'API Keys', 'prautoblogger' ),
 				'icon'        => 'dashicons-admin-network',
-				'description' => __( 'Connect your external services. Keys are encrypted at rest.', 'autoblogger' ),
+				'description' => __( 'Connect your external services. Keys are encrypted at rest.', 'prautoblogger' ),
 			],
-			'autoblogger_models' => [
-				'title'       => __( 'AI Models', 'autoblogger' ),
+			'prautoblogger_models' => [
+				'title'       => __( 'AI Models', 'prautoblogger' ),
 				'icon'        => 'dashicons-superhero-alt',
-				'description' => __( 'Choose which models power each stage of the pipeline.', 'autoblogger' ),
+				'description' => __( 'Choose which models power each stage of the pipeline.', 'prautoblogger' ),
 			],
-			'autoblogger_content' => [
-				'title'       => __( 'Content', 'autoblogger' ),
+			'prautoblogger_content' => [
+				'title'       => __( 'Content', 'prautoblogger' ),
 				'icon'        => 'dashicons-edit-large',
-				'description' => __( 'Control tone, length, pipeline mode, and topic guardrails.', 'autoblogger' ),
+				'description' => __( 'Control tone, length, pipeline mode, and topic guardrails.', 'prautoblogger' ),
 			],
-			'autoblogger_sources' => [
-				'title'       => __( 'Sources', 'autoblogger' ),
+			'prautoblogger_sources' => [
+				'title'       => __( 'Sources', 'prautoblogger' ),
 				'icon'        => 'dashicons-rss',
-				'description' => __( 'Configure where AutoBlogger finds trending topics.', 'autoblogger' ),
+				'description' => __( 'Configure where PRAutoBlogger finds trending topics.', 'prautoblogger' ),
 			],
-			'autoblogger_schedule' => [
-				'title'       => __( 'Schedule & Budget', 'autoblogger' ),
+			'prautoblogger_schedule' => [
+				'title'       => __( 'Schedule & Budget', 'prautoblogger' ),
 				'icon'        => 'dashicons-calendar-alt',
-				'description' => __( 'Set daily generation schedule, volume, and spending limits.', 'autoblogger' ),
+				'description' => __( 'Set daily generation schedule, volume, and spending limits.', 'prautoblogger' ),
 			],
-			'autoblogger_publishing' => [
-				'title'       => __( 'Publishing', 'autoblogger' ),
+			'prautoblogger_publishing' => [
+				'title'       => __( 'Publishing', 'prautoblogger' ),
 				'icon'        => 'dashicons-megaphone',
-				'description' => __( 'Control how generated content is published.', 'autoblogger' ),
+				'description' => __( 'Control how generated content is published.', 'prautoblogger' ),
 			],
-			'autoblogger_analytics' => [
-				'title'       => __( 'Analytics', 'autoblogger' ),
+			'prautoblogger_analytics' => [
+				'title'       => __( 'Analytics', 'prautoblogger' ),
 				'icon'        => 'dashicons-chart-area',
-				'description' => __( 'Connect Google Analytics 4 for post performance scoring.', 'autoblogger' ),
+				'description' => __( 'Connect Google Analytics 4 for post performance scoring.', 'prautoblogger' ),
 			],
 		];
 	}
@@ -69,222 +69,222 @@ class Autoblogger_Settings_Fields {
 		return [
 			// ── API Keys ────────────────────────────────────────────────
 			[
-				'id'          => 'autoblogger_openrouter_api_key',
-				'label'       => __( 'OpenRouter API Key', 'autoblogger' ),
+				'id'          => 'prautoblogger_openrouter_api_key',
+				'label'       => __( 'OpenRouter API Key', 'prautoblogger' ),
 				'type'        => 'password',
-				'section'     => 'autoblogger_api',
-				'description' => __( 'Get your key at openrouter.ai/keys', 'autoblogger' ),
+				'section'     => 'prautoblogger_api',
+				'description' => __( 'Get your key at openrouter.ai/keys', 'prautoblogger' ),
 				'icon'        => '🔑',
 			],
 			[
-				'id'          => 'autoblogger_reddit_client_id',
-				'label'       => __( 'Reddit Client ID', 'autoblogger' ),
+				'id'          => 'prautoblogger_reddit_client_id',
+				'label'       => __( 'Reddit Client ID', 'prautoblogger' ),
 				'type'        => 'text',
-				'section'     => 'autoblogger_api',
-				'description' => __( 'Create a script app at reddit.com/prefs/apps', 'autoblogger' ),
+				'section'     => 'prautoblogger_api',
+				'description' => __( 'Create a script app at reddit.com/prefs/apps', 'prautoblogger' ),
 				'icon'        => '🤖',
 			],
 			[
-				'id'      => 'autoblogger_reddit_client_secret',
-				'label'   => __( 'Reddit Client Secret', 'autoblogger' ),
+				'id'      => 'prautoblogger_reddit_client_secret',
+				'label'   => __( 'Reddit Client Secret', 'prautoblogger' ),
 				'type'    => 'password',
-				'section' => 'autoblogger_api',
+				'section' => 'prautoblogger_api',
 			],
 
 			// ── AI Models ───────────────────────────────────────────────
 			[
-				'id'          => 'autoblogger_analysis_model',
-				'label'       => __( 'Analysis Model', 'autoblogger' ),
+				'id'          => 'prautoblogger_analysis_model',
+				'label'       => __( 'Analysis Model', 'prautoblogger' ),
 				'type'        => 'text',
-				'section'     => 'autoblogger_models',
-				'default'     => AUTOBLOGGER_DEFAULT_ANALYSIS_MODEL,
-				'description' => __( 'Used for source analysis. Pick a cheap, fast model.', 'autoblogger' ),
-				'badge'       => __( 'Low cost', 'autoblogger' ),
+				'section'     => 'prautoblogger_models',
+				'default'     => PRAUTOBLOGGER_DEFAULT_ANALYSIS_MODEL,
+				'description' => __( 'Used for source analysis. Pick a cheap, fast model.', 'prautoblogger' ),
+				'badge'       => __( 'Low cost', 'prautoblogger' ),
 			],
 			[
-				'id'          => 'autoblogger_writing_model',
-				'label'       => __( 'Writing Model', 'autoblogger' ),
+				'id'          => 'prautoblogger_writing_model',
+				'label'       => __( 'Writing Model', 'prautoblogger' ),
 				'type'        => 'text',
-				'section'     => 'autoblogger_models',
-				'default'     => AUTOBLOGGER_DEFAULT_WRITING_MODEL,
-				'description' => __( 'Used for article generation. Quality matters here.', 'autoblogger' ),
-				'badge'       => __( 'Quality', 'autoblogger' ),
+				'section'     => 'prautoblogger_models',
+				'default'     => PRAUTOBLOGGER_DEFAULT_WRITING_MODEL,
+				'description' => __( 'Used for article generation. Quality matters here.', 'prautoblogger' ),
+				'badge'       => __( 'Quality', 'prautoblogger' ),
 			],
 			[
-				'id'          => 'autoblogger_editor_model',
-				'label'       => __( 'Editor Model', 'autoblogger' ),
+				'id'          => 'prautoblogger_editor_model',
+				'label'       => __( 'Editor Model', 'prautoblogger' ),
 				'type'        => 'text',
-				'section'     => 'autoblogger_models',
-				'default'     => AUTOBLOGGER_DEFAULT_EDITOR_MODEL,
-				'description' => __( 'Used for the chief editor review pass.', 'autoblogger' ),
-				'badge'       => __( 'Quality', 'autoblogger' ),
+				'section'     => 'prautoblogger_models',
+				'default'     => PRAUTOBLOGGER_DEFAULT_EDITOR_MODEL,
+				'description' => __( 'Used for the chief editor review pass.', 'prautoblogger' ),
+				'badge'       => __( 'Quality', 'prautoblogger' ),
 			],
 
 			// ── Content ─────────────────────────────────────────────────
 			[
-				'id'          => 'autoblogger_niche_description',
-				'label'       => __( 'Niche Description', 'autoblogger' ),
+				'id'          => 'prautoblogger_niche_description',
+				'label'       => __( 'Niche Description', 'prautoblogger' ),
 				'type'        => 'textarea',
-				'section'     => 'autoblogger_content',
-				'description' => __( 'Describe your site\'s niche. Guides content analysis and generation.', 'autoblogger' ),
+				'section'     => 'prautoblogger_content',
+				'description' => __( 'Describe your site\'s niche. Guides content analysis and generation.', 'prautoblogger' ),
 			],
 			[
-				'id'      => 'autoblogger_tone',
-				'label'   => __( 'Content Tone', 'autoblogger' ),
+				'id'      => 'prautoblogger_tone',
+				'label'   => __( 'Content Tone', 'prautoblogger' ),
 				'type'    => 'select',
-				'section' => 'autoblogger_content',
+				'section' => 'prautoblogger_content',
 				'default' => 'informational',
 				'options' => [
-					'informational'  => __( 'Informational', 'autoblogger' ),
-					'conversational' => __( 'Conversational', 'autoblogger' ),
-					'professional'   => __( 'Professional', 'autoblogger' ),
-					'casual'         => __( 'Casual', 'autoblogger' ),
-					'authoritative'  => __( 'Authoritative', 'autoblogger' ),
+					'informational'  => __( 'Informational', 'prautoblogger' ),
+					'conversational' => __( 'Conversational', 'prautoblogger' ),
+					'professional'   => __( 'Professional', 'prautoblogger' ),
+					'casual'         => __( 'Casual', 'prautoblogger' ),
+					'authoritative'  => __( 'Authoritative', 'prautoblogger' ),
 				],
 			],
 			[
-				'id'      => 'autoblogger_writing_pipeline',
-				'label'   => __( 'Writing Pipeline', 'autoblogger' ),
+				'id'      => 'prautoblogger_writing_pipeline',
+				'label'   => __( 'Writing Pipeline', 'prautoblogger' ),
 				'type'    => 'select',
-				'section' => 'autoblogger_content',
+				'section' => 'prautoblogger_content',
 				'default' => 'multi_step',
 				'options' => [
-					'multi_step'  => __( 'Multi-step (outline → draft → polish)', 'autoblogger' ),
-					'single_pass' => __( 'Single-pass (one LLM call)', 'autoblogger' ),
+					'multi_step'  => __( 'Multi-step (outline → draft → polish)', 'prautoblogger' ),
+					'single_pass' => __( 'Single-pass (one LLM call)', 'prautoblogger' ),
 				],
 			],
 			[
-				'id'      => 'autoblogger_min_word_count',
-				'label'   => __( 'Min Word Count', 'autoblogger' ),
+				'id'      => 'prautoblogger_min_word_count',
+				'label'   => __( 'Min Word Count', 'prautoblogger' ),
 				'type'    => 'number',
-				'section' => 'autoblogger_content',
+				'section' => 'prautoblogger_content',
 				'default' => 800,
 				'min'     => 200,
 			],
 			[
-				'id'      => 'autoblogger_max_word_count',
-				'label'   => __( 'Max Word Count', 'autoblogger' ),
+				'id'      => 'prautoblogger_max_word_count',
+				'label'   => __( 'Max Word Count', 'prautoblogger' ),
 				'type'    => 'number',
-				'section' => 'autoblogger_content',
+				'section' => 'prautoblogger_content',
 				'default' => 2000,
 				'min'     => 500,
 			],
 			[
-				'id'          => 'autoblogger_topic_exclusions',
-				'label'       => __( 'Topic Exclusions', 'autoblogger' ),
+				'id'          => 'prautoblogger_topic_exclusions',
+				'label'       => __( 'Topic Exclusions', 'prautoblogger' ),
 				'type'        => 'textarea',
-				'section'     => 'autoblogger_content',
-				'description' => __( 'Comma-separated topics to never write about.', 'autoblogger' ),
+				'section'     => 'prautoblogger_content',
+				'description' => __( 'Comma-separated topics to never write about.', 'prautoblogger' ),
 			],
 
 			// ── Sources ─────────────────────────────────────────────────
 			[
-				'id'          => 'autoblogger_target_subreddits',
-				'label'       => __( 'Target Subreddits', 'autoblogger' ),
+				'id'          => 'prautoblogger_target_subreddits',
+				'label'       => __( 'Target Subreddits', 'prautoblogger' ),
 				'type'        => 'textarea',
-				'section'     => 'autoblogger_sources',
-				'description' => __( 'Comma-separated, without r/. E.g.: peptides, Nootropics, biohackers', 'autoblogger' ),
+				'section'     => 'prautoblogger_sources',
+				'description' => __( 'Comma-separated, without r/. E.g.: peptides, Nootropics, biohackers', 'prautoblogger' ),
 			],
 			[
-				'id'          => 'autoblogger_enabled_sources',
-				'label'       => __( 'Enabled Sources', 'autoblogger' ),
+				'id'          => 'prautoblogger_enabled_sources',
+				'label'       => __( 'Enabled Sources', 'prautoblogger' ),
 				'type'        => 'checkboxes',
-				'section'     => 'autoblogger_sources',
+				'section'     => 'prautoblogger_sources',
 				'options'     => [
-					'reddit'    => __( 'Reddit', 'autoblogger' ),
-					'tiktok'    => __( 'TikTok (coming soon)', 'autoblogger' ),
-					'instagram' => __( 'Instagram (coming soon)', 'autoblogger' ),
-					'youtube'   => __( 'YouTube (coming soon)', 'autoblogger' ),
+					'reddit'    => __( 'Reddit', 'prautoblogger' ),
+					'tiktok'    => __( 'TikTok (coming soon)', 'prautoblogger' ),
+					'instagram' => __( 'Instagram (coming soon)', 'prautoblogger' ),
+					'youtube'   => __( 'YouTube (coming soon)', 'prautoblogger' ),
 				],
 				'default'     => '["reddit"]',
-				'description' => __( 'Select which platforms to monitor for topics.', 'autoblogger' ),
+				'description' => __( 'Select which platforms to monitor for topics.', 'prautoblogger' ),
 			],
 
 			// ── Schedule & Budget ───────────────────────────────────────
 			[
-				'id'      => 'autoblogger_daily_article_target',
-				'label'   => __( 'Articles per Day', 'autoblogger' ),
+				'id'      => 'prautoblogger_daily_article_target',
+				'label'   => __( 'Articles per Day', 'prautoblogger' ),
 				'type'    => 'number',
-				'section' => 'autoblogger_schedule',
+				'section' => 'prautoblogger_schedule',
 				'default' => 1,
 				'min'     => 1,
 				'max'     => 10,
 			],
 			[
-				'id'          => 'autoblogger_schedule_time',
-				'label'       => __( 'Generation Time', 'autoblogger' ),
+				'id'          => 'prautoblogger_schedule_time',
+				'label'       => __( 'Generation Time', 'prautoblogger' ),
 				'type'        => 'time',
-				'section'     => 'autoblogger_schedule',
+				'section'     => 'prautoblogger_schedule',
 				'default'     => '03:00',
-				'description' => __( 'Daily generation runs at this time (server timezone).', 'autoblogger' ),
+				'description' => __( 'Daily generation runs at this time (server timezone).', 'prautoblogger' ),
 			],
 			[
-				'id'          => 'autoblogger_monthly_budget_usd',
-				'label'       => __( 'Monthly Budget (USD)', 'autoblogger' ),
+				'id'          => 'prautoblogger_monthly_budget_usd',
+				'label'       => __( 'Monthly Budget (USD)', 'prautoblogger' ),
 				'type'        => 'number',
-				'section'     => 'autoblogger_schedule',
+				'section'     => 'prautoblogger_schedule',
 				'default'     => 50,
 				'min'         => 0,
 				'step'        => '0.01',
-				'description' => __( 'Hard stop when reached. 0 = unlimited.', 'autoblogger' ),
+				'description' => __( 'Hard stop when reached. 0 = unlimited.', 'prautoblogger' ),
 			],
 
 			// ── Publishing ──────────────────────────────────────────────
 			[
-				'id'          => 'autoblogger_auto_publish',
-				'label'       => __( 'Auto-Publish', 'autoblogger' ),
+				'id'          => 'prautoblogger_auto_publish',
+				'label'       => __( 'Auto-Publish', 'prautoblogger' ),
 				'type'        => 'toggle',
-				'section'     => 'autoblogger_publishing',
+				'section'     => 'prautoblogger_publishing',
 				'default'     => '0',
-				'description' => __( 'Automatically publish editor-approved posts. When off, all posts go to the Review Queue as drafts.', 'autoblogger' ),
+				'description' => __( 'Automatically publish editor-approved posts. When off, all posts go to the Review Queue as drafts.', 'prautoblogger' ),
 			],
 			[
-				'id'          => 'autoblogger_default_author',
-				'label'       => __( 'Default Author', 'autoblogger' ),
+				'id'          => 'prautoblogger_default_author',
+				'label'       => __( 'Default Author', 'prautoblogger' ),
 				'type'        => 'author_select',
-				'section'     => 'autoblogger_publishing',
+				'section'     => 'prautoblogger_publishing',
 				'default'     => 0,
-				'description' => __( 'WordPress user assigned as author of generated posts.', 'autoblogger' ),
+				'description' => __( 'WordPress user assigned as author of generated posts.', 'prautoblogger' ),
 			],
 			[
-				'id'          => 'autoblogger_default_category',
-				'label'       => __( 'Default Category', 'autoblogger' ),
+				'id'          => 'prautoblogger_default_category',
+				'label'       => __( 'Default Category', 'prautoblogger' ),
 				'type'        => 'category_select',
-				'section'     => 'autoblogger_publishing',
+				'section'     => 'prautoblogger_publishing',
 				'default'     => 0,
-				'description' => __( 'Fallback category for generated posts.', 'autoblogger' ),
+				'description' => __( 'Fallback category for generated posts.', 'prautoblogger' ),
 			],
 
 			// ── Logging ─────────────────────────────────────────────────
 			[
-				'id'          => 'autoblogger_log_level',
-				'label'       => __( 'Log Level', 'autoblogger' ),
+				'id'          => 'prautoblogger_log_level',
+				'label'       => __( 'Log Level', 'prautoblogger' ),
 				'type'        => 'select',
-				'section'     => 'autoblogger_publishing',
+				'section'     => 'prautoblogger_publishing',
 				'default'     => 'info',
 				'options'     => [
-					'error'   => __( 'Error — only failures', 'autoblogger' ),
-					'warning' => __( 'Warning — errors + warnings', 'autoblogger' ),
-					'info'    => __( 'Info — key events (recommended)', 'autoblogger' ),
-					'debug'   => __( 'Debug — everything (verbose)', 'autoblogger' ),
+					'error'   => __( 'Error — only failures', 'prautoblogger' ),
+					'warning' => __( 'Warning — errors + warnings', 'prautoblogger' ),
+					'info'    => __( 'Info — key events (recommended)', 'prautoblogger' ),
+					'debug'   => __( 'Debug — everything (verbose)', 'prautoblogger' ),
 				],
-				'description' => __( 'Controls detail level in the Activity Log.', 'autoblogger' ),
+				'description' => __( 'Controls detail level in the Activity Log.', 'prautoblogger' ),
 			],
 
 			// ── Analytics ───────────────────────────────────────────────
 			[
-				'id'          => 'autoblogger_ga4_property_id',
-				'label'       => __( 'GA4 Property ID', 'autoblogger' ),
+				'id'          => 'prautoblogger_ga4_property_id',
+				'label'       => __( 'GA4 Property ID', 'prautoblogger' ),
 				'type'        => 'text',
-				'section'     => 'autoblogger_analytics',
-				'description' => __( 'Format: properties/XXXXXXXXX. Leave blank to skip GA4.', 'autoblogger' ),
+				'section'     => 'prautoblogger_analytics',
+				'description' => __( 'Format: properties/XXXXXXXXX. Leave blank to skip GA4.', 'prautoblogger' ),
 			],
 			[
-				'id'          => 'autoblogger_ga4_credentials_json',
-				'label'       => __( 'Service Account JSON', 'autoblogger' ),
+				'id'          => 'prautoblogger_ga4_credentials_json',
+				'label'       => __( 'Service Account JSON', 'prautoblogger' ),
 				'type'        => 'password',
-				'section'     => 'autoblogger_analytics',
-				'description' => __( 'Paste the full JSON key file for a service account with Analytics read access.', 'autoblogger' ),
+				'section'     => 'prautoblogger_analytics',
+				'description' => __( 'Paste the full JSON key file for a service account with Analytics read access.', 'prautoblogger' ),
 			],
 		];
 	}

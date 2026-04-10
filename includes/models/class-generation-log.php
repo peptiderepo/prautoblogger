@@ -7,10 +7,10 @@ declare(strict_types=1);
  * Triggered by: Cost_Tracker creates these; Metrics_Page displays them.
  * Dependencies: None — pure data object.
  *
- * @see core/class-cost-tracker.php    — Writes these to ab_generation_log table.
+ * @see core/class-cost-tracker.php    — Writes these to prab_generation_log table.
  * @see admin/class-metrics-page.php   — Reads and displays these.
  */
-class Autoblogger_Generation_Log {
+class PRAutoBlogger_Generation_Log {
 
 	private int $id;
 	private ?int $post_id;

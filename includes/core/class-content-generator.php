@@ -8,21 +8,21 @@ declare(strict_types=1);
  * - single_pass: One LLM call produces the complete article (cheaper, faster).
  * - multi_step: Outline → Draft → Polish pipeline (higher quality, more cost).
  *
- * Triggered by: Autoblogger::run_generation_pipeline() (step 4).
+ * Triggered by: PRAutoBlogger::run_generation_pipeline() (step 4).
  * Dependencies: LLM_Provider_Interface, Cost_Tracker.
  *
  * @see core/class-chief-editor.php     — Reviews output of this class.
  * @see providers/interface-llm-provider.php — LLM used for generation.
  * @see ARCHITECTURE.md                 — Data flow step 4.
  */
-class Autoblogger_Content_Generator {
+class PRAutoBlogger_Content_Generator {
 
-	private Autoblogger_LLM_Provider_Interface $llm;
-	private Autoblogger_Cost_Tracker $cost_tracker;
+	private PRAutoBlogger_LLM_Provider_Interface $llm;
+	private PRAutoBlogger_Cost_Tracker $cost_tracker;
 
 	public function __construct(
-		Autoblogger_LLM_Provider_Interface $llm,
-		Autoblogger_Cost_Tracker $cost_tracker
+		PRAutoBlogger_LLM_Provider_Interface $llm,
+		PRAutoBlogger_Cost_Tracker $cost_tracker
 	) {
 		$this->llm          = $llm;
 		$this->cost_tracker = $cost_tracker;
@@ -35,23 +35,23 @@ class Autoblogger_Content_Generator {
 	 *
 	 * Side effects: LLM API calls (1-3 depending on mode), cost logging.
 	 *
-	 * @param Autoblogger_Article_Idea $idea The scored idea to generate content for.
+	 * @param PRAutoBlogger_Article_Idea $idea The scored idea to generate content for.
 	 *
 	 * @return string Generated HTML content.
 	 *
 	 * @throws \RuntimeException On generation failure.
 	 */
-	public function generate( Autoblogger_Article_Idea $idea ): string {
-		$mode = get_option( 'autoblogger_writing_pipeline', 'multi_step' );
+	public function generate( PRAutoBlogger_Article_Idea $idea ): string {
+		$mode = get_option( 'prautoblogger_writing_pipeline', 'multi_step' );
 
-		$request = new Autoblogger_Content_Request(
+		$request = new PRAutoBlogger_Content_Request(
 			$idea,
 			$mode,
-			get_option( 'autoblogger_tone', 'informational' ),
-			absint( get_option( 'autoblogger_min_word_count', 800 ) ),
-			absint( get_option( 'autoblogger_max_word_count', 2000 ) ),
-			get_option( 'autoblogger_niche_description', '' ),
-			json_decode( get_option( 'autoblogger_topic_exclusions', '[]' ), true ) ?: []
+			get_option( 'prautoblogger_tone', 'informational' ),
+			absint( get_option( 'prautoblogger_min_word_count', 800 ) ),
+			absint( get_option( 'prautoblogger_max_word_count', 2000 ) ),
+			get_option( 'prautoblogger_niche_description', '' ),
+			json_decode( get_option( 'prautoblogger_topic_exclusions', '[]' ), true ) ?: []
 		);
 
 		if ( 'single_pass' === $mode ) {
@@ -64,12 +64,12 @@ class Autoblogger_Content_Generator {
 	/**
 	 * Single-pass generation: one LLM call produces the complete article.
 	 *
-	 * @param Autoblogger_Content_Request $request
+	 * @param PRAutoBlogger_Content_Request $request
 	 *
 	 * @return string Generated HTML content.
 	 */
-	private function generate_single_pass( Autoblogger_Content_Request $request ): string {
-		$model    = get_option( 'autoblogger_writing_model', AUTOBLOGGER_DEFAULT_WRITING_MODEL );
+	private function generate_single_pass( PRAutoBlogger_Content_Request $request ): string {
+		$model    = get_option( 'prautoblogger_writing_model', PRAUTOBLOGGER_DEFAULT_WRITING_MODEL );
 		$idea     = $request->get_idea();
 
 		$system = $this->build_writer_system_prompt( $request );
@@ -102,12 +102,12 @@ class Autoblogger_Content_Generator {
 	/**
 	 * Multi-step generation: Outline → Draft → Polish.
 	 *
-	 * @param Autoblogger_Content_Request $request
+	 * @param PRAutoBlogger_Content_Request $request
 	 *
 	 * @return string Generated HTML content.
 	 */
-	private function generate_multi_step( Autoblogger_Content_Request $request ): string {
-		$model = get_option( 'autoblogger_writing_model', AUTOBLOGGER_DEFAULT_WRITING_MODEL );
+	private function generate_multi_step( PRAutoBlogger_Content_Request $request ): string {
+		$model = get_option( 'prautoblogger_writing_model', PRAUTOBLOGGER_DEFAULT_WRITING_MODEL );
 
 		// Step 1: Generate outline.
 		$outline = $this->stage_outline( $request, $model );
@@ -124,12 +124,12 @@ class Autoblogger_Content_Generator {
 	/**
 	 * Multi-step stage 1: Generate an article outline.
 	 *
-	 * @param Autoblogger_Content_Request $request
+	 * @param PRAutoBlogger_Content_Request $request
 	 * @param string                      $model
 	 *
 	 * @return string The outline text.
 	 */
-	private function stage_outline( Autoblogger_Content_Request $request, string $model ): string {
+	private function stage_outline( PRAutoBlogger_Content_Request $request, string $model ): string {
 		$idea = $request->get_idea();
 
 		$prompt = sprintf(
@@ -168,13 +168,13 @@ class Autoblogger_Content_Generator {
 	/**
 	 * Multi-step stage 2: Write the full draft from the outline.
 	 *
-	 * @param Autoblogger_Content_Request $request
+	 * @param PRAutoBlogger_Content_Request $request
 	 * @param string                      $outline
 	 * @param string                      $model
 	 *
 	 * @return string Draft HTML content.
 	 */
-	private function stage_draft( Autoblogger_Content_Request $request, string $outline, string $model ): string {
+	private function stage_draft( PRAutoBlogger_Content_Request $request, string $outline, string $model ): string {
 		$prompt = sprintf(
 			"Using this outline, write the full blog post in HTML format.\n\n" .
 			"OUTLINE:\n%s\n\n" .
@@ -213,13 +213,13 @@ class Autoblogger_Content_Generator {
 	/**
 	 * Multi-step stage 3: Polish and refine the draft.
 	 *
-	 * @param Autoblogger_Content_Request $request
+	 * @param PRAutoBlogger_Content_Request $request
 	 * @param string                      $draft
 	 * @param string                      $model
 	 *
 	 * @return string Polished HTML content.
 	 */
-	private function stage_polish( Autoblogger_Content_Request $request, string $draft, string $model ): string {
+	private function stage_polish( PRAutoBlogger_Content_Request $request, string $draft, string $model ): string {
 		$prompt = "Review and polish this blog post draft. Improve:\n" .
 			"1. Flow and readability\n" .
 			"2. SEO optimization (headings, keyword placement)\n" .
@@ -249,11 +249,11 @@ class Autoblogger_Content_Generator {
 	/**
 	 * Build the system prompt shared across all writing stages.
 	 *
-	 * @param Autoblogger_Content_Request $request
+	 * @param PRAutoBlogger_Content_Request $request
 	 *
 	 * @return string
 	 */
-	private function build_writer_system_prompt( Autoblogger_Content_Request $request ): string {
+	private function build_writer_system_prompt( PRAutoBlogger_Content_Request $request ): string {
 		$niche = $request->get_niche_description();
 		$prompt = "You are an expert blog writer";
 		if ( '' !== $niche ) {
@@ -268,11 +268,11 @@ class Autoblogger_Content_Generator {
 	/**
 	 * Build the user prompt for single-pass generation.
 	 *
-	 * @param Autoblogger_Content_Request $request
+	 * @param PRAutoBlogger_Content_Request $request
 	 *
 	 * @return string
 	 */
-	private function build_single_pass_prompt( Autoblogger_Content_Request $request ): string {
+	private function build_single_pass_prompt( PRAutoBlogger_Content_Request $request ): string {
 		$idea = $request->get_idea();
 
 		return sprintf(

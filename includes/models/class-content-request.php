@@ -12,9 +12,9 @@ declare(strict_types=1);
  *
  * @see core/class-content-generator.php — Creates and consumes these.
  */
-class Autoblogger_Content_Request {
+class PRAutoBlogger_Content_Request {
 
-	private Autoblogger_Article_Idea $idea;
+	private PRAutoBlogger_Article_Idea $idea;
 	private string $pipeline_mode;
 	private string $tone;
 	private int $min_word_count;
@@ -23,7 +23,7 @@ class Autoblogger_Content_Request {
 	private array $topic_exclusions;
 
 	public function __construct(
-		Autoblogger_Article_Idea $idea,
+		PRAutoBlogger_Article_Idea $idea,
 		string $pipeline_mode,
 		string $tone,
 		int $min_word_count,
@@ -40,7 +40,7 @@ class Autoblogger_Content_Request {
 		$this->topic_exclusions  = $topic_exclusions;
 	}
 
-	public function get_idea(): Autoblogger_Article_Idea {
+	public function get_idea(): PRAutoBlogger_Article_Idea {
 		return $this->idea;
 	}
 

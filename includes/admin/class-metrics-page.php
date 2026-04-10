@@ -7,26 +7,26 @@ declare(strict_types=1);
  * Shows: monthly spend, daily cost chart, spend by pipeline stage, budget
  * utilization, top/bottom performing posts, and recent generation logs.
  *
- * Triggered by: Autoblogger::register_admin_hooks() on `admin_menu`.
- * Dependencies: Autoblogger_Cost_Tracker.
+ * Triggered by: PRAutoBlogger::register_admin_hooks() on `admin_menu`.
+ * Dependencies: PRAutoBlogger_Cost_Tracker.
  *
- * @see class-autoblogger.php       — Registers the hook.
+ * @see class-prautoblogger.php       — Registers the hook.
  * @see core/class-cost-tracker.php  — Provides cost data.
  */
-class Autoblogger_Metrics_Page {
+class PRAutoBlogger_Metrics_Page {
 
 	/**
-	 * Register the metrics submenu page under AutoBlogger.
+	 * Register the metrics submenu page under PRAutoBlogger.
 	 *
 	 * @return void
 	 */
 	public function on_register_menu(): void {
 		add_submenu_page(
-			'autoblogger-settings',
-			__( 'Metrics & Costs', 'autoblogger' ),
-			__( 'Metrics & Costs', 'autoblogger' ),
+			'prautoblogger-settings',
+			__( 'Metrics & Costs', 'prautoblogger' ),
+			__( 'Metrics & Costs', 'prautoblogger' ),
 			'manage_options',
-			'autoblogger-metrics',
+			'prautoblogger-metrics',
 			[ $this, 'render_page' ]
 		);
 	}
@@ -41,6 +41,6 @@ class Autoblogger_Metrics_Page {
 			return;
 		}
 
-		include AUTOBLOGGER_PLUGIN_DIR . 'templates/admin/metrics-page.php';
+		include PRAUTOBLOGGER_PLUGIN_DIR . 'templates/admin/metrics-page.php';
 	}
 }

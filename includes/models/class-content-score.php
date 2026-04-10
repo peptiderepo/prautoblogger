@@ -10,7 +10,7 @@ declare(strict_types=1);
  * @see core/class-metrics-collector.php — Creates these from WP + GA4 data.
  * @see core/class-content-analyzer.php  — Reads past scores to refine analysis.
  */
-class Autoblogger_Content_Score {
+class PRAutoBlogger_Content_Score {
 
 	private int $id;
 	private int $post_id;

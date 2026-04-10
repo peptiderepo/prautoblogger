@@ -1,15 +1,15 @@
 /**
- * AutoBlogger admin JavaScript.
+ * PRAutoBlogger admin JavaScript.
  *
  * Handles: tab switching, "Generate Now", "Test Connections", review queue actions.
  * Uses vanilla jQuery (WordPress admin already loads it).
  *
- * @see admin/class-admin-page.php — Localizes autobloggerAdmin object.
+ * @see admin/class-admin-page.php — Localizes prautobloggerAdmin object.
  */
 (function ($) {
 	'use strict';
 
-	var config = window.autobloggerAdmin || {};
+	var config = window.prautobloggerAdmin || {};
 
 	/*
 	 * ── Settings page: tab switching ───────────────────────────────────
@@ -44,7 +44,7 @@
 	 * @param {string} type    'success' or 'error'.
 	 */
 	function showStatus(message, type) {
-		var $el = $('#autoblogger-status-message');
+		var $el = $('#prautoblogger-status-message');
 		$el.removeClass('hidden error')
 			.text(message);
 		if (type === 'error') {
@@ -55,7 +55,7 @@
 	/**
 	 * Handle "Generate Now" button click.
 	 */
-	$(document).on('click', '#autoblogger-generate-now', function () {
+	$(document).on('click', '#prautoblogger-generate-now', function () {
 		var $btn = $(this);
 		if ($btn.prop('disabled')) return;
 
@@ -65,7 +65,7 @@
 			url: config.ajaxUrl,
 			method: 'POST',
 			data: {
-				action: 'autoblogger_generate_now',
+				action: 'prautoblogger_generate_now',
 				nonce: config.generateNonce
 			},
 			timeout: 300000, // 5 minutes — generation can be slow.
@@ -100,7 +100,7 @@
 	/**
 	 * Handle "Test Connections" button click.
 	 */
-	$(document).on('click', '#autoblogger-test-connection', function () {
+	$(document).on('click', '#prautoblogger-test-connection', function () {
 		var $btn = $(this);
 		if ($btn.prop('disabled')) return;
 
@@ -110,7 +110,7 @@
 			url: config.ajaxUrl,
 			method: 'POST',
 			data: {
-				action: 'autoblogger_test_connection',
+				action: 'prautoblogger_test_connection',
 				nonce: config.testNonce,
 				service: 'all'
 			},
@@ -149,7 +149,7 @@
 	 * @param {string} type    'success' or 'error'.
 	 */
 	function showQueueStatus(message, type) {
-		var $el = $('#autoblogger-queue-status');
+		var $el = $('#prautoblogger-queue-status');
 		$el.removeClass('hidden error').text(message);
 		if (type === 'error') {
 			$el.addClass('error');
@@ -159,7 +159,7 @@
 	/**
 	 * Handle inline "Approve" button click on review queue.
 	 */
-	$(document).on('click', '.autoblogger-approve-btn', function () {
+	$(document).on('click', '.prautoblogger-approve-btn', function () {
 		var $btn = $(this);
 		var postId = $btn.data('post-id');
 		if ($btn.prop('disabled')) return;
@@ -170,7 +170,7 @@
 			url: config.ajaxUrl,
 			method: 'POST',
 			data: {
-				action: 'autoblogger_approve_post',
+				action: 'prautoblogger_approve_post',
 				nonce: config.reviewNonce,
 				post_id: postId
 			},
@@ -194,7 +194,7 @@
 	/**
 	 * Handle inline "Reject" button click on review queue.
 	 */
-	$(document).on('click', '.autoblogger-reject-btn', function () {
+	$(document).on('click', '.prautoblogger-reject-btn', function () {
 		var $btn = $(this);
 		var postId = $btn.data('post-id');
 		if ($btn.prop('disabled')) return;
@@ -207,7 +207,7 @@
 			url: config.ajaxUrl,
 			method: 'POST',
 			data: {
-				action: 'autoblogger_reject_post',
+				action: 'prautoblogger_reject_post',
 				nonce: config.reviewNonce,
 				post_id: postId
 			},
@@ -231,8 +231,8 @@
 	/**
 	 * Handle "Select All" checkbox on review queue.
 	 */
-	$(document).on('change', '#autoblogger-select-all', function () {
-		$('input[name="autoblogger_post_ids[]"]').prop('checked', this.checked);
+	$(document).on('change', '#prautoblogger-select-all', function () {
+		$('input[name="prautoblogger_post_ids[]"]').prop('checked', this.checked);
 	});
 
 	/*
@@ -246,7 +246,7 @@
 	});
 
 	/** Clear old logs button. */
-	$(document).on('click', '#autoblogger-clear-logs', function () {
+	$(document).on('click', '#prautoblogger-clear-logs', function () {
 		var $btn = $(this);
 		if ($btn.prop('disabled')) return;
 		if (!confirm('Delete log entries older than 30 days?')) return;
@@ -257,10 +257,10 @@
 		$.ajax({
 			url: config.ajaxUrl,
 			method: 'POST',
-			data: { action: 'autoblogger_clear_logs', nonce: nonce, days: 30 },
+			data: { action: 'prautoblogger_clear_logs', nonce: nonce, days: 30 },
 			timeout: 15000,
 			success: function (response) {
-				var $status = $('#autoblogger-log-status');
+				var $status = $('#prautoblogger-log-status');
 				if (response.success) {
 					$status.removeClass('hidden error').text(response.data.message);
 					setTimeout(function () { window.location.reload(); }, 1200);

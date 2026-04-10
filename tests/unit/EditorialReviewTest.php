@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * Unit tests for Autoblogger_Editorial_Review value object.
+ * Unit tests for PRAutoBlogger_Editorial_Review value object.
  *
  * The editorial review verdict drives the publish/draft/reject decision.
  * A null revised_content on a "revised" verdict caused a bug (now fixed) —
@@ -11,7 +11,7 @@ declare(strict_types=1);
 class EditorialReviewTest extends \PHPUnit\Framework\TestCase {
 
 	public function test_approved_review(): void {
-		$review = new Autoblogger_Editorial_Review( [
+		$review = new PRAutoBlogger_Editorial_Review( [
 			'verdict'       => 'approved',
 			'notes'         => 'Good article, ready to publish.',
 			'quality_score' => 0.85,
@@ -28,7 +28,7 @@ class EditorialReviewTest extends \PHPUnit\Framework\TestCase {
 	}
 
 	public function test_revised_review_with_content(): void {
-		$review = new Autoblogger_Editorial_Review( [
+		$review = new PRAutoBlogger_Editorial_Review( [
 			'verdict'          => 'revised',
 			'notes'            => 'Fixed heading structure.',
 			'revised_content'  => '<h1>Improved Article</h1><p>Better content.</p>',
@@ -49,7 +49,7 @@ class EditorialReviewTest extends \PHPUnit\Framework\TestCase {
 	 * The pipeline handles this with a null-coalesce fallback.
 	 */
 	public function test_revised_verdict_with_null_content(): void {
-		$review = new Autoblogger_Editorial_Review( [
+		$review = new PRAutoBlogger_Editorial_Review( [
 			'verdict'          => 'revised',
 			'notes'            => 'Supposedly revised but no content provided.',
 			'revised_content'  => null,
@@ -60,7 +60,7 @@ class EditorialReviewTest extends \PHPUnit\Framework\TestCase {
 	}
 
 	public function test_rejected_review(): void {
-		$review = new Autoblogger_Editorial_Review( [
+		$review = new PRAutoBlogger_Editorial_Review( [
 			'verdict'       => 'rejected',
 			'notes'         => 'Off-topic and factually inaccurate.',
 			'quality_score' => 0.2,
@@ -74,7 +74,7 @@ class EditorialReviewTest extends \PHPUnit\Framework\TestCase {
 	}
 
 	public function test_default_scores_are_zero(): void {
-		$review = new Autoblogger_Editorial_Review( [
+		$review = new PRAutoBlogger_Editorial_Review( [
 			'verdict' => 'rejected',
 			'notes'   => 'Minimal data.',
 		] );

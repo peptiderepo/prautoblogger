@@ -1,6 +1,6 @@
 <?php
 /**
- * PHPUnit bootstrap for AutoBlogger unit tests.
+ * PHPUnit bootstrap for PRAutoBlogger unit tests.
  *
  * Uses Brain Monkey to mock WordPress functions so tests run without
  * a full WordPress installation. Only loads the classes under test.
@@ -29,24 +29,24 @@ if ( ! defined( 'HOUR_IN_SECONDS' ) ) {
 	define( 'HOUR_IN_SECONDS', 3600 );
 }
 
-// AutoBlogger constants from the main plugin file.
-if ( ! defined( 'AUTOBLOGGER_VERSION' ) ) {
-	define( 'AUTOBLOGGER_VERSION', '0.1.0' );
+// PRAutoBlogger constants from the main plugin file.
+if ( ! defined( 'PRAUTOBLOGGER_VERSION' ) ) {
+	define( 'PRAUTOBLOGGER_VERSION', '0.1.0' );
 }
-if ( ! defined( 'AUTOBLOGGER_MAX_RETRIES' ) ) {
-	define( 'AUTOBLOGGER_MAX_RETRIES', 3 );
+if ( ! defined( 'PRAUTOBLOGGER_MAX_RETRIES' ) ) {
+	define( 'PRAUTOBLOGGER_MAX_RETRIES', 3 );
 }
-if ( ! defined( 'AUTOBLOGGER_RETRY_BASE_DELAY_SECONDS' ) ) {
-	define( 'AUTOBLOGGER_RETRY_BASE_DELAY_SECONDS', 2 );
+if ( ! defined( 'PRAUTOBLOGGER_RETRY_BASE_DELAY_SECONDS' ) ) {
+	define( 'PRAUTOBLOGGER_RETRY_BASE_DELAY_SECONDS', 2 );
 }
-if ( ! defined( 'AUTOBLOGGER_DEFAULT_ANALYSIS_MODEL' ) ) {
-	define( 'AUTOBLOGGER_DEFAULT_ANALYSIS_MODEL', 'anthropic/claude-3.5-haiku' );
+if ( ! defined( 'PRAUTOBLOGGER_DEFAULT_ANALYSIS_MODEL' ) ) {
+	define( 'PRAUTOBLOGGER_DEFAULT_ANALYSIS_MODEL', 'anthropic/claude-3.5-haiku' );
 }
-if ( ! defined( 'AUTOBLOGGER_DEFAULT_WRITING_MODEL' ) ) {
-	define( 'AUTOBLOGGER_DEFAULT_WRITING_MODEL', 'anthropic/claude-sonnet-4' );
+if ( ! defined( 'PRAUTOBLOGGER_DEFAULT_WRITING_MODEL' ) ) {
+	define( 'PRAUTOBLOGGER_DEFAULT_WRITING_MODEL', 'anthropic/claude-sonnet-4' );
 }
-if ( ! defined( 'AUTOBLOGGER_DEFAULT_EDITOR_MODEL' ) ) {
-	define( 'AUTOBLOGGER_DEFAULT_EDITOR_MODEL', 'anthropic/claude-sonnet-4' );
+if ( ! defined( 'PRAUTOBLOGGER_DEFAULT_EDITOR_MODEL' ) ) {
+	define( 'PRAUTOBLOGGER_DEFAULT_EDITOR_MODEL', 'anthropic/claude-sonnet-4' );
 }
 
 // Load plugin class files (no autoloader in tests — explicit includes).

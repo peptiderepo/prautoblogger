@@ -2,21 +2,21 @@
 declare(strict_types=1);
 
 /**
- * Main orchestrator for the AutoBlogger plugin.
+ * Main orchestrator for the PRAutoBlogger plugin.
  *
  * Registers all WordPress hooks (actions and filters) and wires up dependencies.
  * This is the ONLY place hooks are registered — individual classes contain only
  * business logic, not hook registration.
  *
- * Triggered by: autoblogger() singleton in autoblogger.php, called on `plugins_loaded`.
- * Dependencies: All other plugin classes (loaded via autoloader), Autoblogger_Pipeline_Runner.
+ * Triggered by: prautoblogger() singleton in prautoblogger.php, called on `plugins_loaded`.
+ * Dependencies: All other plugin classes (loaded via autoloader), PRAutoBlogger_Pipeline_Runner.
  *
- * @see autoblogger.php                — Plugin bootstrap that instantiates this class.
+ * @see prautoblogger.php                — Plugin bootstrap that instantiates this class.
  * @see core/class-pipeline-runner.php — Executes the generation pipeline.
  * @see ARCHITECTURE.md                — Data flow diagram showing how classes interact.
  * @see CONVENTIONS.md                 — Hook naming conventions.
  */
-class Autoblogger {
+class PRAutoBlogger {
 
 	/**
 	 * Whether the plugin has been initialized.
@@ -52,15 +52,18 @@ class Autoblogger {
 		// Cron hooks — always registered so WP-Cron can fire them.
 		$this->register_cron_hooks();
 
+		// Frontend hooks — shortcode and REST API for public-facing widget.
+		$this->register_frontend_hooks();
+
 		// AJAX hooks — always registered so admin AJAX works.
 		$this->register_ajax_hooks();
 
 		/**
-		 * Fires after AutoBlogger has finished registering all hooks.
+		 * Fires after PRAutoBlogger has finished registering all hooks.
 		 *
-		 * Useful for add-ons that need to hook into AutoBlogger's lifecycle.
+		 * Useful for add-ons that need to hook into PRAutoBlogger's lifecycle.
 		 */
-		do_action( 'autoblogger_loaded' );
+		do_action( 'prautoblogger_loaded' );
 	}
 
 	/**
@@ -69,53 +72,71 @@ class Autoblogger {
 	 * @return void
 	 */
 	private function register_admin_hooks(): void {
-		$admin_page = new Autoblogger_Admin_Page();
+		$admin_page = new PRAutoBlogger_Admin_Page();
 		add_action( 'admin_menu', [ $admin_page, 'on_register_menu' ] );
 		add_action( 'admin_init', [ $admin_page, 'on_register_settings' ] );
 		add_action( 'admin_enqueue_scripts', [ $admin_page, 'on_enqueue_assets' ] );
 
-		$notices = new Autoblogger_Admin_Notices();
+		$notices = new PRAutoBlogger_Admin_Notices();
 		add_action( 'admin_notices', [ $notices, 'on_display_notices' ] );
 
-		$metabox = new Autoblogger_Post_Metabox();
+		$metabox = new PRAutoBlogger_Post_Metabox();
 		add_action( 'add_meta_boxes', [ $metabox, 'on_register_metabox' ] );
 
-		$metrics_page = new Autoblogger_Metrics_Page();
+		$metrics_page = new PRAutoBlogger_Metrics_Page();
 		add_action( 'admin_menu', [ $metrics_page, 'on_register_menu' ] );
 
-		$dashboard_widget = new Autoblogger_Dashboard_Widget();
+		$dashboard_widget = new PRAutoBlogger_Dashboard_Widget();
 		add_action( 'wp_dashboard_setup', [ $dashboard_widget, 'on_register_widget' ] );
 
-		$review_queue = new Autoblogger_Review_Queue();
+		$review_queue = new PRAutoBlogger_Review_Queue();
 		add_action( 'admin_menu', [ $review_queue, 'on_register_menu' ] );
 
-		$log_viewer = new Autoblogger_Log_Viewer();
+		$log_viewer = new PRAutoBlogger_Log_Viewer();
 		add_action( 'admin_menu', [ $log_viewer, 'on_register_menu' ] );
+
+		// Block false update notifications from wordpress.org — our plugin name
+		// collides with a different "PRAutoBlogger" in the plugin directory.
+		add_filter( 'site_transient_update_plugins', [ $this, 'filter_block_false_updates' ] );
+	}
+
+	/**
+	 * Register frontend hooks (shortcode and REST API for posts widget).
+	 *
+	 * The shortcode renders a mount-point div; the React component hydrates it
+	 * on the client side by fetching posts from the REST endpoint.
+	 *
+	 * @return void
+	 */
+	private function register_frontend_hooks(): void {
+		$posts_widget = new PRAutoBlogger_Posts_Widget();
+		add_action( 'init', [ $posts_widget, 'on_register_shortcode' ] );
+		add_action( 'rest_api_init', [ $posts_widget, 'on_register_rest_route' ] );
 	}
 
 	/** Register cron-triggered hooks for scheduled generation and metrics. */
 	private function register_cron_hooks(): void {
-		add_action( 'autoblogger_daily_generation', [ $this, 'on_daily_generation' ] );
-		add_action( 'autoblogger_collect_metrics', [ $this, 'on_collect_metrics' ] );
+		add_action( 'prautoblogger_daily_generation', [ $this, 'on_daily_generation' ] );
+		add_action( 'prautoblogger_collect_metrics', [ $this, 'on_collect_metrics' ] );
 	}
 
 	/** Register AJAX handlers for admin actions. */
 	private function register_ajax_hooks(): void {
-		add_action( 'wp_ajax_autoblogger_generate_now', [ $this, 'on_ajax_generate_now' ] );
-		add_action( 'wp_ajax_autoblogger_test_connection', [ $this, 'on_ajax_test_connection' ] );
+		add_action( 'wp_ajax_prautoblogger_generate_now', [ $this, 'on_ajax_generate_now' ] );
+		add_action( 'wp_ajax_prautoblogger_test_connection', [ $this, 'on_ajax_test_connection' ] );
 
-		$review_queue = new Autoblogger_Review_Queue();
-		add_action( 'wp_ajax_autoblogger_approve_post', [ $review_queue, 'on_ajax_approve_post' ] );
-		add_action( 'wp_ajax_autoblogger_reject_post', [ $review_queue, 'on_ajax_reject_post' ] );
+		$review_queue = new PRAutoBlogger_Review_Queue();
+		add_action( 'wp_ajax_prautoblogger_approve_post', [ $review_queue, 'on_ajax_approve_post' ] );
+		add_action( 'wp_ajax_prautoblogger_reject_post', [ $review_queue, 'on_ajax_reject_post' ] );
 
-		$log_viewer = new Autoblogger_Log_Viewer();
-		add_action( 'wp_ajax_autoblogger_clear_logs', [ $log_viewer, 'on_ajax_clear_logs' ] );
+		$log_viewer = new PRAutoBlogger_Log_Viewer();
+		add_action( 'wp_ajax_prautoblogger_clear_logs', [ $log_viewer, 'on_ajax_clear_logs' ] );
 	}
 
 	/**
 	 * Check if database needs migration after plugin update.
 	 *
-	 * Compares stored DB version with current AUTOBLOGGER_DB_VERSION.
+	 * Compares stored DB version with current PRAUTOBLOGGER_DB_VERSION.
 	 * If different, re-runs activation to apply schema changes via dbDelta.
 	 *
 	 * Side effects: may update database schema and db_version option.
@@ -123,9 +144,9 @@ class Autoblogger {
 	 * @return void
 	 */
 	public function on_check_db_version(): void {
-		$stored_version = get_option( 'autoblogger_db_version', '0' );
-		if ( version_compare( $stored_version, AUTOBLOGGER_DB_VERSION, '<' ) ) {
-			Autoblogger_Activator::activate();
+		$stored_version = get_option( 'prautoblogger_db_version', '0' );
+		if ( version_compare( $stored_version, PRAUTOBLOGGER_DB_VERSION, '<' ) ) {
+			PRAutoBlogger_Activator::activate();
 		}
 	}
 
@@ -137,11 +158,30 @@ class Autoblogger {
 	 * @return array<string, array{interval: int, display: string}> Modified schedules.
 	 */
 	public function filter_add_cron_schedules( array $schedules ): array {
-		$schedules['autoblogger_six_hours'] = [
+		$schedules['prautoblogger_six_hours'] = [
 			'interval' => 6 * HOUR_IN_SECONDS,
-			'display'  => __( 'Every Six Hours', 'autoblogger' ),
+			'display'  => __( 'Every Six Hours', 'prautoblogger' ),
 		];
 		return $schedules;
+	}
+
+	/**
+	 * Block false update notifications from wordpress.org.
+	 *
+	 * Our plugin slug may collide with a different plugin in the directory.
+	 * This filter removes any update notice that wordpress.org might push
+	 * for our plugin basename, since we manage updates via our own CI/CD.
+	 *
+	 * @param object $transient The update_plugins transient data.
+	 *
+	 * @return object Modified transient with our plugin removed from updates.
+	 */
+	public function filter_block_false_updates( $transient ) {
+		$plugin_basename = PRAUTOBLOGGER_PLUGIN_BASENAME;
+		if ( isset( $transient->response[ $plugin_basename ] ) ) {
+			unset( $transient->response[ $plugin_basename ] );
+		}
+		return $transient;
 	}
 
 	/**
@@ -155,14 +195,14 @@ class Autoblogger {
 	 */
 	public function on_daily_generation(): void {
 		if ( ! $this->acquire_generation_lock() ) {
-			Autoblogger_Logger::instance()->info( 'Daily generation skipped: already running (lock held).', 'scheduler' );
+			PRAutoBlogger_Logger::instance()->info( 'Daily generation skipped: already running (lock held).', 'scheduler' );
 			return;
 		}
 
 		try {
-			( new Autoblogger_Pipeline_Runner() )->run();
+			( new PRAutoBlogger_Pipeline_Runner() )->run();
 		} catch ( \Exception $e ) {
-			Autoblogger_Logger::instance()->error( 'Daily generation FAILED: ' . $e->getMessage(), 'scheduler' );
+			PRAutoBlogger_Logger::instance()->error( 'Daily generation FAILED: ' . $e->getMessage(), 'scheduler' );
 		} finally {
 			$this->release_generation_lock();
 		}
@@ -177,10 +217,10 @@ class Autoblogger {
 	 */
 	public function on_collect_metrics(): void {
 		try {
-			$metrics = new Autoblogger_Metrics_Collector();
+			$metrics = new PRAutoBlogger_Metrics_Collector();
 			$metrics->collect_all();
 		} catch ( \Exception $e ) {
-			Autoblogger_Logger::instance()->error( 'Metrics collection FAILED: ' . $e->getMessage(), 'metrics' );
+			PRAutoBlogger_Logger::instance()->error( 'Metrics collection FAILED: ' . $e->getMessage(), 'metrics' );
 		}
 	}
 
@@ -195,23 +235,23 @@ class Autoblogger {
 	 * @return void
 	 */
 	public function on_ajax_generate_now(): void {
-		check_ajax_referer( 'autoblogger_generate_now', 'nonce' );
+		check_ajax_referer( 'prautoblogger_generate_now', 'nonce' );
 
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'autoblogger' ) ], 403 );
+			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'prautoblogger' ) ], 403 );
 			return;
 		}
 
 		if ( ! $this->acquire_generation_lock() ) {
-			wp_send_json_error( [ 'message' => __( 'A generation run is already in progress.', 'autoblogger' ) ] );
+			wp_send_json_error( [ 'message' => __( 'A generation run is already in progress.', 'prautoblogger' ) ] );
 			return;
 		}
 
 		try {
-			$results = ( new Autoblogger_Pipeline_Runner() )->run();
+			$results = ( new PRAutoBlogger_Pipeline_Runner() )->run();
 			wp_send_json_success( $results );
 		} catch ( \Exception $e ) {
-			Autoblogger_Logger::instance()->error( 'Manual generation FAILED: ' . $e->getMessage(), 'pipeline' );
+			PRAutoBlogger_Logger::instance()->error( 'Manual generation FAILED: ' . $e->getMessage(), 'pipeline' );
 			wp_send_json_error( [ 'message' => $e->getMessage() ] );
 		} finally {
 			$this->release_generation_lock();
@@ -220,9 +260,9 @@ class Autoblogger {
 
 	/** AJAX handler: test API connections (OpenRouter, Reddit). */
 	public function on_ajax_test_connection(): void {
-		check_ajax_referer( 'autoblogger_test_connection', 'nonce' );
+		check_ajax_referer( 'prautoblogger_test_connection', 'nonce' );
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'autoblogger' ) ], 403 );
+			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'prautoblogger' ) ], 403 );
 			return;
 		}
 
@@ -230,16 +270,16 @@ class Autoblogger {
 		$results = [];
 
 		if ( 'openrouter' === $service || 'all' === $service ) {
-			$llm    = new Autoblogger_OpenRouter_Provider();
+			$llm    = new PRAutoBlogger_OpenRouter_Provider();
 			$results['openrouter'] = $llm->validate_credentials()
-				? [ 'status' => 'ok', 'message' => __( 'OpenRouter connected.', 'autoblogger' ) ]
-				: [ 'status' => 'error', 'message' => __( 'OpenRouter connection failed. Check your API key.', 'autoblogger' ) ];
+				? [ 'status' => 'ok', 'message' => __( 'OpenRouter connected.', 'prautoblogger' ) ]
+				: [ 'status' => 'error', 'message' => __( 'OpenRouter connection failed. Check your API key.', 'prautoblogger' ) ];
 		}
 		if ( 'reddit' === $service || 'all' === $service ) {
-			$reddit = new Autoblogger_Reddit_Provider();
+			$reddit = new PRAutoBlogger_Reddit_Provider();
 			$results['reddit'] = $reddit->validate_credentials()
-				? [ 'status' => 'ok', 'message' => __( 'Reddit API connected.', 'autoblogger' ) ]
-				: [ 'status' => 'error', 'message' => __( 'Reddit connection failed. Check client ID/secret.', 'autoblogger' ) ];
+				? [ 'status' => 'ok', 'message' => __( 'Reddit API connected.', 'prautoblogger' ) ]
+				: [ 'status' => 'error', 'message' => __( 'Reddit connection failed. Check client ID/secret.', 'prautoblogger' ) ];
 		}
 		wp_send_json_success( $results );
 	}
@@ -255,7 +295,7 @@ class Autoblogger {
 	private function acquire_generation_lock(): bool {
 		global $wpdb;
 
-		$lock_name = 'autoblogger_generation_lock';
+		$lock_name = 'prautoblogger_generation_lock';
 		$now       = (string) time();
 
 		// Clean up expired locks older than 1 hour — prevents permanent deadlock.
@@ -290,7 +330,7 @@ class Autoblogger {
 		$wpdb->query(
 			$wpdb->prepare(
 				"DELETE FROM {$wpdb->options} WHERE option_name = %s",
-				'autoblogger_generation_lock'
+				'prautoblogger_generation_lock'
 			)
 		);
 	}

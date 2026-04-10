@@ -7,13 +7,13 @@ declare(strict_types=1);
  * Manages pricing tables, model lists, and cost estimation. Decoupled from
  * the request logic for easy updates and testing.
  *
- * Triggered by: Autoblogger_OpenRouter_Provider calls pricing methods.
+ * Triggered by: PRAutoBlogger_OpenRouter_Provider calls pricing methods.
  * Dependencies: None — pure data + calculation, no external calls by default.
  *
  * @see providers/class-openrouter-provider.php — Instantiates this class.
  * @see ARCHITECTURE.md                         — Model selection flow.
  */
-class Autoblogger_OpenRouter_Pricing {
+class PRAutoBlogger_OpenRouter_Pricing {
 
 	/**
 	 * Known model pricing (per million tokens, in USD).
@@ -41,7 +41,7 @@ class Autoblogger_OpenRouter_Pricing {
 	 * @return array<int, array{id: string, name: string, context_length: int, pricing: array{prompt: float, completion: float}}>
 	 */
 	public function get_available_models(): array {
-		$cached = get_transient( 'autoblogger_openrouter_models' );
+		$cached = get_transient( 'prautoblogger_openrouter_models' );
 		if ( false !== $cached && is_array( $cached ) ) {
 			return $cached;
 		}
@@ -62,7 +62,7 @@ class Autoblogger_OpenRouter_Pricing {
 		);
 
 		if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
-			Autoblogger_Logger::instance()->warning( 'Failed to fetch OpenRouter models list.', 'openrouter' );
+			PRAutoBlogger_Logger::instance()->warning( 'Failed to fetch OpenRouter models list.', 'openrouter' );
 			return [];
 		}
 
@@ -83,7 +83,7 @@ class Autoblogger_OpenRouter_Pricing {
 			}
 		}
 
-		set_transient( 'autoblogger_openrouter_models', $models, DAY_IN_SECONDS );
+		set_transient( 'prautoblogger_openrouter_models', $models, DAY_IN_SECONDS );
 		return $models;
 	}
 
@@ -114,7 +114,7 @@ class Autoblogger_OpenRouter_Pricing {
 
 		if ( null === $pricing ) {
 			// Unknown model — use a conservative estimate.
-			Autoblogger_Logger::instance()->warning( "Unknown model pricing for '{$model}'. Using conservative estimate.", 'openrouter' );
+			PRAutoBlogger_Logger::instance()->warning( "Unknown model pricing for '{$model}'. Using conservative estimate.", 'openrouter' );
 			$pricing = [ 'prompt' => 10.0, 'completion' => 30.0 ];
 		}
 
@@ -128,10 +128,10 @@ class Autoblogger_OpenRouter_Pricing {
 	 * @return string Decrypted API key, or empty string if not set.
 	 */
 	private function get_api_key(): string {
-		$encrypted = get_option( 'autoblogger_openrouter_api_key', '' );
+		$encrypted = get_option( 'prautoblogger_openrouter_api_key', '' );
 		if ( '' === $encrypted ) {
 			return '';
 		}
-		return Autoblogger_Encryption::decrypt( $encrypted );
+		return PRAutoBlogger_Encryption::decrypt( $encrypted );
 	}
 }

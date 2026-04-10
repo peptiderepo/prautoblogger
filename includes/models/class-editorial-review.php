@@ -10,7 +10,7 @@ declare(strict_types=1);
  * @see core/class-chief-editor.php — Creates these after reviewing content.
  * @see core/class-publisher.php    — Uses verdict to decide publish vs. draft.
  */
-class Autoblogger_Editorial_Review {
+class PRAutoBlogger_Editorial_Review {
 
 	private string $verdict;
 	private string $notes;
