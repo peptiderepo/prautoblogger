@@ -1,0 +1,19 @@
+{
+	"name": "peptiderepo/autoblogger",
+	"description": "WordPress plugin that auto-researches and publishes blog content using AI.",
+	"type": "wordpress-plugin",
+	"license": "GPL-2.0-or-later",
+	"require": {
+		"php": ">=7.4"
+	},
+	"require-dev": {
+		"phpunit/phpunit": "^9.5",
+		"wp-phpunit/wp-phpunit": "^6.0",
+		"brain/monkey": "^2.6"
+	},
+	"autoload": {
+		"classmap": [
+			"includes/"
+		]
+	}
+}

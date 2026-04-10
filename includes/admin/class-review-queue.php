@@ -1,0 +1,203 @@
+<?php
+declare(strict_types=1);
+
+/**
+ * Admin page listing generated draft posts for editorial review.
+ *
+ * Provides approve (publish), edit (opens WP editor), and reject (trash)
+ * actions on each draft. Supports bulk approve/reject via checkboxes.
+ *
+ * Triggered by: Autoblogger::register_admin_hooks() on `admin_menu`.
+ * Dependencies: WordPress WP_Query, post meta API.
+ *
+ * @see class-autoblogger.php          — Registers the hook and AJAX handlers.
+ * @see core/class-publisher.php       — Creates the drafts this page displays.
+ * @see templates/admin/review-queue.php — Renders the HTML.
+ */
+class Autoblogger_Review_Queue {
+
+	/**
+	 * Register the review queue submenu page under AutoBlogger.
+	 *
+	 * @return void
+	 */
+	public function on_register_menu(): void {
+		$hook = add_submenu_page(
+			'autoblogger-settings',
+			__( 'Review Queue', 'autoblogger' ),
+			__( 'Review Queue', 'autoblogger' ),
+			'manage_options',
+			'autoblogger-review-queue',
+			[ $this, 'render_page' ]
+		);
+
+		if ( false !== $hook ) {
+			add_action( "load-{$hook}", [ $this, 'on_handle_bulk_actions' ] );
+		}
+	}
+
+	/**
+	 * Render the review queue page.
+	 *
+	 * @return void
+	 */
+	public function render_page(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$paged = isset( $_GET['paged'] ) ? absint( $_GET['paged'] ) : 1;
+		$query = $this->get_pending_posts( $paged );
+
+		include AUTOBLOGGER_PLUGIN_DIR . 'templates/admin/review-queue.php';
+	}
+
+	/**
+	 * Query generated draft posts awaiting review.
+	 *
+	 * @param int $paged Page number.
+	 *
+	 * @return \WP_Query
+	 */
+	public function get_pending_posts( int $paged = 1 ): \WP_Query {
+		return new \WP_Query( [
+			'post_type'      => 'post',
+			'post_status'    => 'draft',
+			'posts_per_page' => 20,
+			'paged'          => $paged,
+			'meta_query'     => [
+				[
+					'key'   => '_autoblogger_generated',
+					'value' => '1',
+				],
+			],
+			'orderby'        => 'date',
+			'order'          => 'DESC',
+		] );
+	}
+
+	/**
+	 * Handle bulk approve/reject actions submitted via form POST.
+	 *
+	 * Verifies nonce and capability before processing. Redirects back with
+	 * a status message query arg.
+	 *
+	 * Side effects: changes post status, may trash posts.
+	 *
+	 * @return void
+	 */
+	public function on_handle_bulk_actions(): void {
+		if ( ! isset( $_POST['autoblogger_bulk_action'] ) ) {
+			return;
+		}
+
+		check_admin_referer( 'autoblogger_review_queue_bulk', 'autoblogger_review_nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$action   = sanitize_text_field( wp_unslash( $_POST['autoblogger_bulk_action'] ) );
+		$post_ids = isset( $_POST['autoblogger_post_ids'] ) && is_array( $_POST['autoblogger_post_ids'] )
+			? array_map( 'absint', $_POST['autoblogger_post_ids'] )
+			: [];
+
+		if ( empty( $post_ids ) ) {
+			return;
+		}
+
+		$count = 0;
+		foreach ( $post_ids as $post_id ) {
+			if ( $post_id <= 0 ) {
+				continue;
+			}
+
+			if ( 'approve' === $action ) {
+				$result = wp_update_post( [ 'ID' => $post_id, 'post_status' => 'publish' ], true );
+				if ( ! is_wp_error( $result ) ) {
+					update_post_meta( $post_id, '_autoblogger_approved_at', gmdate( 'c' ) );
+					$count++;
+				}
+			} elseif ( 'reject' === $action ) {
+				$result = wp_trash_post( $post_id );
+				if ( false !== $result ) {
+					$count++;
+				}
+			}
+		}
+
+		$redirect = add_query_arg(
+			[
+				'page'                  => 'autoblogger-review-queue',
+				'autoblogger_bulk_done' => $count,
+				'autoblogger_bulk_type' => $action,
+			],
+			admin_url( 'admin.php' )
+		);
+
+		wp_safe_redirect( $redirect );
+		exit;
+	}
+
+	/**
+	 * AJAX handler: approve a single post (publish it).
+	 *
+	 * Side effects: changes post status to 'publish'.
+	 *
+	 * @return void
+	 */
+	public function on_ajax_approve_post(): void {
+		check_ajax_referer( 'autoblogger_review_queue', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'autoblogger' ) ], 403 );
+			return;
+		}
+
+		$post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
+		if ( $post_id <= 0 ) {
+			wp_send_json_error( [ 'message' => __( 'Invalid post ID.', 'autoblogger' ) ] );
+			return;
+		}
+
+		$result = wp_update_post( [ 'ID' => $post_id, 'post_status' => 'publish' ], true );
+
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error( [ 'message' => $result->get_error_message() ] );
+			return;
+		}
+
+		update_post_meta( $post_id, '_autoblogger_approved_at', gmdate( 'c' ) );
+		wp_send_json_success( [ 'message' => __( 'Post published.', 'autoblogger' ), 'post_id' => $post_id ] );
+	}
+
+	/**
+	 * AJAX handler: reject a single post (trash it).
+	 *
+	 * Side effects: trashes the post.
+	 *
+	 * @return void
+	 */
+	public function on_ajax_reject_post(): void {
+		check_ajax_referer( 'autoblogger_review_queue', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'autoblogger' ) ], 403 );
+			return;
+		}
+
+		$post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
+		if ( $post_id <= 0 ) {
+			wp_send_json_error( [ 'message' => __( 'Invalid post ID.', 'autoblogger' ) ] );
+			return;
+		}
+
+		$result = wp_trash_post( $post_id );
+		if ( false === $result || null === $result ) {
+			wp_send_json_error( [ 'message' => __( 'Failed to reject post.', 'autoblogger' ) ] );
+			return;
+		}
+
+		wp_send_json_success( [ 'message' => __( 'Post rejected.', 'autoblogger' ), 'post_id' => $post_id ] );
+	}
+}

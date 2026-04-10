@@ -1,0 +1,90 @@
+<?php
+declare(strict_types=1);
+
+/**
+ * Fired when the plugin is uninstalled (deleted) from WordPress.
+ *
+ * Removes ALL plugin data: custom tables, options, post meta, transients, and cron events.
+ * This is the nuclear option — only runs when the user explicitly deletes the plugin.
+ *
+ * @see class-deactivator.php — Lighter cleanup on deactivation (preserves data).
+ */
+
+// Abort if not called by WordPress uninstall process.
+if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
+	exit;
+}
+
+global $wpdb;
+
+/*
+|--------------------------------------------------------------------------
+| 1. Drop Custom Tables
+|--------------------------------------------------------------------------
+*/
+
+$prefix = $wpdb->prefix . 'autoblogger_';
+$tables = [
+	$prefix . 'source_data',
+	$prefix . 'analysis_results',
+	$prefix . 'generation_log',
+	$prefix . 'content_scores',
+	$prefix . 'event_log',
+];
+
+foreach ( $tables as $table ) {
+	// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table names are hardcoded above, not user input.
+	$wpdb->query( "DROP TABLE IF EXISTS {$table}" );
+}
+
+/*
+|--------------------------------------------------------------------------
+| 2. Delete All Plugin Options
+|--------------------------------------------------------------------------
+*/
+
+$options = $wpdb->get_col(
+	"SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE 'autoblogger\_%'"
+);
+
+foreach ( $options as $option ) {
+	delete_option( $option );
+}
+
+/*
+|--------------------------------------------------------------------------
+| 3. Delete All Plugin Post Meta
+|--------------------------------------------------------------------------
+*/
+
+$wpdb->query(
+	"DELETE FROM {$wpdb->postmeta} WHERE meta_key LIKE '\\_autoblogger\\_%'"
+);
+
+/*
+|--------------------------------------------------------------------------
+| 4. Delete All Plugin Transients
+|--------------------------------------------------------------------------
+*/
+
+$wpdb->query(
+	"DELETE FROM {$wpdb->options} WHERE option_name LIKE '\\_transient\\_autoblogger\\_%' OR option_name LIKE '\\_transient\\_timeout\\_autoblogger\\_%'"
+);
+
+/*
+|--------------------------------------------------------------------------
+| 5. Clear Any Remaining Cron Events
+|--------------------------------------------------------------------------
+*/
+
+$hooks = [
+	'autoblogger_daily_generation',
+	'autoblogger_collect_metrics',
+];
+
+foreach ( $hooks as $hook ) {
+	$timestamp = wp_next_scheduled( $hook );
+	if ( false !== $timestamp ) {
+		wp_unschedule_event( $timestamp, $hook );
+	}
+}
