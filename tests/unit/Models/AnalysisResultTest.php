@@ -11,59 +11,116 @@ use PRAutoBlogger\Tests\BaseTestCase;
 
 class AnalysisResultTest extends BaseTestCase {
 
-    protected function setUp(): void {
-        parent::setUp();
-        require_once PRAB_PLUGIN_DIR . 'includes/models/class-prab-analysis-result.php';
+    /**
+     * Test construction with array.
+     */
+    public function test_constructor_with_array(): void {
+        $data = $this->get_analysis_result_fixture();
+
+        $result = new \PRAutoBlogger_Analysis_Result( $data );
+
+        $this->assertSame( 1, $result->get_id() );
+        $this->assertSame( 'trending_topic', $result->get_analysis_type() );
+        $this->assertSame( 'Test Topic', $result->get_topic() );
+        $this->assertSame( 'This is a summary.', $result->get_summary() );
+        $this->assertSame( 10, $result->get_frequency() );
+        $this->assertSame( 0.85, $result->get_relevance_score() );
+        $this->assertSame( [ 1, 2, 3 ], $result->get_source_ids() );
+        $this->assertSame( '2026-04-12 10:00:00', $result->get_analyzed_at() );
+        $this->assertSame( [ 'key' => 'value' ], $result->get_metadata() );
     }
 
     /**
-     * Test construction with valid analysis data.
+     * Test getters return correct types.
      */
-    public function test_constructor_sets_all_properties(): void {
+    public function test_getters_return_correct_types(): void {
         $result = new \PRAutoBlogger_Analysis_Result(
-            'peptide-research',
-            [ 'BPC-157', 'healing' ],
-            8,
-            'High relevance to target audience.',
-            [ 'regenerative medicine', 'peptide therapy' ]
+            $this->get_analysis_result_fixture()
         );
 
-        $this->assertSame( 'peptide-research', $result->get_category() );
-        $this->assertSame( [ 'BPC-157', 'healing' ], $result->get_keywords() );
-        $this->assertSame( 8, $result->get_relevance_score() );
-        $this->assertSame( 'High relevance to target audience.', $result->get_summary() );
-        $this->assertSame( [ 'regenerative medicine', 'peptide therapy' ], $result->get_topics() );
+        $this->assertIsInt( $result->get_id() );
+        $this->assertIsString( $result->get_analysis_type() );
+        $this->assertIsString( $result->get_topic() );
+        $this->assertIsString( $result->get_summary() );
+        $this->assertIsInt( $result->get_frequency() );
+        $this->assertIsFloat( $result->get_relevance_score() );
+        $this->assertIsArray( $result->get_source_ids() );
+        $this->assertIsString( $result->get_analyzed_at() );
     }
 
     /**
-     * Test relevance score is clamped between 0 and 10.
+     * Test nullable summary field.
      */
-    public function test_relevance_score_boundaries(): void {
-        $high = new \PRAutoBlogger_Analysis_Result( 'cat', [], 10, 'Max score.', [] );
-        $this->assertSame( 10, $high->get_relevance_score() );
+    public function test_nullable_summary(): void {
+        $data = $this->get_analysis_result_fixture();
+        $data['summary'] = null;
 
-        $low = new \PRAutoBlogger_Analysis_Result( 'cat', [], 0, 'Min score.', [] );
-        $this->assertSame( 0, $low->get_relevance_score() );
+        $result = new \PRAutoBlogger_Analysis_Result( $data );
+
+        $this->assertNull( $result->get_summary() );
     }
 
     /**
-     * Test to_array returns complete representation.
+     * Test nullable metadata field.
      */
-    public function test_to_array_completeness(): void {
+    public function test_nullable_metadata(): void {
+        $data = $this->get_analysis_result_fixture();
+        $data['metadata'] = null;
+
+        $result = new \PRAutoBlogger_Analysis_Result( $data );
+
+        $this->assertNull( $result->get_metadata() );
+    }
+
+    /**
+     * Test to_db_row returns array.
+     */
+    public function test_to_db_row_returns_array(): void {
         $result = new \PRAutoBlogger_Analysis_Result(
-            'news',
-            [ 'test' ],
-            5,
-            'Summary text.',
-            [ 'topic1' ]
+            $this->get_analysis_result_fixture()
         );
 
-        $array = $result->to_array();
-        $this->assertIsArray( $array );
-        $this->assertArrayHasKey( 'category', $array );
-        $this->assertArrayHasKey( 'keywords', $array );
-        $this->assertArrayHasKey( 'relevance_score', $array );
-        $this->assertArrayHasKey( 'summary', $array );
-        $this->assertArrayHasKey( 'topics', $array );
+        $row = $result->to_db_row();
+
+        $this->assertIsArray( $row );
+        $this->assertArrayHasKey( 'analysis_type', $row );
+        $this->assertArrayHasKey( 'topic', $row );
+        $this->assertArrayHasKey( 'frequency', $row );
+    }
+
+    /**
+     * Test with minimal data.
+     */
+    public function test_with_minimal_data(): void {
+        $data = [
+            'id'              => 1,
+            'analysis_type'   => 'topic',
+            'topic'           => 'Test',
+            'summary'         => null,
+            'frequency'       => 0,
+            'relevance_score' => 0.0,
+            'source_ids'      => [],
+            'analyzed_at'     => '2026-04-12 10:00:00',
+            'metadata'        => null,
+        ];
+
+        $result = new \PRAutoBlogger_Analysis_Result( $data );
+
+        $this->assertSame( 1, $result->get_id() );
+        $this->assertSame( 0, $result->get_frequency() );
+        $this->assertEmpty( $result->get_source_ids() );
+    }
+
+    /**
+     * Test source_ids is always an array.
+     */
+    public function test_source_ids_always_array(): void {
+        $data = $this->get_analysis_result_fixture();
+        $data['source_ids'] = [];
+
+        $result = new \PRAutoBlogger_Analysis_Result( $data );
+
+        $this->assertIsArray( $result->get_source_ids() );
+        $this->assertEmpty( $result->get_source_ids() );
     }
 }

@@ -11,63 +11,81 @@ use PRAutoBlogger\Tests\BaseTestCase;
 
 class ArticleIdeaTest extends BaseTestCase {
 
-    protected function setUp(): void {
-        parent::setUp();
-        require_once PRAB_PLUGIN_DIR . 'includes/models/class-prab-article-idea.php';
+    /**
+     * Test construction with array.
+     */
+    public function test_constructor_with_array(): void {
+        $data = $this->get_article_idea_fixture();
+
+        $idea = new \PRAutoBlogger_Article_Idea( $data );
+
+        $this->assertSame( 'Test Article Topic', $idea->get_topic() );
+        $this->assertSame( 'guide', $idea->get_article_type() );
+        $this->assertSame( 'Ultimate Guide to Test Topic', $idea->get_suggested_title() );
+        $this->assertSame( 'A comprehensive guide to test topic.', $idea->get_summary() );
+        $this->assertSame( 0.92, $idea->get_score() );
+        $this->assertSame( 1, $idea->get_analysis_id() );
+        $this->assertSame( [ 1, 2 ], $idea->get_source_ids() );
+        $this->assertSame( [ 'Point 1', 'Point 2', 'Point 3' ], $idea->get_key_points() );
+        $this->assertSame( [ 'test', 'keyword', 'example' ], $idea->get_target_keywords() );
     }
 
     /**
-     * Test construction with full data.
+     * Test getters return correct types.
      */
-    public function test_constructor_sets_all_properties(): void {
+    public function test_getters_return_correct_types(): void {
         $idea = new \PRAutoBlogger_Article_Idea(
-            'The Future of BPC-157 Research',
-            'An in-depth look at recent clinical trials.',
-            [ 'BPC-157', 'clinical trials', 'peptides' ],
-            'peptide-research',
-            85.5
+            $this->get_article_idea_fixture()
         );
 
-        $this->assertSame( 'The Future of BPC-157 Research', $idea->get_title() );
-        $this->assertSame( 'An in-depth look at recent clinical trials.', $idea->get_description() );
-        $this->assertSame( [ 'BPC-157', 'clinical trials', 'peptides' ], $idea->get_keywords() );
-        $this->assertSame( 'peptide-research', $idea->get_category() );
-        $this->assertSame( 85.5, $idea->get_score() );
+        $this->assertIsString( $idea->get_topic() );
+        $this->assertIsString( $idea->get_article_type() );
+        $this->assertIsString( $idea->get_suggested_title() );
+        $this->assertIsString( $idea->get_summary() );
+        $this->assertIsFloat( $idea->get_score() );
+        $this->assertIsInt( $idea->get_analysis_id() );
+        $this->assertIsArray( $idea->get_source_ids() );
+        $this->assertIsArray( $idea->get_key_points() );
+        $this->assertIsArray( $idea->get_target_keywords() );
     }
 
     /**
-     * Test to_array returns all fields.
+     * Test with empty arrays.
      */
-    public function test_to_array_returns_complete_data(): void {
-        $idea = new \PRAutoBlogger_Article_Idea(
-            'Test Title',
-            'Test description.',
-            [ 'kw1' ],
-            'general',
-            50.0
-        );
+    public function test_with_empty_arrays(): void {
+        $data = $this->get_article_idea_fixture();
+        $data['source_ids']      = [];
+        $data['key_points']      = [];
+        $data['target_keywords'] = [];
 
-        $array = $idea->to_array();
-        $this->assertIsArray( $array );
-        $this->assertArrayHasKey( 'title', $array );
-        $this->assertArrayHasKey( 'description', $array );
-        $this->assertArrayHasKey( 'keywords', $array );
-        $this->assertArrayHasKey( 'category', $array );
-        $this->assertArrayHasKey( 'score', $array );
+        $idea = new \PRAutoBlogger_Article_Idea( $data );
+
+        $this->assertEmpty( $idea->get_source_ids() );
+        $this->assertEmpty( $idea->get_key_points() );
+        $this->assertEmpty( $idea->get_target_keywords() );
     }
 
     /**
-     * Test score can be zero.
+     * Test with zero score.
      */
-    public function test_allows_zero_score(): void {
-        $idea = new \PRAutoBlogger_Article_Idea(
-            'Low Score Idea',
-            'Not great.',
-            [],
-            'general',
-            0.0
-        );
+    public function test_with_zero_score(): void {
+        $data = $this->get_article_idea_fixture();
+        $data['score'] = 0.0;
+
+        $idea = new \PRAutoBlogger_Article_Idea( $data );
 
         $this->assertSame( 0.0, $idea->get_score() );
+    }
+
+    /**
+     * Test with high score.
+     */
+    public function test_with_high_score(): void {
+        $data = $this->get_article_idea_fixture();
+        $data['score'] = 1.0;
+
+        $idea = new \PRAutoBlogger_Article_Idea( $data );
+
+        $this->assertSame( 1.0, $idea->get_score() );
     }
 }

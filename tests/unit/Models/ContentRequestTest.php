@@ -11,60 +11,103 @@ use PRAutoBlogger\Tests\BaseTestCase;
 
 class ContentRequestTest extends BaseTestCase {
 
-    protected function setUp(): void {
-        parent::setUp();
-        require_once PRAB_PLUGIN_DIR . 'includes/models/class-prab-content-request.php';
-    }
-
     /**
-     * Test construction with required fields.
+     * Test construction with Article Idea and parameters.
      */
-    public function test_constructor_sets_all_properties(): void {
+    public function test_constructor_with_idea(): void {
+        $idea_data = $this->get_article_idea_fixture();
+        $idea      = new \PRAutoBlogger_Article_Idea( $idea_data );
+
         $request = new \PRAutoBlogger_Content_Request(
-            'Write about BPC-157 benefits',
-            'single_pass',
-            'google/gemini-2.0-flash-001',
-            [ 'tone' => 'informative', 'length' => 'long' ]
+            $idea,
+            'auto',
+            'professional',
+            1000,
+            2500,
+            'Technology and innovation',
+            [ 'politics', 'religion' ]
         );
 
-        $this->assertSame( 'Write about BPC-157 benefits', $request->get_prompt() );
-        $this->assertSame( 'single_pass', $request->get_pipeline_mode() );
-        $this->assertSame( 'google/gemini-2.0-flash-001', $request->get_model() );
-        $this->assertSame( 'informative', $request->get_option( 'tone' ) );
-        $this->assertSame( 'long', $request->get_option( 'length' ) );
+        $this->assertSame( $idea, $request->get_idea() );
+        $this->assertSame( 'auto', $request->get_pipeline_mode() );
+        $this->assertSame( 'professional', $request->get_tone() );
+        $this->assertSame( 1000, $request->get_min_word_count() );
+        $this->assertSame( 2500, $request->get_max_word_count() );
+        $this->assertSame( 'Technology and innovation', $request->get_niche_description() );
+        $this->assertSame( [ 'politics', 'religion' ], $request->get_topic_exclusions() );
     }
 
     /**
-     * Test get_option returns default for missing keys.
+     * Test getters return correct types.
      */
-    public function test_get_option_returns_default_for_missing_key(): void {
+    public function test_getters_return_correct_types(): void {
+        $idea_data = $this->get_article_idea_fixture();
+        $idea      = new \PRAutoBlogger_Article_Idea( $idea_data );
+
         $request = new \PRAutoBlogger_Content_Request(
-            'prompt',
-            'single_pass',
-            'model/name',
+            $idea,
+            'auto',
+            'casual',
+            500,
+            1500,
+            'Niche',
             []
         );
 
-        $this->assertNull( $request->get_option( 'nonexistent' ) );
-        $this->assertSame( 'fallback', $request->get_option( 'nonexistent', 'fallback' ) );
+        $this->assertInstanceOf( \PRAutoBlogger_Article_Idea::class, $request->get_idea() );
+        $this->assertIsString( $request->get_pipeline_mode() );
+        $this->assertIsString( $request->get_tone() );
+        $this->assertIsInt( $request->get_min_word_count() );
+        $this->assertIsInt( $request->get_max_word_count() );
+        $this->assertIsString( $request->get_niche_description() );
+        $this->assertIsArray( $request->get_topic_exclusions() );
     }
 
     /**
-     * Test to_array completeness.
+     * Test with empty topic exclusions.
      */
-    public function test_to_array_returns_all_fields(): void {
+    public function test_with_empty_exclusions(): void {
+        $idea_data = $this->get_article_idea_fixture();
+        $idea      = new \PRAutoBlogger_Article_Idea( $idea_data );
+
         $request = new \PRAutoBlogger_Content_Request(
-            'test prompt',
-            'multi_step',
-            'model/x',
-            [ 'key' => 'val' ]
+            $idea,
+            'auto',
+            'professional',
+            1000,
+            2500,
+            'Tech',
+            []
         );
 
-        $array = $request->to_array();
-        $this->assertIsArray( $array );
-        $this->assertArrayHasKey( 'prompt', $array );
-        $this->assertArrayHasKey( 'pipeline_mode', $array );
-        $this->assertArrayHasKey( 'model', $array );
-        $this->assertArrayHasKey( 'options', $array );
+        $this->assertEmpty( $request->get_topic_exclusions() );
+    }
+
+    /**
+     * Test with different pipeline modes.
+     */
+    public function test_different_pipeline_modes(): void {
+        $idea_data = $this->get_article_idea_fixture();
+        $idea      = new \PRAutoBlogger_Article_Idea( $idea_data );
+
+        $auto = new \PRAutoBlogger_Content_Request( $idea, 'auto', 'professional', 1000, 2500, 'niche', [] );
+        $this->assertSame( 'auto', $auto->get_pipeline_mode() );
+
+        $manual = new \PRAutoBlogger_Content_Request( $idea, 'manual', 'casual', 1000, 2500, 'niche', [] );
+        $this->assertSame( 'manual', $manual->get_pipeline_mode() );
+    }
+
+    /**
+     * Test with different tones.
+     */
+    public function test_different_tones(): void {
+        $idea_data = $this->get_article_idea_fixture();
+        $idea      = new \PRAutoBlogger_Article_Idea( $idea_data );
+
+        $professional = new \PRAutoBlogger_Content_Request( $idea, 'auto', 'professional', 1000, 2500, 'niche', [] );
+        $this->assertSame( 'professional', $professional->get_tone() );
+
+        $casual = new \PRAutoBlogger_Content_Request( $idea, 'auto', 'casual', 1000, 2500, 'niche', [] );
+        $this->assertSame( 'casual', $casual->get_tone() );
     }
 }

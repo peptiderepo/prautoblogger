@@ -11,60 +11,105 @@ use PRAutoBlogger\Tests\BaseTestCase;
 
 class EditorialReviewTest extends BaseTestCase {
 
-    protected function setUp(): void {
-        parent::setUp();
-        require_once PRAB_PLUGIN_DIR . 'includes/models/class-prab-editorial-review.php';
-    }
-
     /**
-     * Test construction with approval.
+     * Test construction with array.
      */
-    public function test_approved_review(): void {
-        $review = new \PRAutoBlogger_Editorial_Review(
-            true,
-            'Content meets quality standards.',
-            8.5,
-            [ 'Good structure', 'Clear language' ],
-            []
-        );
+    public function test_constructor_with_array(): void {
+        $data = $this->get_editorial_review_fixture();
 
-        $this->assertTrue( $review->is_approved() );
-        $this->assertSame( 'Content meets quality standards.', $review->get_feedback() );
-        $this->assertSame( 8.5, $review->get_quality_score() );
-        $this->assertSame( [ 'Good structure', 'Clear language' ], $review->get_strengths() );
+        $review = new \PRAutoBlogger_Editorial_Review( $data );
+
+        $this->assertSame( 'approved', $review->get_verdict() );
+        $this->assertSame( 'Article is well-structured.', $review->get_notes() );
+        $this->assertNull( $review->get_revised_content() );
+        $this->assertSame( 0.88, $review->get_quality_score() );
+        $this->assertSame( 0.92, $review->get_seo_score() );
         $this->assertEmpty( $review->get_issues() );
     }
 
     /**
-     * Test construction with rejection and issues.
+     * Test getters return correct types.
      */
-    public function test_rejected_review_with_issues(): void {
+    public function test_getters_return_correct_types(): void {
         $review = new \PRAutoBlogger_Editorial_Review(
-            false,
-            'Content needs improvement.',
-            4.0,
-            [],
-            [ 'Too short', 'Missing citations', 'Unclear conclusion' ]
+            $this->get_editorial_review_fixture()
         );
 
-        $this->assertFalse( $review->is_approved() );
-        $this->assertCount( 3, $review->get_issues() );
-        $this->assertSame( 4.0, $review->get_quality_score() );
+        $this->assertIsString( $review->get_verdict() );
+        $this->assertIsString( $review->get_notes() );
+        $this->assertIsFloat( $review->get_quality_score() );
+        $this->assertIsFloat( $review->get_seo_score() );
+        $this->assertIsArray( $review->get_issues() );
     }
 
     /**
-     * Test to_array completeness.
+     * Test with revision notes.
      */
-    public function test_to_array_returns_all_fields(): void {
-        $review = new \PRAutoBlogger_Editorial_Review(
-            true, 'OK', 7.0, [ 'Good' ], []
-        );
+    public function test_with_revised_content(): void {
+        $data = $this->get_editorial_review_fixture();
+        $data['revised_content'] = 'Here is the revised article content.';
 
-        $array = $review->to_array();
-        $this->assertArrayHasKey( 'approved', $array );
-        $this->assertArrayHasKey( 'feedback', $array );
-        $this->assertArrayHasKey( 'quality_score', $array );
-        $this->assertArrayHasKey( 'strengths', $array );
-        $this->assertArrayHasKey( 'issues', $array );
+        $review = new \PRAutoBlogger_Editorial_Review( $data );
+
+        $this->assertSame( 'Here is the revised article content.', $review->get_revised_content() );
+    }
+
+    /**
+     * Test with issues.
+     */
+    public function test_with_issues(): void {
+        $data = $this->get_editorial_review_fixture();
+        $data['verdict'] = 'revision_requested';
+        $data['issues']  = [ 'Grammar issue on line 5', 'Missing citation for claim' ];
+
+        $review = new \PRAutoBlogger_Editorial_Review( $data );
+
+        $this->assertSame( 'revision_requested', $review->get_verdict() );
+        $this->assertCount( 2, $review->get_issues() );
+        $this->assertStringContainsString( 'Grammar', $review->get_issues()[0] );
+    }
+
+    /**
+     * Test with rejected verdict.
+     */
+    public function test_with_rejected_verdict(): void {
+        $data = $this->get_editorial_review_fixture();
+        $data['verdict']        = 'rejected';
+        $data['quality_score']  = 0.35;
+        $data['seo_score']      = 0.25;
+        $data['issues']         = [ 'Content is off-topic', 'Poor quality' ];
+
+        $review = new \PRAutoBlogger_Editorial_Review( $data );
+
+        $this->assertSame( 'rejected', $review->get_verdict() );
+        $this->assertLessThan( 0.5, $review->get_quality_score() );
+    }
+
+    /**
+     * Test with perfect scores.
+     */
+    public function test_with_perfect_scores(): void {
+        $data = $this->get_editorial_review_fixture();
+        $data['quality_score'] = 1.0;
+        $data['seo_score']     = 1.0;
+
+        $review = new \PRAutoBlogger_Editorial_Review( $data );
+
+        $this->assertSame( 1.0, $review->get_quality_score() );
+        $this->assertSame( 1.0, $review->get_seo_score() );
+    }
+
+    /**
+     * Test with zero scores.
+     */
+    public function test_with_zero_scores(): void {
+        $data = $this->get_editorial_review_fixture();
+        $data['quality_score'] = 0.0;
+        $data['seo_score']     = 0.0;
+
+        $review = new \PRAutoBlogger_Editorial_Review( $data );
+
+        $this->assertSame( 0.0, $review->get_quality_score() );
+        $this->assertSame( 0.0, $review->get_seo_score() );
     }
 }

@@ -2,16 +2,13 @@
 /**
  * PHPUnit bootstrap for PRAutoBlogger unit tests.
  *
- * Loads Brain\Monkey for WordPress function mocking,
- * then requires the source files under test.
+ * Loads composer autoloader and defines WordPress constants.
+ * Brain\Monkey setup is done in BaseTestCase, not here.
  *
  * @package PRAutoBlogger\Tests
  */
 
 require_once dirname( __DIR__ ) . '/vendor/autoload.php';
-
-// Brain\Monkey sets up Patchwork & function stubs.
-\Brain\Monkey\setUp();
 
 // Define WordPress constants that source files expect.
 if ( ! defined( 'ABSPATH' ) ) {

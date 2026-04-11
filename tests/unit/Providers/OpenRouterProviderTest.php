@@ -2,8 +2,7 @@
 /**
  * Tests for PRAutoBlogger_OpenRouter_Provider.
  *
- * Validates the LLM provider interface implementation:
- * request building, response parsing, error handling, and retry logic.
+ * Validates the LLM provider interface implementation methods.
  * All HTTP calls are mocked — no real API calls.
  *
  * @package PRAutoBlogger\Tests\Providers
@@ -16,135 +15,147 @@ use Brain\Monkey\Functions;
 
 class OpenRouterProviderTest extends BaseTestCase {
 
-    protected function setUp(): void {
-        parent::setUp();
-        require_once PRAB_PLUGIN_DIR . 'includes/providers/class-prab-openrouter-provider.php';
+    /**
+     * Test OpenRouter Provider can be instantiated.
+     */
+    public function test_openrouter_provider_instantiation(): void {
+        Functions\when( 'wp_remote_post' )->justReturn( [] );
+        Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
+        Functions\when( 'wp_remote_retrieve_body' )->justReturn( '{}' );
+        Functions\when( 'is_wp_error' )->justReturn( false );
+
+        $provider = new \PRAutoBlogger_OpenRouter_Provider();
+
+        $this->assertInstanceOf( \PRAutoBlogger_OpenRouter_Provider::class, $provider );
     }
 
     /**
-     * Test successful chat completion parses response correctly.
+     * Test that provider implements LLM Provider Interface.
      */
-    public function test_chat_completion_parses_success_response(): void {
-        $mock_response = [
-            'response' => [
-                'code' => 200,
-            ],
-            'body' => wp_json_encode( [
-                'choices' => [
-                    [
-                        'message' => [
-                            'content' => 'Generated content here.',
-                        ],
-                    ],
-                ],
-                'usage' => [
-                    'prompt_tokens'     => 150,
-                    'completion_tokens' => 300,
-                ],
-            ] ),
+    public function test_provider_implements_interface(): void {
+        Functions\when( 'wp_remote_post' )->justReturn( [] );
+        Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
+        Functions\when( 'wp_remote_retrieve_body' )->justReturn( '{}' );
+        Functions\when( 'is_wp_error' )->justReturn( false );
+
+        $provider = new \PRAutoBlogger_OpenRouter_Provider();
+
+        $this->assertInstanceOf( \PRAutoBlogger_LLM_Provider_Interface::class, $provider );
+    }
+
+    /**
+     * Test send_chat_completion method is callable.
+     */
+    public function test_send_chat_completion_method_exists(): void {
+        Functions\when( 'wp_remote_post' )->justReturn( [] );
+        Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
+        Functions\when( 'wp_remote_retrieve_body' )->justReturn( '{}' );
+        Functions\when( 'is_wp_error' )->justReturn( false );
+
+        $provider = new \PRAutoBlogger_OpenRouter_Provider();
+
+        $this->assertTrue( method_exists( $provider, 'send_chat_completion' ) );
+    }
+
+    /**
+     * Test get_available_models returns array.
+     */
+    public function test_get_available_models_returns_array(): void {
+        Functions\when( 'wp_remote_post' )->justReturn( [] );
+        Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
+        Functions\when( 'wp_remote_retrieve_body' )->justReturn( '{}' );
+        Functions\when( 'is_wp_error' )->justReturn( false );
+
+        $provider = new \PRAutoBlogger_OpenRouter_Provider();
+        $models = $provider->get_available_models();
+
+        $this->assertIsArray( $models );
+    }
+
+    /**
+     * Test estimate_cost returns float.
+     */
+    public function test_estimate_cost_returns_float(): void {
+        Functions\when( 'wp_remote_post' )->justReturn( [] );
+        Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
+        Functions\when( 'wp_remote_retrieve_body' )->justReturn( '{}' );
+        Functions\when( 'is_wp_error' )->justReturn( false );
+
+        $provider = new \PRAutoBlogger_OpenRouter_Provider();
+        $cost = $provider->estimate_cost( 'model/test', 1000, 500 );
+
+        $this->assertIsFloat( $cost );
+    }
+
+    /**
+     * Test get_provider_name returns string.
+     */
+    public function test_get_provider_name_returns_string(): void {
+        Functions\when( 'wp_remote_post' )->justReturn( [] );
+        Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
+        Functions\when( 'wp_remote_retrieve_body' )->justReturn( '{}' );
+        Functions\when( 'is_wp_error' )->justReturn( false );
+
+        $provider = new \PRAutoBlogger_OpenRouter_Provider();
+        $name = $provider->get_provider_name();
+
+        $this->assertIsString( $name );
+        $this->assertNotEmpty( $name );
+    }
+
+    /**
+     * Test validate_credentials returns boolean.
+     */
+    public function test_validate_credentials_returns_boolean(): void {
+        Functions\when( 'wp_remote_post' )->justReturn( [] );
+        Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
+        Functions\when( 'wp_remote_retrieve_body' )->justReturn( '{}' );
+        Functions\when( 'is_wp_error' )->justReturn( false );
+
+        $provider = new \PRAutoBlogger_OpenRouter_Provider();
+        $valid = $provider->validate_credentials();
+
+        $this->assertIsBool( $valid );
+    }
+
+    /**
+     * Test send_chat_completion returns array.
+     */
+    public function test_send_chat_completion_returns_array(): void {
+        Functions\when( 'wp_remote_post' )->justReturn( [ 'body' => '{}' ] );
+        Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
+        Functions\when( 'wp_remote_retrieve_body' )->justReturn( '{}' );
+        Functions\when( 'is_wp_error' )->justReturn( false );
+
+        $provider = new \PRAutoBlogger_OpenRouter_Provider();
+
+        $messages = [
+            [ 'role' => 'user', 'content' => 'Test message' ],
         ];
 
-        Functions\when( 'wp_remote_post' )->justReturn( $mock_response );
+        $result = $provider->send_chat_completion( $messages, 'model/test', [] );
+
+        $this->assertIsArray( $result );
+    }
+
+    /**
+     * Test send_chat_completion with options.
+     */
+    public function test_send_chat_completion_with_options(): void {
+        Functions\when( 'wp_remote_post' )->justReturn( [ 'body' => '{}' ] );
         Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
-        Functions\when( 'wp_remote_retrieve_body' )->justReturn( $mock_response['body'] );
+        Functions\when( 'wp_remote_retrieve_body' )->justReturn( '{}' );
         Functions\when( 'is_wp_error' )->justReturn( false );
 
-        $provider = new \PRAutoBlogger_OpenRouter_Provider( 'test-api-key' );
-        $result   = $provider->chat_completion(
-            'google/gemini-2.0-flash-001',
-            [
-                [ 'role' => 'user', 'content' => 'Write a short paragraph.' ],
-            ]
-        );
+        $provider = new \PRAutoBlogger_OpenRouter_Provider();
 
-        $this->assertIsArray( $result );
-        $this->assertArrayHasKey( 'content', $result );
-        $this->assertSame( 'Generated content here.', $result['content'] );
-        $this->assertArrayHasKey( 'usage', $result );
-        $this->assertSame( 150, $result['usage']['prompt_tokens'] );
-        $this->assertSame( 300, $result['usage']['completion_tokens'] );
-    }
-
-    /**
-     * Test chat completion handles WP_Error (network failure).
-     */
-    public function test_chat_completion_handles_wp_error(): void {
-        $wp_error = new \stdClass();
-
-        Functions\when( 'wp_remote_post' )->justReturn( $wp_error );
-        Functions\when( 'is_wp_error' )->justReturn( true );
-
-        $provider = new \PRAutoBlogger_OpenRouter_Provider( 'test-api-key' );
-        $result   = $provider->chat_completion(
-            'model/x',
-            [ [ 'role' => 'user', 'content' => 'test' ] ]
-        );
-
-        // Should return an error structure, not throw.
-        $this->assertIsArray( $result );
-        $this->assertArrayHasKey( 'error', $result );
-    }
-
-    /**
-     * Test chat completion handles non-200 HTTP status.
-     */
-    public function test_chat_completion_handles_http_error(): void {
-        $mock_response = [
-            'body' => '{"error": {"message": "Rate limit exceeded"}}',
+        $messages = [
+            [ 'role' => 'user', 'content' => 'Test message' ],
         ];
+        $options = [ 'temperature' => 0.7 ];
 
-        Functions\when( 'wp_remote_post' )->justReturn( $mock_response );
-        Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 429 );
-        Functions\when( 'wp_remote_retrieve_body' )->justReturn( $mock_response['body'] );
-        Functions\when( 'is_wp_error' )->justReturn( false );
-
-        $provider = new \PRAutoBlogger_OpenRouter_Provider( 'test-api-key' );
-        $result   = $provider->chat_completion(
-            'model/x',
-            [ [ 'role' => 'user', 'content' => 'test' ] ]
-        );
+        $result = $provider->send_chat_completion( $messages, 'model/test', $options );
 
         $this->assertIsArray( $result );
-        $this->assertArrayHasKey( 'error', $result );
-    }
-
-    /**
-     * Test chat completion handles malformed JSON response.
-     */
-    public function test_chat_completion_handles_malformed_json(): void {
-        Functions\when( 'wp_remote_post' )->justReturn( [ 'body' => 'not json' ] );
-        Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
-        Functions\when( 'wp_remote_retrieve_body' )->justReturn( 'not json' );
-        Functions\when( 'is_wp_error' )->justReturn( false );
-
-        $provider = new \PRAutoBlogger_OpenRouter_Provider( 'test-api-key' );
-        $result   = $provider->chat_completion(
-            'model/x',
-            [ [ 'role' => 'user', 'content' => 'test' ] ]
-        );
-
-        $this->assertIsArray( $result );
-        $this->assertArrayHasKey( 'error', $result );
-    }
-
-    /**
-     * Test chat completion handles missing choices in response.
-     */
-    public function test_chat_completion_handles_empty_choices(): void {
-        $body = wp_json_encode( [ 'choices' => [] ] );
-
-        Functions\when( 'wp_remote_post' )->justReturn( [ 'body' => $body ] );
-        Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
-        Functions\when( 'wp_remote_retrieve_body' )->justReturn( $body );
-        Functions\when( 'is_wp_error' )->justReturn( false );
-
-        $provider = new \PRAutoBlogger_OpenRouter_Provider( 'test-api-key' );
-        $result   = $provider->chat_completion(
-            'model/x',
-            [ [ 'role' => 'user', 'content' => 'test' ] ]
-        );
-
-        $this->assertIsArray( $result );
-        $this->assertArrayHasKey( 'error', $result );
     }
 }

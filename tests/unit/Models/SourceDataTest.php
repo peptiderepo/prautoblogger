@@ -12,62 +12,138 @@ use PRAutoBlogger\Tests\BaseTestCase;
 class SourceDataTest extends BaseTestCase {
 
     /**
-     * Require the class under test.
+     * Test construction with minimal required fields.
      */
-    protected function setUp(): void {
-        parent::setUp();
-        require_once PRAB_PLUGIN_DIR . 'includes/models/class-prab-source-data.php';
+    public function test_constructor_with_array(): void {
+        $this->stub_current_time( '2026-04-12 10:00:00' );
+
+        $data = [
+            'id'              => 1,
+            'source_type'     => 'reddit',
+            'source_id'       => 'post_123',
+            'subreddit'       => 'test_subreddit',
+            'title'           => 'Test Post Title',
+            'content'         => 'This is the post content.',
+            'author'          => 'test_author',
+            'score'           => 100,
+            'comment_count'   => 50,
+            'permalink'       => '/r/test/comments/123',
+            'collected_at'    => '2026-04-12 10:00:00',
+            'metadata'        => [ 'key' => 'value' ],
+        ];
+
+        $source = new \PRAutoBlogger_Source_Data( $data );
+
+        $this->assertSame( 1, $source->get_id() );
+        $this->assertSame( 'reddit', $source->get_source_type() );
+        $this->assertSame( 'post_123', $source->get_source_id() );
+        $this->assertSame( 'test_subreddit', $source->get_subreddit() );
+        $this->assertSame( 'Test Post Title', $source->get_title() );
+        $this->assertSame( 'This is the post content.', $source->get_content() );
+        $this->assertSame( 'test_author', $source->get_author() );
+        $this->assertSame( 100, $source->get_score() );
+        $this->assertSame( 50, $source->get_comment_count() );
+        $this->assertSame( '/r/test/comments/123', $source->get_permalink() );
+        $this->assertSame( '2026-04-12 10:00:00', $source->get_collected_at() );
+        $this->assertSame( [ 'key' => 'value' ], $source->get_metadata() );
     }
 
     /**
-     * Test construction with all required fields.
+     * Test getters return correct types.
      */
-    public function test_constructor_sets_all_properties(): void {
-        $data = new \PRAutoBlogger_Source_Data(
-            'Test Title',
-            'https://example.com/article',
-            'This is the content body.',
-            'rss'
+    public function test_getters_return_correct_types(): void {
+        $this->stub_current_time( '2026-04-12 10:00:00' );
+
+        $source = new \PRAutoBlogger_Source_Data(
+            $this->get_source_data_fixture()
         );
 
-        $this->assertSame( 'Test Title', $data->get_title() );
-        $this->assertSame( 'https://example.com/article', $data->get_url() );
-        $this->assertSame( 'This is the content body.', $data->get_content() );
-        $this->assertSame( 'rss', $data->get_source_type() );
+        $this->assertIsInt( $source->get_id() );
+        $this->assertIsString( $source->get_source_type() );
+        $this->assertIsString( $source->get_source_id() );
+        $this->assertIsString( $source->get_title() );
+        $this->assertIsString( $source->get_content() );
+        $this->assertIsInt( $source->get_score() );
+        $this->assertIsInt( $source->get_comment_count() );
+        $this->assertIsString( $source->get_collected_at() );
     }
 
     /**
-     * Test that to_array returns all fields.
+     * Test nullable fields return null when absent.
      */
-    public function test_to_array_returns_complete_representation(): void {
-        $data = new \PRAutoBlogger_Source_Data(
-            'Array Test',
-            'https://example.com',
-            'Content here.',
-            'manual'
-        );
+    public function test_nullable_fields_return_null(): void {
+        $this->stub_current_time( '2026-04-12 10:00:00' );
 
-        $array = $data->to_array();
+        $data = [
+            'id'              => 1,
+            'source_type'     => 'reddit',
+            'source_id'       => 'post_123',
+            'subreddit'       => null,
+            'title'           => null,
+            'content'         => null,
+            'author'          => null,
+            'score'           => 0,
+            'comment_count'   => 0,
+            'permalink'       => null,
+            'collected_at'    => '2026-04-12 10:00:00',
+            'metadata'        => null,
+        ];
 
-        $this->assertIsArray( $array );
-        $this->assertArrayHasKey( 'title', $array );
-        $this->assertArrayHasKey( 'url', $array );
-        $this->assertArrayHasKey( 'content', $array );
-        $this->assertArrayHasKey( 'source_type', $array );
-        $this->assertSame( 'Array Test', $array['title'] );
+        $source = new \PRAutoBlogger_Source_Data( $data );
+
+        $this->assertNull( $source->get_subreddit() );
+        $this->assertNull( $source->get_title() );
+        $this->assertNull( $source->get_content() );
+        $this->assertNull( $source->get_author() );
+        $this->assertNull( $source->get_permalink() );
+        $this->assertNull( $source->get_metadata() );
     }
 
     /**
-     * Test construction with empty content is allowed.
+     * Test to_db_row returns array representation.
      */
-    public function test_allows_empty_content(): void {
-        $data = new \PRAutoBlogger_Source_Data(
-            'Title Only',
-            'https://example.com',
-            '',
-            'rss'
+    public function test_to_db_row_returns_array(): void {
+        $this->stub_current_time( '2026-04-12 10:00:00' );
+
+        $source = new \PRAutoBlogger_Source_Data(
+            $this->get_source_data_fixture()
         );
 
-        $this->assertSame( '', $data->get_content() );
+        $row = $source->to_db_row();
+
+        $this->assertIsArray( $row );
+        $this->assertArrayHasKey( 'source_type', $row );
+        $this->assertArrayHasKey( 'source_id', $row );
+        $this->assertArrayHasKey( 'title', $row );
+        $this->assertArrayHasKey( 'content', $row );
+    }
+
+    /**
+     * Test with empty/zero values.
+     */
+    public function test_with_empty_values(): void {
+        $this->stub_current_time( '2026-04-12 10:00:00' );
+
+        $data = [
+            'id'              => 0,
+            'source_type'     => '',
+            'source_id'       => '',
+            'subreddit'       => '',
+            'title'           => '',
+            'content'         => '',
+            'author'          => '',
+            'score'           => 0,
+            'comment_count'   => 0,
+            'permalink'       => '',
+            'collected_at'    => '2026-04-12 10:00:00',
+            'metadata'        => [],
+        ];
+
+        $source = new \PRAutoBlogger_Source_Data( $data );
+
+        $this->assertSame( 0, $source->get_id() );
+        $this->assertSame( 0, $source->get_score() );
+        $this->assertSame( 0, $source->get_comment_count() );
+        $this->assertIsArray( $source->get_metadata() );
     }
 }

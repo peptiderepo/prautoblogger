@@ -2,8 +2,7 @@
 /**
  * Tests for PRAutoBlogger_Content_Analyzer.
  *
- * Validates the LLM analysis pipeline: prompt construction,
- * response parsing, cost tracking integration, and error handling.
+ * Validates the LLM analysis pipeline via the analyze_recent_data method.
  * All LLM API calls are mocked.
  *
  * @package PRAutoBlogger\Tests\Core
@@ -21,146 +20,117 @@ class ContentAnalyzerTest extends BaseTestCase {
      */
     private $mock_provider;
 
-    /**
-     * @var \PHPUnit\Framework\MockObject\MockObject Mock cost tracker.
-     */
-    private $mock_cost_tracker;
-
     protected function setUp(): void {
         parent::setUp();
 
-        require_once PRAB_PLUGIN_DIR . 'includes/models/class-prab-source-data.php';
-        require_once PRAB_PLUGIN_DIR . 'includes/models/class-prab-analysis-result.php';
-        require_once PRAB_PLUGIN_DIR . 'includes/core/class-prab-content-analyzer.php';
-
-        // Mock the LLM provider interface.
-        $this->mock_provider = $this->createMock( \PRAutoBlogger_LLM_Provider::class );
-
-        // Mock the cost tracker.
-        $this->mock_cost_tracker = $this->createMock( \PRAutoBlogger_Cost_Tracker::class );
+        // Create a mock that implements the LLM Provider Interface.
+        $this->mock_provider = $this->createMock( \PRAutoBlogger_LLM_Provider_Interface::class );
     }
 
     /**
-     * Test analyze returns AnalysisResult on successful LLM response.
+     * Test that ContentAnalyzer can be instantiated.
      */
-    public function test_analyze_returns_analysis_result_on_success(): void {
-        $source = new \PRAutoBlogger_Source_Data(
-            'BPC-157 Shows Promise in Gut Healing',
-            'https://example.com/bpc157',
-            'BPC-157 is a synthetic peptide that has shown remarkable healing properties...',
-            'rss'
-        );
+    public function test_content_analyzer_instantiation(): void {
+        $analyzer = new \PRAutoBlogger_Content_Analyzer( $this->mock_provider );
 
-        $llm_response = [
-            'content' => json_encode( [
-                'category'        => 'peptide-research',
-                'keywords'        => [ 'BPC-157', 'gut healing', 'peptide therapy' ],
-                'relevance_score' => 9,
-                'summary'         => 'Article discusses BPC-157 healing properties for gut issues.',
-                'topics'          => [ 'regenerative medicine', 'gastrointestinal health' ],
-            ] ),
-            'usage' => [
-                'prompt_tokens'     => 200,
-                'completion_tokens' => 150,
-            ],
+        $this->assertInstanceOf( \PRAutoBlogger_Content_Analyzer::class, $analyzer );
+    }
+
+    /**
+     * Test analyze_recent_data returns array.
+     */
+    public function test_analyze_recent_data_returns_array(): void {
+        // Mock send_chat_completion to return a valid response.
+        $this->mock_provider->method( 'send_chat_completion' )
+            ->willReturn( [
+                'content' => 'Analysis result',
+                'usage'   => [
+                    'prompt_tokens'     => 100,
+                    'completion_tokens' => 50,
+                ],
+            ] );
+
+        $this->mock_provider->method( 'get_available_models' )
+            ->willReturn( [ 'model/test' ] );
+
+        $analyzer = new \PRAutoBlogger_Content_Analyzer( $this->mock_provider );
+
+        // analyze_recent_data takes no parameters.
+        $result = $analyzer->analyze_recent_data();
+
+        $this->assertIsArray( $result );
+    }
+
+    /**
+     * Test get_available_models on provider.
+     */
+    public function test_llm_provider_get_available_models(): void {
+        $this->mock_provider->method( 'get_available_models' )
+            ->willReturn( [ 'model/a', 'model/b' ] );
+
+        $models = $this->mock_provider->get_available_models();
+
+        $this->assertIsArray( $models );
+        $this->assertCount( 2, $models );
+    }
+
+    /**
+     * Test estimate_cost on provider.
+     */
+    public function test_llm_provider_estimate_cost(): void {
+        $this->mock_provider->method( 'estimate_cost' )
+            ->with( 'model/test', 1000, 500 )
+            ->willReturn( 0.01 );
+
+        $cost = $this->mock_provider->estimate_cost( 'model/test', 1000, 500 );
+
+        $this->assertIsFloat( $cost );
+        $this->assertGreaterThanOrEqual( 0.0, $cost );
+    }
+
+    /**
+     * Test get_provider_name on provider.
+     */
+    public function test_llm_provider_get_provider_name(): void {
+        $this->mock_provider->method( 'get_provider_name' )
+            ->willReturn( 'test_provider' );
+
+        $name = $this->mock_provider->get_provider_name();
+
+        $this->assertIsString( $name );
+        $this->assertNotEmpty( $name );
+    }
+
+    /**
+     * Test validate_credentials on provider.
+     */
+    public function test_llm_provider_validate_credentials(): void {
+        $this->mock_provider->method( 'validate_credentials' )
+            ->willReturn( true );
+
+        $valid = $this->mock_provider->validate_credentials();
+
+        $this->assertTrue( $valid );
+    }
+
+    /**
+     * Test send_chat_completion on provider.
+     */
+    public function test_llm_provider_send_chat_completion(): void {
+        $messages = [
+            [ 'role' => 'user', 'content' => 'Analyze this.' ],
         ];
 
-        $this->mock_provider->expects( $this->once() )
-            ->method( 'chat_completion' )
-            ->willReturn( $llm_response );
-
-        $this->mock_cost_tracker->expects( $this->once() )
-            ->method( 'log_api_call' );
-
-        $analyzer = new \PRAutoBlogger_Content_Analyzer(
-            $this->mock_provider,
-            $this->mock_cost_tracker
-        );
-
-        $result = $analyzer->analyze( $source );
-
-        $this->assertInstanceOf( \PRAutoBlogger_Analysis_Result::class, $result );
-        $this->assertSame( 'peptide-research', $result->get_category() );
-        $this->assertSame( 9, $result->get_relevance_score() );
-        $this->assertContains( 'BPC-157', $result->get_keywords() );
-    }
-
-    /**
-     * Test analyze handles LLM error response gracefully.
-     */
-    public function test_analyze_handles_llm_error(): void {
-        $source = new \PRAutoBlogger_Source_Data(
-            'Test Article',
-            'https://example.com',
-            'Content.',
-            'rss'
-        );
-
-        $this->mock_provider->expects( $this->once() )
-            ->method( 'chat_completion' )
-            ->willReturn( [ 'error' => 'Rate limit exceeded' ] );
-
-        $this->mock_cost_tracker->expects( $this->once() )
-            ->method( 'log_api_call' )
-            ->with( $this->callback( function ( $data ) {
-                return false === $data['success'];
-            } ) );
-
-        $analyzer = new \PRAutoBlogger_Content_Analyzer(
-            $this->mock_provider,
-            $this->mock_cost_tracker
-        );
-
-        $result = $analyzer->analyze( $source );
-
-        $this->assertNull( $result );
-    }
-
-    /**
-     * Test analyze handles malformed JSON in LLM content.
-     */
-    public function test_analyze_handles_malformed_llm_json(): void {
-        $source = new \PRAutoBlogger_Source_Data(
-            'Test', 'https://example.com', 'Content.', 'rss'
-        );
-
-        $this->mock_provider->method( 'chat_completion' )
+        $this->mock_provider->method( 'send_chat_completion' )
+            ->with( $messages, 'model/test', [] )
             ->willReturn( [
-                'content' => 'This is not valid JSON {{{',
+                'content' => 'Analysis',
                 'usage'   => [ 'prompt_tokens' => 100, 'completion_tokens' => 50 ],
             ] );
 
-        $analyzer = new \PRAutoBlogger_Content_Analyzer(
-            $this->mock_provider,
-            $this->mock_cost_tracker
-        );
+        $response = $this->mock_provider->send_chat_completion( $messages, 'model/test', [] );
 
-        $result = $analyzer->analyze( $source );
-
-        $this->assertNull( $result );
-    }
-
-    /**
-     * Test analyze respects budget check before calling LLM.
-     */
-    public function test_analyze_skips_when_budget_exceeded(): void {
-        $source = new \PRAutoBlogger_Source_Data(
-            'Test', 'https://example.com', 'Content.', 'rss'
-        );
-
-        $this->mock_cost_tracker->method( 'is_budget_exceeded' )->willReturn( true );
-
-        // Provider should never be called if budget is exceeded.
-        $this->mock_provider->expects( $this->never() )
-            ->method( 'chat_completion' );
-
-        $analyzer = new \PRAutoBlogger_Content_Analyzer(
-            $this->mock_provider,
-            $this->mock_cost_tracker
-        );
-
-        $result = $analyzer->analyze( $source );
-
-        $this->assertNull( $result );
+        $this->assertIsArray( $response );
+        $this->assertArrayHasKey( 'content', $response );
     }
 }

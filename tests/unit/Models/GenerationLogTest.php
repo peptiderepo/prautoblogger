@@ -11,83 +11,125 @@ use PRAutoBlogger\Tests\BaseTestCase;
 
 class GenerationLogTest extends BaseTestCase {
 
-    protected function setUp(): void {
-        parent::setUp();
-        require_once PRAB_PLUGIN_DIR . 'includes/models/class-prab-generation-log.php';
+    /**
+     * Test construction with array.
+     */
+    public function test_constructor_with_array(): void {
+        $data = $this->get_generation_log_fixture();
+
+        $log = new \PRAutoBlogger_Generation_Log( $data );
+
+        $this->assertSame( 1, $log->get_id() );
+        $this->assertSame( 123, $log->get_post_id() );
+        $this->assertSame( 'run_abc123', $log->get_run_id() );
+        $this->assertSame( 'analysis', $log->get_stage() );
+        $this->assertSame( 'openrouter', $log->get_provider() );
+        $this->assertSame( 'openai/gpt-4', $log->get_model() );
+        $this->assertSame( 1000, $log->get_prompt_tokens() );
+        $this->assertSame( 500, $log->get_completion_tokens() );
+        $this->assertSame( 0.02, $log->get_estimated_cost() );
+        $this->assertSame( '{}', $log->get_request_json() );
+        $this->assertSame( 'success', $log->get_response_status() );
+        $this->assertNull( $log->get_error_message() );
+        $this->assertSame( '2026-04-12 10:00:00', $log->get_created_at() );
     }
 
     /**
-     * Test construction with all fields.
+     * Test getters return correct types.
      */
-    public function test_constructor_sets_all_properties(): void {
+    public function test_getters_return_correct_types(): void {
         $log = new \PRAutoBlogger_Generation_Log(
-            'google/gemini-2.0-flash-001',
-            'content_generation',
-            500,
-            1200,
-            0.0034,
-            2.45,
-            true,
-            ''
+            $this->get_generation_log_fixture()
         );
 
-        $this->assertSame( 'google/gemini-2.0-flash-001', $log->get_model() );
-        $this->assertSame( 'content_generation', $log->get_step() );
-        $this->assertSame( 500, $log->get_prompt_tokens() );
-        $this->assertSame( 1200, $log->get_completion_tokens() );
-        $this->assertSame( 0.0034, $log->get_cost() );
-        $this->assertSame( 2.45, $log->get_duration() );
-        $this->assertTrue( $log->is_success() );
-        $this->assertSame( '', $log->get_error() );
+        $this->assertIsInt( $log->get_id() );
+        $this->assertIsInt( $log->get_post_id() );
+        $this->assertIsString( $log->get_run_id() );
+        $this->assertIsString( $log->get_stage() );
+        $this->assertIsString( $log->get_provider() );
+        $this->assertIsString( $log->get_model() );
+        $this->assertIsInt( $log->get_prompt_tokens() );
+        $this->assertIsInt( $log->get_completion_tokens() );
+        $this->assertIsFloat( $log->get_estimated_cost() );
+        $this->assertIsString( $log->get_request_json() );
+        $this->assertIsString( $log->get_response_status() );
+        $this->assertIsString( $log->get_created_at() );
     }
 
     /**
-     * Test failed generation log.
+     * Test with error message.
      */
-    public function test_failed_generation_log(): void {
-        $log = new \PRAutoBlogger_Generation_Log(
-            'anthropic/claude-3-haiku',
-            'analysis',
-            200,
-            0,
-            0.0,
-            0.0,
-            false,
-            'Rate limit exceeded'
-        );
+    public function test_with_error_message(): void {
+        $data = $this->get_generation_log_fixture();
+        $data['response_status'] = 'error';
+        $data['error_message']   = 'API rate limit exceeded';
 
-        $this->assertFalse( $log->is_success() );
-        $this->assertSame( 'Rate limit exceeded', $log->get_error() );
+        $log = new \PRAutoBlogger_Generation_Log( $data );
+
+        $this->assertSame( 'error', $log->get_response_status() );
+        $this->assertSame( 'API rate limit exceeded', $log->get_error_message() );
+    }
+
+    /**
+     * Test with zero tokens.
+     */
+    public function test_with_zero_tokens(): void {
+        $data = $this->get_generation_log_fixture();
+        $data['prompt_tokens']     = 0;
+        $data['completion_tokens'] = 0;
+
+        $log = new \PRAutoBlogger_Generation_Log( $data );
+
+        $this->assertSame( 0, $log->get_prompt_tokens() );
         $this->assertSame( 0, $log->get_completion_tokens() );
     }
 
     /**
-     * Test total tokens calculation.
+     * Test with zero cost.
      */
-    public function test_get_total_tokens(): void {
-        $log = new \PRAutoBlogger_Generation_Log(
-            'model/x', 'step', 300, 700, 0.01, 1.0, true, ''
-        );
+    public function test_with_zero_cost(): void {
+        $data = $this->get_generation_log_fixture();
+        $data['estimated_cost'] = 0.0;
 
-        $this->assertSame( 1000, $log->get_total_tokens() );
+        $log = new \PRAutoBlogger_Generation_Log( $data );
+
+        $this->assertSame( 0.0, $log->get_estimated_cost() );
     }
 
     /**
-     * Test to_array completeness.
+     * Test to_db_row returns array.
      */
-    public function test_to_array_returns_all_fields(): void {
+    public function test_to_db_row_returns_array(): void {
         $log = new \PRAutoBlogger_Generation_Log(
-            'model', 'step', 100, 200, 0.001, 0.5, true, ''
+            $this->get_generation_log_fixture()
         );
 
-        $array = $log->to_array();
-        $this->assertArrayHasKey( 'model', $array );
-        $this->assertArrayHasKey( 'step', $array );
-        $this->assertArrayHasKey( 'prompt_tokens', $array );
-        $this->assertArrayHasKey( 'completion_tokens', $array );
-        $this->assertArrayHasKey( 'cost', $array );
-        $this->assertArrayHasKey( 'duration', $array );
-        $this->assertArrayHasKey( 'success', $array );
-        $this->assertArrayHasKey( 'error', $array );
+        $row = $log->to_db_row();
+
+        $this->assertIsArray( $row );
+        $this->assertArrayHasKey( 'post_id', $row );
+        $this->assertArrayHasKey( 'run_id', $row );
+        $this->assertArrayHasKey( 'stage', $row );
+        $this->assertArrayHasKey( 'provider', $row );
+        $this->assertArrayHasKey( 'model', $row );
+    }
+
+    /**
+     * Test different response statuses.
+     */
+    public function test_different_response_statuses(): void {
+        $data = $this->get_generation_log_fixture();
+
+        $data['response_status'] = 'success';
+        $success = new \PRAutoBlogger_Generation_Log( $data );
+        $this->assertSame( 'success', $success->get_response_status() );
+
+        $data['response_status'] = 'error';
+        $error = new \PRAutoBlogger_Generation_Log( $data );
+        $this->assertSame( 'error', $error->get_response_status() );
+
+        $data['response_status'] = 'timeout';
+        $timeout = new \PRAutoBlogger_Generation_Log( $data );
+        $this->assertSame( 'timeout', $timeout->get_response_status() );
     }
 }
