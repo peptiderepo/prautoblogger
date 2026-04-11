@@ -1,3 +1,4 @@
+@"
 {
 	"name": "peptiderepo/prautoblogger",
 	"description": "WordPress plugin that auto-researches and publishes blog content using AI.",
@@ -15,5 +16,11 @@
 		"classmap": [
 			"includes/"
 		]
+	},
+	"autoload-dev": {
+		"psr-4": {
+			"PRAutoBlogger\\Tests\\": "tests/unit/"
+		}
 	}
 }
+"@ | Set-Content -Path "composer.json" -Encoding UTF8
