@@ -14,6 +14,15 @@ use Brain\Monkey\Functions;
 
 class IdeaScorerTest extends BaseTestCase {
 
+    protected function setUp(): void {
+        parent::setUp();
+
+        // IdeaScorer::score_and_rank() calls get_option('prautoblogger_topic_exclusions', '[]').
+        $this->stub_get_option( [
+            'prautoblogger_topic_exclusions' => '[]',
+        ] );
+    }
+
     /**
      * Test Idea Scorer can be instantiated.
      */

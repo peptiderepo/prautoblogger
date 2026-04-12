@@ -20,18 +20,43 @@ class ContentAnalyzerTest extends BaseTestCase {
      */
     private $mock_provider;
 
+    /**
+     * @var \PHPUnit\Framework\MockObject\MockObject Mock cost tracker.
+     */
+    private $mock_cost_tracker;
+
     protected function setUp(): void {
         parent::setUp();
 
         // Create a mock that implements the LLM Provider Interface.
         $this->mock_provider = $this->createMock( \PRAutoBlogger_LLM_Provider_Interface::class );
+
+        // Create a mock cost tracker — ContentAnalyzer requires both provider and tracker.
+        $this->mock_cost_tracker = $this->createMock( \PRAutoBlogger_Cost_Tracker::class );
+
+        // Stub WordPress functions used internally by ContentAnalyzer.
+        $this->stub_get_option( [
+            'prautoblogger_monthly_budget_usd' => '50.00',
+        ] );
+
+        // Stub $wpdb for any database calls.
+        $wpdb = $this->create_mock_wpdb();
+        $wpdb->method( 'prepare' )->willReturn( 'prepared' );
+        $wpdb->method( 'get_var' )->willReturn( '0' );
+        $wpdb->method( 'get_results' )->willReturn( [] );
+        $GLOBALS['wpdb'] = $wpdb;
+    }
+
+    protected function tearDown(): void {
+        unset( $GLOBALS['wpdb'] );
+        parent::tearDown();
     }
 
     /**
      * Test that ContentAnalyzer can be instantiated.
      */
     public function test_content_analyzer_instantiation(): void {
-        $analyzer = new \PRAutoBlogger_Content_Analyzer( $this->mock_provider );
+        $analyzer = new \PRAutoBlogger_Content_Analyzer( $this->mock_provider, $this->mock_cost_tracker );
 
         $this->assertInstanceOf( \PRAutoBlogger_Content_Analyzer::class, $analyzer );
     }
@@ -53,7 +78,7 @@ class ContentAnalyzerTest extends BaseTestCase {
         $this->mock_provider->method( 'get_available_models' )
             ->willReturn( [ 'model/test' ] );
 
-        $analyzer = new \PRAutoBlogger_Content_Analyzer( $this->mock_provider );
+        $analyzer = new \PRAutoBlogger_Content_Analyzer( $this->mock_provider, $this->mock_cost_tracker );
 
         // analyze_recent_data takes no parameters.
         $result = $analyzer->analyze_recent_data();

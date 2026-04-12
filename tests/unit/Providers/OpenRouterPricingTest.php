@@ -10,8 +10,39 @@
 namespace PRAutoBlogger\Tests\Providers;
 
 use PRAutoBlogger\Tests\BaseTestCase;
+use Brain\Monkey\Functions;
 
 class OpenRouterPricingTest extends BaseTestCase {
+
+    protected function setUp(): void {
+        parent::setUp();
+
+        // OpenRouterPricing::get_available_models() calls get_transient() to check cache.
+        // Return a valid cached model list so it doesn't try to make HTTP calls.
+        Functions\when( 'get_transient' )->alias(
+            function ( string $key ) {
+                if ( 'prautoblogger_openrouter_models' === $key ) {
+                    return [
+                        [
+                            'id'             => 'google/gemini-2.0-flash-001',
+                            'name'           => 'Gemini 2.0 Flash',
+                            'context_length' => 32768,
+                            'pricing'        => [ 'prompt' => 0.10, 'completion' => 0.40 ],
+                        ],
+                        [
+                            'id'             => 'anthropic/claude-sonnet-4',
+                            'name'           => 'Claude Sonnet 4',
+                            'context_length' => 200000,
+                            'pricing'        => [ 'prompt' => 3.00, 'completion' => 15.00 ],
+                        ],
+                    ];
+                }
+                return false;
+            }
+        );
+
+        Functions\when( 'set_transient' )->justReturn( true );
+    }
 
     /**
      * Test Pricing can be instantiated.

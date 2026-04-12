@@ -25,6 +25,14 @@ class CostTrackerTest extends BaseTestCase {
 
         $this->wpdb = $this->create_mock_wpdb();
         $GLOBALS['wpdb'] = $this->wpdb;
+
+        // CostTracker methods call get_option for budget settings.
+        $this->stub_get_option( [
+            'prautoblogger_monthly_budget_usd' => '50.00',
+        ] );
+
+        // Stub current_time used in date-based queries.
+        $this->stub_current_time( '2026-04-12 10:00:00' );
     }
 
     protected function tearDown(): void {

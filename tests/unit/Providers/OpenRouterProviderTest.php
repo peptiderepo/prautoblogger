@@ -15,15 +15,53 @@ use Brain\Monkey\Functions;
 
 class OpenRouterProviderTest extends BaseTestCase {
 
+    protected function setUp(): void {
+        parent::setUp();
+
+        // Stub get_option — provider calls get_option('prautoblogger_openrouter_api_key', '')
+        // for API key retrieval via private get_api_key() method.
+        $this->stub_get_option( [
+            'prautoblogger_openrouter_api_key' => 'test_encrypted_key',
+        ] );
+
+        // Stub get_transient/set_transient — used by OpenRouter_Pricing (called internally).
+        Functions\when( 'get_transient' )->alias(
+            function ( string $key ) {
+                if ( 'prautoblogger_openrouter_models' === $key ) {
+                    return [
+                        [
+                            'id'             => 'model/test',
+                            'name'           => 'Test Model',
+                            'context_length' => 4096,
+                            'pricing'        => [ 'prompt' => 1.00, 'completion' => 2.00 ],
+                        ],
+                    ];
+                }
+                return false;
+            }
+        );
+        Functions\when( 'set_transient' )->justReturn( true );
+
+        // Stub HTTP functions for API calls.
+        Functions\when( 'wp_remote_post' )->justReturn( [
+            'body'     => '{"choices":[{"message":{"content":"test"},"finish_reason":"stop"}],"usage":{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15}}',
+            'response' => [ 'code' => 200 ],
+        ] );
+        Functions\when( 'wp_remote_get' )->justReturn( [
+            'body'     => '{}',
+            'response' => [ 'code' => 200 ],
+        ] );
+        Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
+        Functions\when( 'wp_remote_retrieve_body' )->justReturn(
+            '{"choices":[{"message":{"content":"test"},"finish_reason":"stop"}],"usage":{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15}}'
+        );
+        Functions\when( 'is_wp_error' )->justReturn( false );
+    }
+
     /**
      * Test OpenRouter Provider can be instantiated.
      */
     public function test_openrouter_provider_instantiation(): void {
-        Functions\when( 'wp_remote_post' )->justReturn( [] );
-        Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
-        Functions\when( 'wp_remote_retrieve_body' )->justReturn( '{}' );
-        Functions\when( 'is_wp_error' )->justReturn( false );
-
         $provider = new \PRAutoBlogger_OpenRouter_Provider();
 
         $this->assertInstanceOf( \PRAutoBlogger_OpenRouter_Provider::class, $provider );
@@ -33,11 +71,6 @@ class OpenRouterProviderTest extends BaseTestCase {
      * Test that provider implements LLM Provider Interface.
      */
     public function test_provider_implements_interface(): void {
-        Functions\when( 'wp_remote_post' )->justReturn( [] );
-        Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
-        Functions\when( 'wp_remote_retrieve_body' )->justReturn( '{}' );
-        Functions\when( 'is_wp_error' )->justReturn( false );
-
         $provider = new \PRAutoBlogger_OpenRouter_Provider();
 
         $this->assertInstanceOf( \PRAutoBlogger_LLM_Provider_Interface::class, $provider );
@@ -47,11 +80,6 @@ class OpenRouterProviderTest extends BaseTestCase {
      * Test send_chat_completion method is callable.
      */
     public function test_send_chat_completion_method_exists(): void {
-        Functions\when( 'wp_remote_post' )->justReturn( [] );
-        Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
-        Functions\when( 'wp_remote_retrieve_body' )->justReturn( '{}' );
-        Functions\when( 'is_wp_error' )->justReturn( false );
-
         $provider = new \PRAutoBlogger_OpenRouter_Provider();
 
         $this->assertTrue( method_exists( $provider, 'send_chat_completion' ) );
@@ -61,11 +89,6 @@ class OpenRouterProviderTest extends BaseTestCase {
      * Test get_available_models returns array.
      */
     public function test_get_available_models_returns_array(): void {
-        Functions\when( 'wp_remote_post' )->justReturn( [] );
-        Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
-        Functions\when( 'wp_remote_retrieve_body' )->justReturn( '{}' );
-        Functions\when( 'is_wp_error' )->justReturn( false );
-
         $provider = new \PRAutoBlogger_OpenRouter_Provider();
         $models = $provider->get_available_models();
 
@@ -76,11 +99,6 @@ class OpenRouterProviderTest extends BaseTestCase {
      * Test estimate_cost returns float.
      */
     public function test_estimate_cost_returns_float(): void {
-        Functions\when( 'wp_remote_post' )->justReturn( [] );
-        Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
-        Functions\when( 'wp_remote_retrieve_body' )->justReturn( '{}' );
-        Functions\when( 'is_wp_error' )->justReturn( false );
-
         $provider = new \PRAutoBlogger_OpenRouter_Provider();
         $cost = $provider->estimate_cost( 'model/test', 1000, 500 );
 
@@ -91,11 +109,6 @@ class OpenRouterProviderTest extends BaseTestCase {
      * Test get_provider_name returns string.
      */
     public function test_get_provider_name_returns_string(): void {
-        Functions\when( 'wp_remote_post' )->justReturn( [] );
-        Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
-        Functions\when( 'wp_remote_retrieve_body' )->justReturn( '{}' );
-        Functions\when( 'is_wp_error' )->justReturn( false );
-
         $provider = new \PRAutoBlogger_OpenRouter_Provider();
         $name = $provider->get_provider_name();
 
@@ -107,11 +120,6 @@ class OpenRouterProviderTest extends BaseTestCase {
      * Test validate_credentials returns boolean.
      */
     public function test_validate_credentials_returns_boolean(): void {
-        Functions\when( 'wp_remote_post' )->justReturn( [] );
-        Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
-        Functions\when( 'wp_remote_retrieve_body' )->justReturn( '{}' );
-        Functions\when( 'is_wp_error' )->justReturn( false );
-
         $provider = new \PRAutoBlogger_OpenRouter_Provider();
         $valid = $provider->validate_credentials();
 
@@ -122,11 +130,6 @@ class OpenRouterProviderTest extends BaseTestCase {
      * Test send_chat_completion returns array.
      */
     public function test_send_chat_completion_returns_array(): void {
-        Functions\when( 'wp_remote_post' )->justReturn( [ 'body' => '{}' ] );
-        Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
-        Functions\when( 'wp_remote_retrieve_body' )->justReturn( '{}' );
-        Functions\when( 'is_wp_error' )->justReturn( false );
-
         $provider = new \PRAutoBlogger_OpenRouter_Provider();
 
         $messages = [
@@ -142,11 +145,6 @@ class OpenRouterProviderTest extends BaseTestCase {
      * Test send_chat_completion with options.
      */
     public function test_send_chat_completion_with_options(): void {
-        Functions\when( 'wp_remote_post' )->justReturn( [ 'body' => '{}' ] );
-        Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
-        Functions\when( 'wp_remote_retrieve_body' )->justReturn( '{}' );
-        Functions\when( 'is_wp_error' )->justReturn( false );
-
         $provider = new \PRAutoBlogger_OpenRouter_Provider();
 
         $messages = [
