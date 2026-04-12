@@ -147,10 +147,14 @@ class CostTrackerTest extends BaseTestCase {
             ->method( 'insert' )
             ->willReturn( 1 );
 
-        // We don't know exact params, but test that it's callable.
+        // Signature: log_api_call(?int $post_id, string $stage, string $provider,
+        //   string $model, int $prompt_tokens, int $completion_tokens,
+        //   float $estimated_cost, float $duration_seconds).
         $tracker->log_api_call(
-            'openai/gpt-4',
+            123,
             'analysis',
+            'openrouter',
+            'openai/gpt-4',
             500,
             250,
             0.01,

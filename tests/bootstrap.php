@@ -20,3 +20,49 @@ if ( ! defined( 'PRAB_VERSION' ) ) {
 if ( ! defined( 'PRAB_PLUGIN_DIR' ) ) {
     define( 'PRAB_PLUGIN_DIR', dirname( __DIR__ ) . '/' );
 }
+
+// WordPress time constants used by CostTracker and ContentAnalyzer.
+if ( ! defined( 'DAY_IN_SECONDS' ) ) {
+    define( 'DAY_IN_SECONDS', 86400 );
+}
+if ( ! defined( 'HOUR_IN_SECONDS' ) ) {
+    define( 'HOUR_IN_SECONDS', 3600 );
+}
+
+// WordPress database constants used in $wpdb queries.
+if ( ! defined( 'ARRAY_A' ) ) {
+    define( 'ARRAY_A', 'ARRAY_A' );
+}
+if ( ! defined( 'OBJECT' ) ) {
+    define( 'OBJECT', 'OBJECT' );
+}
+
+/**
+ * Minimal WP_Query stub for unit tests.
+ *
+ * IdeaScorer uses WP_Query to check for existing posts.
+ * This stub returns empty results by default.
+ */
+if ( ! class_exists( 'WP_Query' ) ) {
+    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedClassFound
+    class WP_Query {
+        /** @var array */
+        public $posts = [];
+        /** @var int */
+        public $found_posts = 0;
+        /** @var bool */
+        public $have_posts = false;
+
+        public function __construct( $args = [] ) {
+            // No-op for testing — returns no posts.
+        }
+
+        public function have_posts(): bool {
+            return $this->have_posts;
+        }
+
+        public function the_post(): void {
+            // No-op.
+        }
+    }
+}

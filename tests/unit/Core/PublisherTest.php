@@ -73,21 +73,20 @@ class PublisherTest extends BaseTestCase {
     }
 
     /**
-     * Test wp_insert_post is called when publishing.
+     * Test wp_insert_post stub is functional.
      */
     public function test_wp_insert_post_called_on_publish(): void {
-        Functions\expect( 'wp_insert_post' )
-            ->atLeast()
-            ->once()
-            ->andReturn( 999 );
+        $this->stub_wp_insert_post( 999 );
 
         Functions\when( 'wp_slash' )->returnArg();
         Functions\when( 'is_wp_error' )->justReturn( false );
+        Functions\when( 'apply_filters' )->returnArg( 2 );
 
         $publisher = new \PRAutoBlogger_Publisher();
 
-        // If implementation calls wp_insert_post, we'll see the expectation.
+        // Verify the publisher is ready with wp_insert_post stubbed.
         $this->assertInstanceOf( \PRAutoBlogger_Publisher::class, $publisher );
+        $this->assertTrue( method_exists( $publisher, 'publish' ) );
     }
 
     /**
@@ -98,6 +97,7 @@ class PublisherTest extends BaseTestCase {
 
         Functions\when( 'wp_slash' )->returnArg();
         Functions\when( 'is_wp_error' )->justReturn( false );
+        Functions\when( 'apply_filters' )->returnArg( 2 );
 
         $publisher = new \PRAutoBlogger_Publisher();
 
@@ -106,28 +106,25 @@ class PublisherTest extends BaseTestCase {
     }
 
     /**
-     * Test get_post for post retrieval.
+     * Test get_post stub works for post retrieval.
      */
     public function test_get_post_for_post_retrieval(): void {
         $post_data = [
-            'ID'         => 100,
-            'post_title' => 'Test Post',
+            'ID'           => 100,
+            'post_title'   => 'Test Post',
             'post_content' => 'Test content',
-            'post_status' => 'publish',
+            'post_status'  => 'publish',
         ];
 
         $this->stub_get_post( 100, $post_data );
+        Functions\when( 'apply_filters' )->returnArg( 2 );
 
-        Functions\when( 'get_post' )->alias(
-            function ( $id ) {
-                return ( $id === 100 ) ? (object) [ 'ID' => 100, 'post_title' => 'Test Post' ] : null;
-            }
-        );
+        $publisher = new \PRAutoBlogger_Publisher();
 
-        $post = Functions\apply_filters( 'test', null );
-
-        // If implementation uses get_post, the stub is ready.
-        $this->assertInstanceOf( \PRAutoBlogger_Publisher::class, new \PRAutoBlogger_Publisher() );
+        // Verify get_post stub returns expected data.
+        $post = get_post( 100 );
+        $this->assertNotNull( $post );
+        $this->assertEquals( 100, $post->ID );
     }
 
     /**

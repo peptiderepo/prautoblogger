@@ -112,7 +112,7 @@ class OpenRouterPricingTest extends BaseTestCase {
         $pricing = new \PRAutoBlogger_OpenRouter_Pricing();
         $cost = $pricing->estimate_cost( 'unknown/fake-model', 1000, 500 );
 
-        // Unknown models may return 0.0 or a fallback value
+        // Unknown models may return 0.0 or a fallback value.
         $this->assertIsFloat( $cost );
         $this->assertGreaterThanOrEqual( 0.0, $cost );
     }
@@ -139,8 +139,8 @@ class OpenRouterPricingTest extends BaseTestCase {
         $cost_small = $pricing->estimate_cost( 'google/gemini-2.0-flash-001', 100, 100 );
         $cost_large = $pricing->estimate_cost( 'google/gemini-2.0-flash-001', 1000, 1000 );
 
-        // Larger token counts should result in higher or equal costs.
-        $this->assertLessThanOrEqual( $cost_large, $cost_small + 100 ); // Very loose check
+        // Larger token counts should cost more or equal.
+        $this->assertGreaterThanOrEqual( $cost_small, $cost_large );
     }
 
     /**

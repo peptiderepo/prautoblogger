@@ -20,9 +20,13 @@ class OpenRouterProviderTest extends BaseTestCase {
 
         // Stub get_option — provider calls get_option('prautoblogger_openrouter_api_key', '')
         // for API key retrieval via private get_api_key() method.
+        // Return empty string so decryption is skipped (no key = empty return).
         $this->stub_get_option( [
-            'prautoblogger_openrouter_api_key' => 'test_encrypted_key',
+            'prautoblogger_openrouter_api_key' => '',
         ] );
+
+        // Stub wp_salt — called by PRAutoBlogger_Encryption during API key decryption.
+        Functions\when( 'wp_salt' )->justReturn( 'test_salt_key_for_unit_tests' );
 
         // Stub get_transient/set_transient — used by OpenRouter_Pricing (called internally).
         Functions\when( 'get_transient' )->alias(

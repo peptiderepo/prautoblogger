@@ -39,10 +39,15 @@ class ContentAnalyzerTest extends BaseTestCase {
             'prautoblogger_monthly_budget_usd' => '50.00',
         ] );
 
+        // Stub additional WP functions used by analyze_recent_data.
+        Functions\when( 'apply_filters' )->returnArg( 2 );
+        $this->stub_current_time( '2026-04-12 10:00:00' );
+
         // Stub $wpdb for any database calls.
         $wpdb = $this->create_mock_wpdb();
         $wpdb->method( 'prepare' )->willReturn( 'prepared' );
         $wpdb->method( 'get_var' )->willReturn( '0' );
+        $wpdb->method( 'get_results' )->willReturn( [] );
         $wpdb->method( 'get_results' )->willReturn( [] );
         $GLOBALS['wpdb'] = $wpdb;
     }
