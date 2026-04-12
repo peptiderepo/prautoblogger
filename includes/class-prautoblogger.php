@@ -148,6 +148,30 @@ class PRAutoBlogger {
 		if ( version_compare( $stored_version, PRAUTOBLOGGER_DB_VERSION, '<' ) ) {
 			PRAutoBlogger_Activator::activate();
 		}
+
+		// One-time migration: switch to Gemini 2.5 Flash Lite for cost/speed.
+		if ( ! get_option( 'prautoblogger_migrated_gemini_flash_lite' ) ) {
+			update_option( 'prautoblogger_analysis_model', PRAUTOBLOGGER_DEFAULT_ANALYSIS_MODEL );
+			update_option( 'prautoblogger_writing_model', PRAUTOBLOGGER_DEFAULT_WRITING_MODEL );
+			update_option( 'prautoblogger_editor_model', PRAUTOBLOGGER_DEFAULT_EDITOR_MODEL );
+			update_option( 'prautoblogger_migrated_gemini_flash_lite', '1' );
+		}
+
+		// One-time migration: re-wrap existing encrypted values with "enc:" prefix
+		// to prevent the double-encryption bug permanently.
+		if ( ! get_option( 'prautoblogger_migrated_enc_prefix' ) ) {
+			$enc_options = [ 'prautoblogger_openrouter_api_key', 'prautoblogger_ga4_credentials_json' ];
+			foreach ( $enc_options as $opt ) {
+				$val = get_option( $opt, '' );
+				// If it has a value but no "enc:" prefix, it's a legacy encrypted value.
+				// Clear it — user must re-enter. We can't reliably tell if it's
+				// single or double encrypted, so a fresh entry is safest.
+				if ( '' !== $val && ! PRAutoBlogger_Encryption::is_encrypted( $val ) ) {
+					delete_option( $opt );
+				}
+			}
+			update_option( 'prautoblogger_migrated_enc_prefix', '1' );
+		}
 	}
 
 	/**
@@ -242,13 +266,29 @@ class PRAutoBlogger {
 			return;
 		}
 
+		// LLM API calls can take 30-60+ seconds each. Extend PHP's execution
+		// limit so the pipeline isn't killed mid-generation. This may be
+		// blocked by Hostinger's hardcoded limits, but it's worth trying.
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		@set_time_limit( 300 );
+
+		// Allow admins to force-clear a stale lock.
+		$force = isset( $_POST['force'] ) && '1' === $_POST['force'];
+		if ( $force ) {
+			$this->release_generation_lock();
+		}
+
 		if ( ! $this->acquire_generation_lock() ) {
-			wp_send_json_error( [ 'message' => __( 'A generation run is already in progress.', 'prautoblogger' ) ] );
+			wp_send_json_error( [ 'message' => __( 'A generation run is already in progress. Pass force=1 to clear the lock.', 'prautoblogger' ) ] );
 			return;
 		}
 
 		try {
-			$results = ( new PRAutoBlogger_Pipeline_Runner() )->run();
+			// Manual runs skip dedup so "Generate Now" always produces content
+			// even when a related article was recently published.
+			$results = ( new PRAutoBlogger_Pipeline_Runner() )
+				->set_skip_dedup( true )
+				->run();
 			wp_send_json_success( $results );
 		} catch ( \Exception $e ) {
 			PRAutoBlogger_Logger::instance()->error( 'Manual generation FAILED: ' . $e->getMessage(), 'pipeline' );
@@ -270,10 +310,8 @@ class PRAutoBlogger {
 		$results = [];
 
 		if ( 'openrouter' === $service || 'all' === $service ) {
-			$llm    = new PRAutoBlogger_OpenRouter_Provider();
-			$results['openrouter'] = $llm->validate_credentials()
-				? [ 'status' => 'ok', 'message' => __( 'OpenRouter connected.', 'prautoblogger' ) ]
-				: [ 'status' => 'error', 'message' => __( 'OpenRouter connection failed. Check your API key.', 'prautoblogger' ) ];
+			$llm                   = new PRAutoBlogger_OpenRouter_Provider();
+			$results['openrouter'] = $llm->validate_credentials_detailed();
 		}
 		if ( 'reddit' === $service || 'all' === $service ) {
 			$reddit  = new PRAutoBlogger_Reddit_Provider();

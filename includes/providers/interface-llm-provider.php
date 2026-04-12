@@ -7,7 +7,7 @@ declare(strict_types=1);
  * Any class implementing this interface can be swapped in without changing the
  * content generation, analysis, or editor logic.
  *
- * @see class-openrouter-provider.php — Primary implementation (OpenRouter).
+ * @see class-open-router-provider.php — Primary implementation (OpenRouter).
  * @see CONVENTIONS.md                — "How To: Add a New LLM Provider".
  * @see ARCHITECTURE.md               — External API integrations table.
  */

@@ -67,10 +67,23 @@ class PRAutoBlogger_Reddit_Provider implements PRAutoBlogger_Source_Provider_Int
 		$use_pullpush = $this->is_pullpush_available();
 		$collected    = [];
 
+		PRAutoBlogger_Logger::instance()->info(
+			sprintf(
+				'Reddit collect_data: %d subreddits=%s, use_pullpush=%s, limit=%d, time=%s',
+				count( $subreddits ),
+				wp_json_encode( $subreddits ),
+				$use_pullpush ? 'yes' : 'no',
+				$limit,
+				$time_filter
+			),
+			'reddit'
+		);
+
 		foreach ( $subreddits as $subreddit ) {
 			$subreddit = sanitize_text_field( $subreddit );
 
 			try {
+				$before_count = count( $collected );
 				if ( $use_pullpush ) {
 					$collected = array_merge(
 						$collected,
@@ -82,6 +95,11 @@ class PRAutoBlogger_Reddit_Provider implements PRAutoBlogger_Source_Provider_Int
 						$this->collect_from_reddit_json( $subreddit, $limit, $time_filter, $include_comments, $comments_limit )
 					);
 				}
+				$added = count( $collected ) - $before_count;
+				PRAutoBlogger_Logger::instance()->info(
+					sprintf( 'Reddit r/%s: fetched %d items via %s', $subreddit, $added, $use_pullpush ? 'pullpush' : 'reddit_json' ),
+					'reddit'
+				);
 			} catch ( \Exception $e ) {
 				// Log but continue with other subreddits.
 				PRAutoBlogger_Logger::instance()->error(

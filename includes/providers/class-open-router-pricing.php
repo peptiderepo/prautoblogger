@@ -10,7 +10,7 @@ declare(strict_types=1);
  * Triggered by: PRAutoBlogger_OpenRouter_Provider calls pricing methods.
  * Dependencies: None — pure data + calculation, no external calls by default.
  *
- * @see providers/class-openrouter-provider.php — Instantiates this class.
+ * @see providers/class-open-router-provider.php — Instantiates this class.
  * @see ARCHITECTURE.md                         — Model selection flow.
  */
 class PRAutoBlogger_OpenRouter_Pricing {

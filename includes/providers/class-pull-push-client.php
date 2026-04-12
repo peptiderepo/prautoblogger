@@ -178,18 +178,19 @@ class PRAutoBlogger_PullPush_Client {
 	}
 
 	/**
-	 * Check if PullPush API is reachable.
+	 * Check if PullPush API is reachable AND has reasonably fresh data.
 	 *
-	 * Makes a minimal request to verify connectivity. Used by the provider
-	 * to decide whether to fall back to Reddit .json endpoints.
+	 * PullPush can return HTTP 200 but have a stale index (months behind Reddit).
+	 * We check that the most recent post is no older than 7 days. If the index
+	 * is stale, we return false so the caller falls back to Reddit .json.
 	 *
 	 * Side effects: HTTP request.
 	 *
-	 * @return bool True if API responded with HTTP 200.
+	 * @return bool True if API responded with HTTP 200 and has data < 7 days old.
 	 */
 	public function is_available(): bool {
-		// Minimal query: 1 submission from a popular subreddit.
-		$url      = self::API_BASE . '/search/submission?subreddit=all&size=1';
+		// Fetch 1 recent submission sorted by date to check freshness.
+		$url      = self::API_BASE . '/search/submission?subreddit=all&size=1&sort_type=created_utc&sort=desc';
 		$response = wp_remote_get(
 			$url,
 			[
@@ -204,7 +205,36 @@ class PRAutoBlogger_PullPush_Client {
 			return false;
 		}
 
-		return 200 === wp_remote_retrieve_response_code( $response );
+		if ( 200 !== wp_remote_retrieve_response_code( $response ) ) {
+			return false;
+		}
+
+		$body = json_decode( wp_remote_retrieve_body( $response ), true );
+		$items = $body['data'] ?? [];
+
+		if ( empty( $items ) ) {
+			return false;
+		}
+
+		// Check that the most recent post is within the last 7 days.
+		// If PullPush's index is stale (e.g. months behind), we should
+		// fall back to Reddit .json which always has live data.
+		$latest_utc   = (int) ( $items[0]['created_utc'] ?? 0 );
+		$seven_days   = 7 * DAY_IN_SECONDS;
+		$is_fresh     = ( time() - $latest_utc ) < $seven_days;
+
+		if ( ! $is_fresh ) {
+			PRAutoBlogger_Logger::instance()->warning(
+				sprintf(
+					'PullPush index is stale — latest post is from %s (%d days old). Falling back to Reddit .json.',
+					gmdate( 'Y-m-d', $latest_utc ),
+					(int) ( ( time() - $latest_utc ) / DAY_IN_SECONDS )
+				),
+				'pullpush'
+			);
+		}
+
+		return $is_fresh;
 	}
 
 	/**

@@ -66,7 +66,8 @@
 			method: 'POST',
 			data: {
 				action: 'prautoblogger_generate_now',
-				nonce: config.generateNonce
+				nonce: config.generateNonce,
+				force: '1' // Always clear stale locks on manual runs.
 			},
 			timeout: 300000, // 5 minutes — generation can be slow.
 			success: function (response) {

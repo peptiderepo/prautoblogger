@@ -39,7 +39,11 @@ class PRAutoBlogger_Content_Analyzer {
 	 *
 	 * @return PRAutoBlogger_Analysis_Result[] Detected patterns.
 	 */
-	public function analyze_recent_data(): array {
+	/**
+	 * @param int $target_idea_count How many distinct topic ideas the LLM should produce.
+	 *                               Defaults to 6 so the scorer has enough to pick from.
+	 */
+	public function analyze_recent_data( int $target_idea_count = 6 ): array {
 		$source_items = $this->fetch_recent_source_data();
 
 		if ( empty( $source_items ) ) {
@@ -56,8 +60,8 @@ class PRAutoBlogger_Content_Analyzer {
 		// Include past performance data for self-improvement.
 		$performance_context = $this->get_performance_context();
 
-		$system_prompt = $this->build_system_prompt( $niche, $performance_context );
-		$user_prompt   = $this->build_user_prompt( $summary );
+		$system_prompt = $this->build_system_prompt( $niche, $performance_context, $target_idea_count );
+		$user_prompt   = $this->build_user_prompt( $summary, $target_idea_count );
 
 		$response = $this->llm->send_chat_completion(
 			[
@@ -66,8 +70,8 @@ class PRAutoBlogger_Content_Analyzer {
 			],
 			$model,
 			[
-				'temperature'     => 0.3,
-				'max_tokens'      => 4000,
+				'temperature'     => 0.5,
+				'max_tokens'      => 8000,
 				'response_format' => [ 'type' => 'json_object' ],
 			]
 		);
@@ -190,25 +194,33 @@ class PRAutoBlogger_Content_Analyzer {
 	 *
 	 * @return string
 	 */
-	private function build_system_prompt( string $niche, string $performance_context ): string {
+	private function build_system_prompt( string $niche, string $performance_context, int $target_count = 6 ): string {
 		$prompt = "You are a content strategist analyzing social media discussions to find article ideas for a blog";
 		if ( '' !== $niche ) {
 			$prompt .= " in the {$niche} niche";
 		}
 		$prompt .= ".\n\n";
 
-		$prompt .= "Analyze the provided social media posts and comments to identify:\n";
+		$prompt .= "IMPORTANT: You must identify exactly {$target_count} DISTINCT article ideas. ";
+		$prompt .= "Each idea must cover a substantially different topic — no two ideas should overlap ";
+		$prompt .= "in their main subject. Aim for diversity across these categories:\n";
 		$prompt .= "1. QUESTIONS: Recurring questions people ask (\"How do I...\", \"What is...\", \"Is it safe to...\")\n";
 		$prompt .= "2. COMPLAINTS: Pain points, frustrations, or problems people report\n";
-		$prompt .= "3. COMPARISONS: Product/method comparisons people discuss (\"X vs Y\", \"Which is better\")\n\n";
+		$prompt .= "3. COMPARISONS: Product/method comparisons people discuss (\"X vs Y\", \"Which is better\")\n";
+		$prompt .= "4. NEWS: Recent developments, rule changes, or trends people are discussing\n";
+		$prompt .= "5. GUIDES: How-to topics, best practices, or educational content people need\n\n";
 
-		$prompt .= "For each pattern found, provide:\n";
-		$prompt .= "- type: 'question', 'complaint', or 'comparison'\n";
-		$prompt .= "- topic: A clear, specific topic description\n";
-		$prompt .= "- summary: 1-2 sentence summary of the pattern\n";
-		$prompt .= "- frequency: How many of the provided posts relate to this pattern\n";
-		$prompt .= "- relevance_score: 0.0 to 1.0 indicating how relevant and article-worthy this topic is\n";
-		$prompt .= "- suggested_title: A compelling blog post title for this topic\n";
+		$prompt .= "Spread your {$target_count} ideas across multiple categories. ";
+		$prompt .= "Be specific — \"peptide dosing for BPC-157\" is better than \"peptide information\". ";
+		$prompt .= "Each idea should be narrow enough to be a single focused blog post.\n\n";
+
+		$prompt .= "For each idea, provide:\n";
+		$prompt .= "- type: 'question', 'complaint', 'comparison', 'news', or 'guide'\n";
+		$prompt .= "- topic: A clear, specific, narrow topic description\n";
+		$prompt .= "- summary: 1-2 sentence summary of why this topic matters\n";
+		$prompt .= "- frequency: How many of the provided posts relate to this topic\n";
+		$prompt .= "- relevance_score: 0.0 to 1.0 indicating how relevant and article-worthy this is\n";
+		$prompt .= "- suggested_title: A compelling, unique blog post title\n";
 		$prompt .= "- key_points: Array of 3-5 key points the article should cover\n";
 		$prompt .= "- target_keywords: Array of SEO keywords for this topic\n\n";
 
@@ -216,7 +228,7 @@ class PRAutoBlogger_Content_Analyzer {
 			$prompt .= $performance_context . "\n\n";
 		}
 
-		$prompt .= "Respond with valid JSON in this format:\n";
+		$prompt .= "Respond with valid JSON containing exactly {$target_count} patterns:\n";
 		$prompt .= '{"patterns": [{"type": "...", "topic": "...", "summary": "...", "frequency": N, "relevance_score": 0.X, "suggested_title": "...", "key_points": [...], "target_keywords": [...]}]}';
 
 		return $prompt;
@@ -229,8 +241,10 @@ class PRAutoBlogger_Content_Analyzer {
 	 *
 	 * @return string
 	 */
-	private function build_user_prompt( string $summary ): string {
-		return "Here are the recent social media posts and comments to analyze:\n\n" . $summary;
+	private function build_user_prompt( string $summary, int $target_count = 6 ): string {
+		return "Here are the recent social media posts and comments to analyze. "
+			. "Find {$target_count} distinct, diverse article ideas from this data:\n\n"
+			. $summary;
 	}
 
 	/**

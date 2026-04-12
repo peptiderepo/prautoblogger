@@ -12,7 +12,7 @@ declare(strict_types=1);
  * Dependencies: PRAutoBlogger_Encryption (for API key decryption), wp_remote_post(), PRAutoBlogger_OpenRouter_Pricing.
  *
  * @see interface-llm-provider.php      — Interface this class implements.
- * @see class-openrouter-pricing.php    — Pricing and model list lookups.
+ * @see class-open-router-pricing.php   — Pricing and model list lookups.
  * @see class-cost-tracker.php          — Called after every request to log token usage.
  * @see ARCHITECTURE.md                 — Data flow diagram showing where this fits.
  */
@@ -211,15 +211,47 @@ class PRAutoBlogger_OpenRouter_Provider implements PRAutoBlogger_LLM_Provider_In
 	 *
 	 * Makes a lightweight request to the /auth/key endpoint.
 	 *
-	 * Side effects: HTTP request to OpenRouter.
+	 * Side effects: HTTP request to OpenRouter, logs diagnostic info.
 	 *
 	 * @return bool
 	 */
 	public function validate_credentials(): bool {
-		$api_key = $this->get_api_key();
-		if ( '' === $api_key ) {
-			return false;
+		$diag = $this->validate_credentials_detailed();
+		return 'ok' === $diag['status'];
+	}
+
+	/**
+	 * Validate credentials with detailed diagnostic info.
+	 *
+	 * Returns an array with status ('ok' or 'error') and a human-readable
+	 * message explaining what went wrong if validation fails.
+	 *
+	 * Side effects: HTTP request to OpenRouter, logs diagnostic info.
+	 *
+	 * @return array{status: string, message: string, debug?: string}
+	 */
+	public function validate_credentials_detailed(): array {
+		$encrypted = get_option( 'prautoblogger_openrouter_api_key', '' );
+		if ( '' === $encrypted ) {
+			return [
+				'status'  => 'error',
+				'message' => __( 'No API key saved. Enter your OpenRouter key in settings.', 'prautoblogger' ),
+				'debug'   => 'option_empty',
+			];
 		}
+
+		$api_key = PRAutoBlogger_Encryption::decrypt( $encrypted );
+		if ( '' === $api_key ) {
+			return [
+				'status'  => 'error',
+				'message' => __( 'API key decryption failed. Re-enter your key.', 'prautoblogger' ),
+				'debug'   => 'decrypt_failed:encrypted_len=' . strlen( $encrypted ),
+			];
+		}
+
+		// Sanity check: OpenRouter keys typically start with "sk-or-".
+		$key_prefix = substr( $api_key, 0, 6 );
+		$key_len    = strlen( $api_key );
 
 		$response = wp_remote_get(
 			self::API_BASE_URL . '/auth/key',
@@ -232,10 +264,38 @@ class PRAutoBlogger_OpenRouter_Provider implements PRAutoBlogger_LLM_Provider_In
 		);
 
 		if ( is_wp_error( $response ) ) {
-			return false;
+			$err_msg = $response->get_error_message();
+			PRAutoBlogger_Logger::instance()->error(
+				sprintf( 'OpenRouter credential check wp_error: %s (key_prefix=%s, key_len=%d)', $err_msg, $key_prefix, $key_len ),
+				'openrouter'
+			);
+			return [
+				'status'  => 'error',
+				'message' => sprintf( __( 'Network error reaching OpenRouter: %s', 'prautoblogger' ), $err_msg ),
+				'debug'   => 'wp_error:' . $err_msg,
+			];
 		}
 
-		return 200 === wp_remote_retrieve_response_code( $response );
+		$status_code = wp_remote_retrieve_response_code( $response );
+		$body_raw    = wp_remote_retrieve_body( $response );
+
+		if ( 200 === $status_code ) {
+			return [
+				'status'  => 'ok',
+				'message' => __( 'OpenRouter connected.', 'prautoblogger' ),
+			];
+		}
+
+		PRAutoBlogger_Logger::instance()->warning(
+			sprintf( 'OpenRouter credential check HTTP %d (key_prefix=%s, key_len=%d): %s', $status_code, $key_prefix, $key_len, substr( $body_raw, 0, 300 ) ),
+			'openrouter'
+		);
+
+		return [
+			'status'  => 'error',
+			'message' => sprintf( __( 'OpenRouter returned HTTP %d. %s', 'prautoblogger' ), $status_code, substr( $body_raw, 0, 200 ) ),
+			'debug'   => sprintf( 'http_%d:key_prefix=%s,key_len=%d', $status_code, $key_prefix, $key_len ),
+		];
 	}
 
 	/**

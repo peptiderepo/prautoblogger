@@ -255,7 +255,21 @@ class PRAutoBlogger_Admin_Page {
 
 		$encrypted = [ 'prautoblogger_openrouter_api_key', 'prautoblogger_ga4_credentials_json' ];
 		if ( in_array( $option_name, $encrypted, true ) ) {
-			if ( '' === $value ) { return get_option( $option_name, '' ); }
+			// Empty value means password field wasn't touched — keep existing.
+			if ( '' === $value ) {
+				return get_option( $option_name, '' );
+			}
+
+			// Already encrypted (has "enc:" prefix) — return as-is.
+			// This is the primary defence against double-encryption:
+			// PRAutoBlogger_Encryption::encrypt() also checks for this prefix,
+			// so even if this callback is called multiple times, the value
+			// is encrypted exactly once and never re-encrypted.
+			if ( PRAutoBlogger_Encryption::is_encrypted( $value ) ) {
+				return $value;
+			}
+
+			// New plaintext value — encrypt it (adds "enc:" prefix).
 			return PRAutoBlogger_Encryption::encrypt( sanitize_text_field( $value ) );
 		}
 

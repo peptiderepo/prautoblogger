@@ -125,8 +125,8 @@ prautoblogger/
 │   │
 │   ├── providers/
 │   │   ├── interface-llm-provider.php    # Contract for any LLM provider
-│   │   ├── class-openrouter-provider.php # OpenRouter API implementation
-│   │   ├── class-openrouter-pricing.php  # Model pricing lookup and cost estimation
+│   │   ├── class-open-router-provider.php # OpenRouter API implementation
+│   │   ├── class-open-router-pricing.php  # Model pricing lookup and cost estimation
 │   │   ├── interface-source-provider.php # Contract for any social media source
 │   │   ├── class-pull-push-client.php    # PullPush.io HTTP client (primary, no auth)
 │   │   ├── class-reddit-json-client.php  # Reddit .json endpoint client (fallback, no auth)
@@ -362,7 +362,7 @@ Stored on every PRAutoBlogger-generated post:
 
 | Service | Purpose | Auth | Rate Limit | Code |
 |---------|---------|------|------------|------|
-| OpenRouter | All LLM calls (analysis, writing, editing) | API key (encrypted in wp_options) | Per-model | `providers/class-openrouter-provider.php`, `providers/class-openrouter-pricing.php` |
+| OpenRouter | All LLM calls (analysis, writing, editing) | API key (encrypted in wp_options) | Per-model | `providers/class-open-router-provider.php`, `providers/class-open-router-pricing.php` |
 | PullPush.io | Primary Reddit data source — submissions and comments by subreddit | None (free public API) | 30 req/min, 1000/hour | `providers/class-pull-push-client.php` |
 | Reddit .json | Fallback Reddit data — appends .json to Reddit URLs | None (unauthenticated) | ~10 req/min (datacenter IPs may be blocked) | `providers/class-reddit-json-client.php` |
 | Google Analytics 4 | Post performance metrics | OAuth2 service account | Standard GA4 limits | `core/class-ga4-client.php`, `core/class-metrics-collector.php` |

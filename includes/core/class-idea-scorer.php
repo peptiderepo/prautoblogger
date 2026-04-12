@@ -17,6 +17,19 @@ declare(strict_types=1);
  */
 class PRAutoBlogger_Idea_Scorer {
 
+	/** @var bool Whether to skip the has_similar_post() check. */
+	private bool $skip_dedup = false;
+
+	/**
+	 * @param bool $skip True to skip deduplication.
+	 *
+	 * @return $this
+	 */
+	public function set_skip_dedup( bool $skip ): self {
+		$this->skip_dedup = $skip;
+		return $this;
+	}
+
 	/**
 	 * Score, deduplicate, and rank article ideas.
 	 *
@@ -35,8 +48,13 @@ class PRAutoBlogger_Idea_Scorer {
 				continue;
 			}
 
-			// Skip if we've already published something very similar.
-			if ( $this->has_similar_post( $result->get_topic() ) ) {
+			// Skip if we've already published something very similar
+			// (unless dedup is disabled for manual runs).
+			if ( ! $this->skip_dedup && $this->has_similar_post( $result->get_topic() ) ) {
+				PRAutoBlogger_Logger::instance()->info(
+					sprintf( 'Skipping topic "%s" — similar post exists.', substr( $result->get_topic(), 0, 80 ) ),
+					'scorer'
+				);
 				continue;
 			}
 
@@ -136,6 +154,8 @@ class PRAutoBlogger_Idea_Scorer {
 			'question'   => 'guide',
 			'complaint'  => 'solution',
 			'comparison' => 'comparison',
+			'news'       => 'news',
+			'guide'      => 'guide',
 		];
 		return $map[ $analysis_type ] ?? 'article';
 	}

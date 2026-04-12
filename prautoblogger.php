@@ -35,7 +35,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 | and limits without magic strings.
 */
 
-define( 'PRAUTOBLOGGER_VERSION', '0.2.0' );
+define( 'PRAUTOBLOGGER_VERSION', '0.2.1' );
 define( 'PRAUTOBLOGGER_DB_VERSION', '1.1.0' );
 define( 'PRAUTOBLOGGER_PLUGIN_FILE', __FILE__ );
 define( 'PRAUTOBLOGGER_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
@@ -49,9 +49,9 @@ define( 'PRAUTOBLOGGER_API_TIMEOUT_SECONDS', 120 );
 define( 'PRAUTOBLOGGER_CACHE_TTL_SECONDS', 3600 );
 
 // Default models for OpenRouter (user can override in settings).
-define( 'PRAUTOBLOGGER_DEFAULT_ANALYSIS_MODEL', 'anthropic/claude-3.5-haiku' );
-define( 'PRAUTOBLOGGER_DEFAULT_WRITING_MODEL', 'anthropic/claude-sonnet-4' );
-define( 'PRAUTOBLOGGER_DEFAULT_EDITOR_MODEL', 'anthropic/claude-sonnet-4' );
+define( 'PRAUTOBLOGGER_DEFAULT_ANALYSIS_MODEL', 'google/gemini-2.5-flash-lite' );
+define( 'PRAUTOBLOGGER_DEFAULT_WRITING_MODEL', 'google/gemini-2.5-flash-lite' );
+define( 'PRAUTOBLOGGER_DEFAULT_EDITOR_MODEL', 'google/gemini-2.5-flash-lite' );
 
 /*
 |--------------------------------------------------------------------------

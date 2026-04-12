@@ -28,6 +28,22 @@ class PRAutoBlogger_Pipeline_Runner {
 	 *
 	 * @throws \RuntimeException If budget is exceeded or critical step fails.
 	 */
+	/** @var bool Whether to skip duplicate-topic detection (used for manual runs). */
+	private bool $skip_dedup = false;
+
+	/**
+	 * Allow manual runs to skip the has_similar_post() check so "Generate Now"
+	 * always produces content even when a related article was recently published.
+	 *
+	 * @param bool $skip True to skip deduplication.
+	 *
+	 * @return $this
+	 */
+	public function set_skip_dedup( bool $skip ): self {
+		$this->skip_dedup = $skip;
+		return $this;
+	}
+
 	public function run(): array {
 		$cost_tracker = new PRAutoBlogger_Cost_Tracker();
 
@@ -49,12 +65,15 @@ class PRAutoBlogger_Pipeline_Runner {
 		$collector->collect_from_all_sources();
 
 		// Step 2: Analyze collected data for patterns.
+		// Pass a generous target so the LLM returns enough diverse ideas for
+		// scoring to pick from — ask for 2× the daily target so dedup has room.
 		$llm      = new PRAutoBlogger_OpenRouter_Provider();
 		$analyzer = new PRAutoBlogger_Content_Analyzer( $llm, $cost_tracker );
-		$analysis = $analyzer->analyze_recent_data();
+		$analysis = $analyzer->analyze_recent_data( max( $target_count * 2, 6 ) );
 
 		// Step 3: Score and deduplicate ideas.
 		$scorer = new PRAutoBlogger_Idea_Scorer();
+		$scorer->set_skip_dedup( $this->skip_dedup );
 		$ideas  = $scorer->score_and_rank( $analysis, $target_count );
 
 		if ( empty( $ideas ) ) {

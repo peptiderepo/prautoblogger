@@ -5,8 +5,9 @@ declare(strict_types=1);
  * Encrypts and decrypts sensitive option values (API keys, secrets).
  *
  * Uses OpenSSL AES-256-CBC with a key derived from wp_salt('auth').
- * This is not bulletproof — anyone who can read wp-config.php can decrypt — but it
- * prevents casual exposure of API keys in database dumps or phpMyAdmin.
+ * Encrypted values are prefixed with "enc:" so the system can ALWAYS
+ * distinguish encrypted from plaintext — this eliminates the double-encryption
+ * bug where WordPress's sanitize callback re-encrypts an already-encrypted value.
  *
  * Triggered by: Any code that reads/writes encrypted options (settings page, providers).
  * Dependencies: OpenSSL PHP extension, WordPress wp_salt() function.
@@ -18,15 +19,42 @@ class PRAutoBlogger_Encryption {
 	private const METHOD = 'aes-256-cbc';
 
 	/**
+	 * Prefix that identifies an encrypted value in the database.
+	 * Any string starting with this prefix is treated as already encrypted.
+	 */
+	public const PREFIX = 'enc:';
+
+	/**
+	 * Check if a value is already encrypted (has our prefix).
+	 *
+	 * @param string $value The value to check.
+	 *
+	 * @return bool
+	 */
+	public static function is_encrypted( string $value ): bool {
+		return 0 === strpos( $value, self::PREFIX );
+	}
+
+	/**
 	 * Encrypt a plaintext string.
+	 *
+	 * Returns empty string for empty input. If the value is already encrypted
+	 * (starts with "enc:"), returns it unchanged — this is the key defence
+	 * against double-encryption from WordPress calling sanitize_option twice.
 	 *
 	 * @param string $plaintext The value to encrypt.
 	 *
-	 * @return string Base64-encoded ciphertext with IV prepended.
+	 * @return string Prefixed base64-encoded ciphertext, or empty string.
 	 */
 	public static function encrypt( string $plaintext ): string {
 		if ( '' === $plaintext ) {
 			return '';
+		}
+
+		// Already encrypted — return as-is. This prevents double-encryption
+		// regardless of how many times the sanitize callback fires.
+		if ( self::is_encrypted( $plaintext ) ) {
+			return $plaintext;
 		}
 
 		$key    = self::get_key();
@@ -39,15 +67,17 @@ class PRAutoBlogger_Encryption {
 			return '';
 		}
 
-		// Prepend IV to ciphertext so we can extract it on decrypt.
 		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
-		return base64_encode( $iv . $ciphertext );
+		return self::PREFIX . base64_encode( $iv . $ciphertext );
 	}
 
 	/**
 	 * Decrypt a previously encrypted string.
 	 *
-	 * @param string $encrypted Base64-encoded ciphertext with IV prepended.
+	 * Handles both prefixed ("enc:...") and legacy non-prefixed values for
+	 * backward compatibility during the transition.
+	 *
+	 * @param string $encrypted Prefixed base64-encoded ciphertext.
 	 *
 	 * @return string The original plaintext, or empty string on failure.
 	 */
@@ -56,11 +86,17 @@ class PRAutoBlogger_Encryption {
 			return '';
 		}
 
+		// Strip the prefix if present.
+		$payload = $encrypted;
+		if ( self::is_encrypted( $encrypted ) ) {
+			$payload = substr( $encrypted, strlen( self::PREFIX ) );
+		}
+
 		$key    = self::get_key();
 		$iv_len = (int) openssl_cipher_iv_length( self::METHOD );
 
 		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode
-		$raw = base64_decode( $encrypted, true );
+		$raw = base64_decode( $payload, true );
 		if ( false === $raw || strlen( $raw ) <= $iv_len ) {
 			PRAutoBlogger_Logger::instance()->error( 'Decryption failed: invalid ciphertext format.', 'encryption' );
 			return '';
