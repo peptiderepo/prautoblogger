@@ -81,7 +81,7 @@ class PRAutoBlogger_Settings_Fields {
 				'label'       => __( 'Reddit Data Source', 'prautoblogger' ),
 				'type'        => 'source_status',
 				'section'     => 'prautoblogger_api',
-				'description' => __( 'Uses PullPush.io (primary) and Reddit .json (fallback). No API key required.', 'prautoblogger' ),
+				'description' => __( 'Uses Reddit RSS (primary) and .json (fallback). No API key required.', 'prautoblogger' ),
 				'icon'        => '📡',
 			],
 
@@ -185,7 +185,7 @@ class PRAutoBlogger_Settings_Fields {
 				'type'        => 'checkboxes',
 				'section'     => 'prautoblogger_sources',
 				'options'     => [
-					'reddit'    => __( 'Reddit (via PullPush.io)', 'prautoblogger' ),
+					'reddit'    => __( 'Reddit (RSS + .json)', 'prautoblogger' ),
 					'tiktok'    => __( 'TikTok (coming soon)', 'prautoblogger' ),
 					'instagram' => __( 'Instagram (coming soon)', 'prautoblogger' ),
 					'youtube'   => __( 'YouTube (coming soon)', 'prautoblogger' ),
@@ -201,7 +201,7 @@ class PRAutoBlogger_Settings_Fields {
 				'default'     => 6,
 				'min'         => 1,
 				'max'         => 72,
-				'description' => __( 'How long to cache PullPush research results before re-fetching. Saves API calls on low-traffic sites.', 'prautoblogger' ),
+				'description' => __( 'How long to cache Reddit research results before re-fetching. Saves bandwidth on low-traffic sites.', 'prautoblogger' ),
 			],
 			[
 				'id'          => 'prautoblogger_reddit_time_filter',

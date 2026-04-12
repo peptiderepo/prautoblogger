@@ -35,7 +35,7 @@ Uses OpenRouter for access to models from Anthropic, OpenAI, Google, Meta, and m
 3. Go to PRAutoBlogger > Settings to configure your API key and preferences.
 4. Add your OpenRouter API key.
 5. Configure your target subreddits and content preferences.
-6. Click "Test Connections" to verify setup (Reddit sources use PullPush.io — no API key needed).
+6. Click "Test Connections" to verify setup (Reddit sources use RSS — no API key needed).
 7. Click "Generate Now" for your first article, or wait for the daily schedule.
 
 == Frequently Asked Questions ==
@@ -50,14 +50,14 @@ By default, articles go through the chief editor agent. Articles that pass revie
 
 = Do I need a Reddit API key? =
 
-No. PRAutoBlogger uses PullPush.io as its primary data source for Reddit content, with Reddit .json endpoints as a fallback. Both are free and require no authentication. You only need an OpenRouter API key for the AI models.
+No. PRAutoBlogger uses Reddit RSS feeds as its primary data source, with Reddit .json endpoints as a fallback. Both are free and require no authentication. You only need an OpenRouter API key for the AI models.
 
 == Changelog ==
 
 = 0.2.0 =
-* Replaced Reddit OAuth with PullPush.io (primary) and Reddit .json (fallback) — no API key needed.
+* Reddit data source uses RSS feeds (primary) with .json endpoints as fallback — no API key needed.
 * Removed Reddit Client ID/Secret fields from admin settings.
-* Added source status indicator showing PullPush and fallback availability.
+* Added source status indicator showing RSS and .json fallback availability.
 * Added configurable research cache TTL, time window, and posts-per-subreddit settings.
 * Updated Test Connections to show which Reddit source is active.
 * Fixed deployment pipeline to purge LiteSpeed cache after deploy.

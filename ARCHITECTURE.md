@@ -15,8 +15,8 @@ PRAutoBlogger is a WordPress plugin that monitors social media (starting with Re
              ▼
 ┌─────────────────────────┐
 │  1. Source Collector     │  Pulls raw posts/comments from social platforms
-│  (PullPush.io primary   │  PullPush.io API (primary) / Reddit .json (fallback)
-│   / Reddit .json fallback)  Stores raw data in `ab_source_data` table
+│  (Reddit RSS primary    │  Reddit RSS/Atom feeds (primary) / .json (fallback)
+│   / .json fallback)        Stores raw data in `ab_source_data` table
 └────────────┬────────────┘
              │
              ▼
@@ -128,9 +128,8 @@ prautoblogger/
 │   │   ├── class-open-router-provider.php # OpenRouter API implementation
 │   │   ├── class-open-router-pricing.php  # Model pricing lookup and cost estimation
 │   │   ├── interface-source-provider.php # Contract for any social media source
-│   │   ├── class-pull-push-client.php    # PullPush.io HTTP client (primary, no auth)
-│   │   ├── class-reddit-json-client.php  # Reddit .json endpoint client (fallback, no auth)
-│   │   ├── class-reddit-provider.php     # Reddit data collection (PullPush primary + .json fallback)
+│   │   ├── class-reddit-json-client.php  # Reddit HTTP client — RSS (primary) + .json (fallback)
+│   │   ├── class-reddit-provider.php     # Reddit data collection orchestrator (RSS primary)
 │   │   ├── class-tiktok-provider.php     # TikTok — stub/future implementation
 │   │   ├── class-instagram-provider.php  # Instagram — stub/future implementation
 │   │   └── class-youtube-provider.php    # YouTube — stub/future implementation
@@ -363,8 +362,8 @@ Stored on every PRAutoBlogger-generated post:
 | Service | Purpose | Auth | Rate Limit | Code |
 |---------|---------|------|------------|------|
 | OpenRouter | All LLM calls (analysis, writing, editing) | API key (encrypted in wp_options) | Per-model | `providers/class-open-router-provider.php`, `providers/class-open-router-pricing.php` |
-| PullPush.io | Primary Reddit data source — submissions and comments by subreddit | None (free public API) | 30 req/min, 1000/hour | `providers/class-pull-push-client.php` |
-| Reddit .json | Fallback Reddit data — appends .json to Reddit URLs | None (unauthenticated) | ~10 req/min (datacenter IPs may be blocked) | `providers/class-reddit-json-client.php` |
+| Reddit RSS | Primary Reddit data source — Atom feeds for subreddit hot posts | None (unauthenticated) | No known rate limit; reliable from datacenter IPs | `providers/class-reddit-json-client.php` |
+| Reddit .json | Fallback for posts + only source for comments | None (unauthenticated) | ~10 req/min (datacenter IPs often blocked) | `providers/class-reddit-json-client.php` |
 | Google Analytics 4 | Post performance metrics | OAuth2 service account | Standard GA4 limits | `core/class-ga4-client.php`, `core/class-metrics-collector.php` |
 
 ---
@@ -374,8 +373,8 @@ Stored on every PRAutoBlogger-generated post:
 ### #1: OpenRouter over direct provider APIs
 Gives access to many models through one API, simplifies provider management, and lets the user switch models without code changes. Trade-off: slight latency overhead and dependency on OpenRouter's availability.
 
-### #2: Reddit as first social source (via PullPush.io + .json fallback)
-Reddit has rich discussion data ideal for identifying recurring questions and pain points. PullPush.io is the primary data source (free, no auth required). Reddit .json endpoints serve as a fallback. See Key Decision #14 for the migration from Reddit OAuth. Trade-off: Reddit data is text-heavy (no video transcription needed), making it the simplest starting point.
+### #2: Reddit as first social source (RSS primary, .json fallback)
+Reddit has rich discussion data ideal for identifying recurring questions and pain points. Reddit RSS/Atom feeds are the primary data source — they work reliably from datacenter IPs (Hostinger) where .json endpoints return 403. The .json endpoints serve as a fallback for posts and are the only source for comment fetching (RSS doesn't include comments). Trade-off: RSS lacks engagement metrics (score, comment count), but post titles and content are sufficient for topic analysis.
 
 ### #3: Chief editor agent instead of human review queue
 The user wants full automation — a second LLM pass reviews quality, SEO, and accuracy before publishing. Posts that fail editorial review are flagged for human intervention rather than published. Trade-off: doubles the LLM cost of the "review" step, but catches quality issues.
@@ -410,5 +409,5 @@ The widget fetches posts asynchronously from a dedicated REST endpoint rather th
 ### #13: Run-ID based log linking
 Each pipeline execution generates a UUID (`run_id`) that tags every `prab_generation_log` entry. When a post is published, `link_generation_logs()` uses `UPDATE WHERE run_id = X` to associate entries with the `post_id`. This is more reliable than the previous timestamp-window approach, especially in batch runs where multiple posts are generated in quick succession.
 
-### #14: PullPush.io replaces Reddit OAuth
-Reddit rejected our OAuth API application (April 2026). Rather than reapply or use a third-party proxy, we switched to PullPush.io as the primary data source. PullPush mirrors Reddit's submission and comment data via a free, no-auth API with 30 req/min limits. Reddit's .json endpoints (appending .json to any Reddit URL) serve as a fallback when PullPush is unavailable. The provider auto-detects PullPush availability on each collection run (cached for 5 minutes) and transparently falls back. Each collected item's metadata includes a `data_source` field (`pullpush` or `reddit_json`) for auditability. This eliminates the need for Reddit client ID/secret storage and the OAuth token lifecycle.
+### #14: Reddit RSS replaces PullPush.io (and earlier Reddit OAuth)
+Reddit rejected our OAuth API application (April 2026). We initially switched to PullPush.io, but its index was frequently stale or unavailable. Reddit's RSS/Atom feeds (`/r/{sub}/hot.rss`) proved the most reliable option — they work from datacenter IPs where .json gets 403, require no auth, and have no apparent rate limit. The .json endpoints are kept as a fallback for posts and as the sole source for comment data. Each collected item's metadata includes a `data_source` field (`reddit_rss` or `reddit_json`) for auditability.

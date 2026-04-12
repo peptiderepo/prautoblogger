@@ -175,7 +175,7 @@ class PRAutoBlogger_Admin_Page {
 	/**
 	 * Render the Reddit source status indicator.
 	 *
-	 * Shows PullPush.io (primary) and Reddit .json (fallback) availability
+	 * Shows Reddit RSS (primary) and .json (fallback) availability
 	 * with live status checks via transient cache and rate limit info.
 	 *
 	 * Side effects: Reads transients for cached availability status.
@@ -183,37 +183,24 @@ class PRAutoBlogger_Admin_Page {
 	 * @return void
 	 */
 	private function render_source_status_field(): void {
-		$pullpush_available = get_transient( 'prautoblogger_pullpush_available' );
-		$last_collection    = get_option( 'prautoblogger_last_collection_time', '' );
-		$last_source_used   = get_option( 'prautoblogger_last_source_used', '' );
-
-		// Determine status display.
-		$pp_status_class = 'ab-status-unknown';
-		$pp_status_label = __( 'Unknown', 'prautoblogger' );
-		if ( true === $pullpush_available ) {
-			$pp_status_class = 'ab-status-ok';
-			$pp_status_label = __( 'Available', 'prautoblogger' );
-		} elseif ( false === $pullpush_available ) {
-			$pp_status_class = 'ab-status-warn';
-			$pp_status_label = __( 'Down — using fallback', 'prautoblogger' );
-		}
+		$last_collection  = get_option( 'prautoblogger_last_collection_time', '' );
+		$last_source_used = get_option( 'prautoblogger_last_source_used', '' );
 
 		echo '<div class="ab-source-status">';
 
-		// PullPush status.
+		// Reddit RSS — primary source.
 		printf(
 			'<div class="ab-source-row">'
-			. '<span class="ab-source-dot %s"></span>'
+			. '<span class="ab-source-dot ab-status-ok"></span>'
 			. '<strong>%s</strong> <span class="ab-source-badge">%s</span>'
 			. '<span class="ab-source-label">%s</span>'
 			. '</div>',
-			esc_attr( $pp_status_class ),
-			esc_html__( 'PullPush.io', 'prautoblogger' ),
+			esc_html__( 'Reddit RSS', 'prautoblogger' ),
 			esc_html__( 'Primary', 'prautoblogger' ),
-			esc_html( $pp_status_label )
+			esc_html__( 'Reliable from all IPs', 'prautoblogger' )
 		);
 
-		// Reddit .json fallback status.
+		// Reddit .json — fallback source.
 		printf(
 			'<div class="ab-source-row">'
 			. '<span class="ab-source-dot ab-status-ok"></span>'
@@ -221,8 +208,8 @@ class PRAutoBlogger_Admin_Page {
 			. '<span class="ab-source-label">%s</span>'
 			. '</div>',
 			esc_html__( 'Reddit .json', 'prautoblogger' ),
-			esc_html__( 'Fallback', 'prautoblogger' ),
-			esc_html__( 'Always available (rate-limited)', 'prautoblogger' )
+			esc_html__( 'Fallback + Comments', 'prautoblogger' ),
+			esc_html__( 'May be IP-blocked on some hosts', 'prautoblogger' )
 		);
 
 		// Last collection info.

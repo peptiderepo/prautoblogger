@@ -316,11 +316,9 @@ class PRAutoBlogger {
 		if ( 'reddit' === $service || 'all' === $service ) {
 			$reddit  = new PRAutoBlogger_Reddit_Provider();
 			$is_ok   = $reddit->validate_credentials();
-			$pp_up   = get_transient( 'prautoblogger_pullpush_available' );
-			$source  = true === $pp_up ? 'PullPush.io' : 'Reddit .json fallback';
 			$results['reddit'] = $is_ok
-				? [ 'status' => 'ok', 'message' => sprintf( __( 'Reddit source available via %s.', 'prautoblogger' ), $source ) ]
-				: [ 'status' => 'error', 'message' => __( 'Both PullPush.io and Reddit .json are unreachable.', 'prautoblogger' ) ];
+				? [ 'status' => 'ok', 'message' => __( 'Reddit source available (RSS primary, .json fallback).', 'prautoblogger' ) ]
+				: [ 'status' => 'error', 'message' => __( 'Reddit sources unreachable (both RSS and .json failed).', 'prautoblogger' ) ];
 		}
 		wp_send_json_success( $results );
 	}

@@ -2,24 +2,23 @@
 declare(strict_types=1);
 
 /**
- * Reddit .json endpoint client — fallback when PullPush.io is unavailable.
+ * Reddit HTTP client — fetches posts via RSS (primary) and .json (fallback).
  *
- * Appends `.json` to standard Reddit URLs to get JSON responses without OAuth.
- * No authentication required, but heavily rate-limited (~10 req/min for
- * unauthenticated requests) and datacenter IPs may be blocked aggressively.
- * This is a FALLBACK only — PullPush is the primary data source.
+ * RSS feeds are the primary data source because they work reliably from datacenter
+ * IPs (Hostinger), while .json endpoints return 403 for server IPs. The .json
+ * endpoints are kept as a fallback in case RSS ever breaks, and are always used
+ * for comment fetching (comments are not available in RSS feeds).
  *
- * Triggered by: PRAutoBlogger_Reddit_Provider when PullPush is_available() returns false.
+ * Triggered by: PRAutoBlogger_Reddit_Provider::collect_data().
  * Dependencies: wp_remote_get(), PRAutoBlogger_Logger.
  *
- * @see providers/class-pullpush-client.php    — Primary client (preferred).
- * @see providers/class-reddit-provider.php    — Instantiates this class as fallback.
- * @see ARCHITECTURE.md                        — External API integrations table.
+ * @see providers/class-reddit-provider.php — Instantiates and calls this class.
+ * @see ARCHITECTURE.md                     — External API integrations table.
  */
 class PRAutoBlogger_Reddit_JSON_Client {
 
 	/**
-	 * Reddit base URL for .json endpoints.
+	 * Reddit base URL for all endpoints.
 	 *
 	 * @var string
 	 */
@@ -31,7 +30,7 @@ class PRAutoBlogger_Reddit_JSON_Client {
 	 *
 	 * @var string
 	 */
-	private const USER_AGENT = 'Mozilla/5.0 (compatible; PRAutoBlogger/0.1.0; +https://peptiderepo.com)';
+	private const USER_AGENT = 'Mozilla/5.0 (compatible; PRAutoBlogger/0.2.1; +https://peptiderepo.com)';
 
 	/**
 	 * HTTP timeout in seconds.
@@ -41,63 +40,50 @@ class PRAutoBlogger_Reddit_JSON_Client {
 	private const TIMEOUT_SECONDS = 30;
 
 	/**
-	 * Transient key for rate limit tracking.
+	 * Transient key for rate limit tracking (.json endpoints only).
 	 *
 	 * @var string
 	 */
 	private const RATE_LIMIT_TRANSIENT = 'prautoblogger_reddit_json_rate_limit';
 
 	/**
-	 * Fetch hot posts from a subreddit via Reddit's .json endpoint.
+	 * Fetch hot posts from a subreddit. Tries RSS first, .json fallback.
 	 *
-	 * Returns data in the same format as the old OAuth client's fetch_posts():
-	 * an array of post data arrays with standard Reddit field names.
+	 * RSS is the primary source because it works from datacenter IPs where
+	 * .json returns 403. If RSS fails, we fall back to .json. Both return
+	 * data in the same normalized format.
 	 *
-	 * Side effects: HTTP request, updates rate limit transient.
+	 * Side effects: HTTP request to Reddit.
 	 *
 	 * @param string $subreddit   Subreddit name (without r/ prefix).
 	 * @param int    $limit       Max posts to fetch (Reddit caps at 100).
-	 * @param string $time_filter Time filter for /top (hour, day, week, month, year, all).
+	 * @param string $time_filter Time filter (unused by RSS, used by .json).
 	 *
 	 * @return array<int, array<string, mixed>> Array of post data.
 	 */
 	public function fetch_posts( string $subreddit, int $limit, string $time_filter = 'day' ): array {
-		$url = sprintf(
-			'%s/r/%s/hot.json?limit=%d&t=%s&raw_json=1',
-			self::BASE_URL,
-			rawurlencode( $subreddit ),
-			min( $limit, 100 ),
-			rawurlencode( $time_filter )
+		// Try RSS first — most reliable from datacenter IPs.
+		$posts = $this->fetch_posts_via_rss( $subreddit, $limit );
+
+		if ( ! empty( $posts ) ) {
+			return $posts;
+		}
+
+		// RSS failed — fall back to .json endpoints.
+		PRAutoBlogger_Logger::instance()->info(
+			sprintf( 'Reddit RSS returned 0 posts for r/%s — trying .json fallback.', $subreddit ),
+			'reddit'
 		);
 
-		$response = $this->api_get( $url );
-
-		if ( null === $response || ! isset( $response['data']['children'] ) ) {
-			// .json endpoint failed (likely 403 IP block) — try RSS fallback.
-			PRAutoBlogger_Logger::instance()->info(
-				sprintf( 'Reddit .json failed for r/%s — trying RSS fallback.', $subreddit ),
-				'reddit_json'
-			);
-			return $this->fetch_posts_via_rss( $subreddit, $limit );
-		}
-
-		$posts = [];
-		foreach ( $response['data']['children'] as $child ) {
-			if ( isset( $child['data'] ) ) {
-				$posts[] = $child['data'];
-			}
-		}
-
-		return $posts;
+		return $this->fetch_posts_via_json( $subreddit, $limit, $time_filter );
 	}
 
 	/**
 	 * Fetch posts from a subreddit via Reddit's RSS/Atom feed.
 	 *
-	 * RSS endpoints are less commonly blocked by Reddit than .json.
-	 * Returns data in the same format as fetch_posts() for compatibility,
-	 * but some fields (score, num_comments) are unavailable in RSS and
-	 * set to defaults.
+	 * RSS endpoints work reliably from datacenter IPs where .json gets blocked.
+	 * Returns data normalized to the same format as .json for pipeline compatibility.
+	 * Some fields (score, num_comments) are unavailable in RSS and set to defaults.
 	 *
 	 * Side effects: HTTP request to Reddit.
 	 *
@@ -106,7 +92,7 @@ class PRAutoBlogger_Reddit_JSON_Client {
 	 *
 	 * @return array<int, array<string, mixed>> Array of post data.
 	 */
-	private function fetch_posts_via_rss( string $subreddit, int $limit ): array {
+	public function fetch_posts_via_rss( string $subreddit, int $limit ): array {
 		$url = sprintf(
 			'%s/r/%s/hot.rss?limit=%d',
 			self::BASE_URL,
@@ -128,7 +114,7 @@ class PRAutoBlogger_Reddit_JSON_Client {
 		if ( is_wp_error( $response ) ) {
 			PRAutoBlogger_Logger::instance()->error(
 				'Reddit RSS GET failed: ' . $response->get_error_message(),
-				'reddit_json'
+				'reddit'
 			);
 			return [];
 		}
@@ -137,13 +123,54 @@ class PRAutoBlogger_Reddit_JSON_Client {
 		if ( 200 !== $status_code ) {
 			PRAutoBlogger_Logger::instance()->error(
 				sprintf( 'Reddit RSS HTTP %d for r/%s', $status_code, $subreddit ),
-				'reddit_json'
+				'reddit'
 			);
 			return [];
 		}
 
 		$body = wp_remote_retrieve_body( $response );
 		return $this->parse_atom_feed( $body, $subreddit );
+	}
+
+	/**
+	 * Fetch hot posts from a subreddit via Reddit's .json endpoint (fallback).
+	 *
+	 * Datacenter IPs are often blocked by Reddit for .json endpoints (HTTP 403).
+	 * This method is only used as a fallback when RSS fails.
+	 *
+	 * Side effects: HTTP request, updates rate limit transient.
+	 *
+	 * @param string $subreddit   Subreddit name (without r/ prefix).
+	 * @param int    $limit       Max posts to fetch (Reddit caps at 100).
+	 * @param string $time_filter Time filter for /hot (hour, day, week, month, year, all).
+	 *
+	 * @return array<int, array<string, mixed>> Array of post data.
+	 */
+	public function fetch_posts_via_json( string $subreddit, int $limit, string $time_filter = 'day' ): array {
+		$url = sprintf(
+			'%s/r/%s/hot.json?limit=%d&t=%s&raw_json=1',
+			self::BASE_URL,
+			rawurlencode( $subreddit ),
+			min( $limit, 100 ),
+			rawurlencode( $time_filter )
+		);
+
+		$response = $this->api_get( $url );
+
+		if ( null === $response || ! isset( $response['data']['children'] ) ) {
+			return [];
+		}
+
+		$posts = [];
+		foreach ( $response['data']['children'] as $child ) {
+			if ( isset( $child['data'] ) ) {
+				$post = $child['data'];
+				$post['data_source'] = 'reddit_json';
+				$posts[] = $post;
+			}
+		}
+
+		return $posts;
 	}
 
 	/**
@@ -165,7 +192,7 @@ class PRAutoBlogger_Reddit_JSON_Client {
 		libxml_use_internal_errors( $prev_errors );
 
 		if ( false === $feed ) {
-			PRAutoBlogger_Logger::instance()->error( 'Failed to parse Reddit RSS XML.', 'reddit_json' );
+			PRAutoBlogger_Logger::instance()->error( 'Failed to parse Reddit RSS XML.', 'reddit' );
 			return [];
 		}
 
@@ -193,11 +220,10 @@ class PRAutoBlogger_Reddit_JSON_Client {
 
 			// Content is in <content> tag as HTML.
 			if ( isset( $entry->content ) ) {
-				// Strip HTML tags to get plain text for content field.
 				$content = wp_strip_all_tags( (string) $entry->content );
 			}
 
-			// Extract post ID from the entry id (format: /r/subreddit/comments/ID/...)
+			// Extract post ID from the entry id (format: /r/subreddit/comments/ID/...).
 			$entry_id = (string) $entry->id;
 			$post_id  = '';
 			if ( preg_match( '#/comments/([a-z0-9]+)#', $entry_id, $m ) ) {
@@ -217,30 +243,30 @@ class PRAutoBlogger_Reddit_JSON_Client {
 			// Extract permalink (relative path) from full URL.
 			$permalink = '';
 			if ( '' !== $link ) {
-				$parsed = wp_parse_url( $link );
+				$parsed    = wp_parse_url( $link );
 				$permalink = $parsed['path'] ?? '';
 			}
 
 			$posts[] = [
-				'id'            => $post_id,
-				'title'         => $title,
-				'selftext'      => $content,
-				'author'        => $author,
-				'score'         => 1,           // Not available in RSS.
-				'num_comments'  => 0,           // Not available in RSS.
-				'permalink'     => $permalink,
-				'created_utc'   => $created_utc,
-				'is_self'       => true,
-				'link_flair_text' => null,
-				'upvote_ratio'  => null,
+				'id'                  => $post_id,
+				'title'               => $title,
+				'selftext'            => $content,
+				'author'              => $author,
+				'score'               => 1,     // Not available in RSS.
+				'num_comments'        => 0,     // Not available in RSS.
+				'permalink'           => $permalink,
+				'created_utc'         => $created_utc,
+				'is_self'             => true,
+				'link_flair_text'     => null,
+				'upvote_ratio'        => null,
 				'is_original_content' => false,
-				'data_source'   => 'reddit_rss', // Tag for debugging.
+				'data_source'         => 'reddit_rss',
 			];
 		}
 
 		PRAutoBlogger_Logger::instance()->info(
 			sprintf( 'Parsed %d posts from Reddit RSS for r/%s.', count( $posts ), $subreddit ),
-			'reddit_json'
+			'reddit'
 		);
 
 		return $posts;
@@ -249,8 +275,9 @@ class PRAutoBlogger_Reddit_JSON_Client {
 	/**
 	 * Fetch top comments for a specific post via Reddit's .json endpoint.
 	 *
-	 * Returns data in the same format as the old OAuth client's fetch_comments():
-	 * an array of comment data arrays with standard Reddit field names.
+	 * Comments are always fetched via .json because RSS feeds don't include them.
+	 * Datacenter IP blocks may prevent this from working, in which case we
+	 * return an empty array (articles can still be generated from post titles alone).
 	 *
 	 * Side effects: HTTP request, updates rate limit transient.
 	 *
@@ -288,21 +315,48 @@ class PRAutoBlogger_Reddit_JSON_Client {
 	}
 
 	/**
-	 * Check if Reddit .json or RSS endpoints are reachable from this server.
+	 * Check if at least one Reddit endpoint is reachable from this server.
 	 *
-	 * Datacenter IPs are often blocked by Reddit for .json endpoints.
-	 * We check .json first, then fall back to RSS availability.
+	 * Tries RSS first (most reliable), then .json as fallback.
 	 *
 	 * Side effects: HTTP request.
 	 *
 	 * @return bool True if we got a valid response from either endpoint.
 	 */
 	public function is_available(): bool {
-		return $this->is_json_available() || $this->is_rss_available();
+		return $this->is_rss_available() || $this->is_json_available();
+	}
+
+	/**
+	 * Check if Reddit RSS endpoints are reachable.
+	 *
+	 * RSS endpoints are rarely blocked by Reddit, even for datacenter IPs.
+	 *
+	 * @return bool True if RSS endpoint returns HTTP 200.
+	 */
+	public function is_rss_available(): bool {
+		$url      = self::BASE_URL . '/r/all/hot.rss?limit=1';
+		$response = wp_remote_get(
+			$url,
+			[
+				'timeout' => 10,
+				'headers' => [
+					'User-Agent' => self::USER_AGENT,
+				],
+			]
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return false;
+		}
+
+		return 200 === wp_remote_retrieve_response_code( $response );
 	}
 
 	/**
 	 * Check if Reddit .json endpoints are reachable.
+	 *
+	 * Datacenter IPs are often blocked by Reddit for .json endpoints.
 	 *
 	 * @return bool True if .json endpoint returns HTTP 200.
 	 */
@@ -326,36 +380,9 @@ class PRAutoBlogger_Reddit_JSON_Client {
 	}
 
 	/**
-	 * Check if Reddit RSS endpoints are reachable.
-	 *
-	 * RSS endpoints are less commonly blocked by Reddit than .json.
-	 *
-	 * @return bool True if RSS endpoint returns HTTP 200 with XML content.
-	 */
-	private function is_rss_available(): bool {
-		$url      = self::BASE_URL . '/r/all/hot.rss?limit=1';
-		$response = wp_remote_get(
-			$url,
-			[
-				'timeout' => 10,
-				'headers' => [
-					'User-Agent' => self::USER_AGENT,
-				],
-			]
-		);
-
-		if ( is_wp_error( $response ) ) {
-			return false;
-		}
-
-		return 200 === wp_remote_retrieve_response_code( $response );
-	}
-
-	/**
 	 * Get current rate limit status.
 	 *
-	 * Reddit .json endpoints return rate limit headers similar to the OAuth API.
-	 * We track them in a transient.
+	 * Reddit .json endpoints return rate limit headers. RSS has no rate limits.
 	 *
 	 * @return array{remaining: int, limit: int, resets_at: string}
 	 */
@@ -400,12 +427,12 @@ class PRAutoBlogger_Reddit_JSON_Client {
 		if ( is_wp_error( $response ) ) {
 			PRAutoBlogger_Logger::instance()->error(
 				'Reddit .json GET failed: ' . $response->get_error_message(),
-				'reddit_json'
+				'reddit'
 			);
 			return null;
 		}
 
-		// Track rate limits from response headers (same as OAuth API).
+		// Track rate limits from response headers.
 		$rate_remaining = wp_remote_retrieve_header( $response, 'x-ratelimit-remaining' );
 		$rate_used      = wp_remote_retrieve_header( $response, 'x-ratelimit-used' );
 		$rate_reset     = wp_remote_retrieve_header( $response, 'x-ratelimit-reset' );
@@ -431,7 +458,7 @@ class PRAutoBlogger_Reddit_JSON_Client {
 					$status_code,
 					substr( wp_remote_retrieve_body( $response ), 0, 300 )
 				),
-				'reddit_json'
+				'reddit'
 			);
 			return null;
 		}
