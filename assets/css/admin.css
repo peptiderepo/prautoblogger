@@ -259,6 +259,19 @@ input[type="time"].ab-input { max-width: 160px; }
 .ab-log-pagination .page-numbers { display: inline-block; padding: 4px 10px; margin: 0 2px; text-decoration: none; }
 .ab-log-pagination .page-numbers.current { background: var(--ab-primary); color: #fff; border-radius: 3px; }
 
+/* ── Source Status Indicator ──────────────────────────────────────────── */
+.ab-source-status { display: flex; flex-direction: column; gap: 8px; }
+.ab-source-row { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--ab-bg); border-radius: 6px; }
+.ab-source-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.ab-status-ok { background-color: var(--ab-success); }
+.ab-status-warn { background-color: var(--ab-warning); }
+.ab-status-error { background-color: var(--ab-danger); }
+.ab-status-unknown { background-color: var(--ab-text-muted); }
+.ab-source-badge { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; padding: 2px 6px; border-radius: 3px; background: var(--ab-primary-light); color: var(--ab-primary); }
+.ab-badge-secondary { background: var(--ab-bg); color: var(--ab-text-muted); }
+.ab-source-label { color: var(--ab-text-muted); font-size: 13px; margin-left: auto; }
+.ab-source-meta { font-size: 12px; color: var(--ab-text-muted); padding: 4px 12px 0; }
+
 /* ── Responsive ──────────────────────────────────────────────────────── */
 @media screen and (max-width: 900px) {
 	.ab-layout { flex-direction: column; }

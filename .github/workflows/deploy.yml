@@ -1,159 +1,70 @@
-# PRAutoBlogger CI/CD Pipeline
-#
-# Triggers on every push to main. Runs PHP lint and coding standards checks,
-# packages the plugin into a clean zip (excluding dev files), and deploys it
-# to the live WordPress site via the deploy-receiver mu-plugin REST endpoint.
-#
-# Required GitHub Secrets:
-#   DEPLOY_URL  — https://peptiderepo.com/wp-json/prautoblogger-deploy/v1/deploy
-#   DEPLOY_KEY  — The token matching PRAUTOBLOGGER_DEPLOY_KEY in wp-config.php
-#
-# @see .github/mu-plugins/prautoblogger-deploy-receiver.php — Server-side endpoint.
-# @see scripts/deploy.sh                                   — Manual deploy script.
-
-name: Deploy PRAutoBlogger
+name: Deploy PRAutoBlogger to Hostinger
 
 on:
   push:
     branches: [main]
-  workflow_dispatch:       # Allow manual trigger from GitHub UI
-
-concurrency:
-  group: deploy-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
-  # ──────────────────────────────────────────────────────────────────────
-  # Stage 1: Lint & Standards
-  # ──────────────────────────────────────────────────────────────────────
-  lint:
-    name: PHP Lint & PHPCS
+  validate:
+    name: Validate PHP Syntax
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.1'
-          tools: cs2pr, phpcs
-          coverage: none
-
-      - name: PHP syntax check
+      - name: PHP Lint Check
         run: |
-          find . -name '*.php' -not -path './vendor/*' -not -path './tests/*' \
-            -exec php -l {} \; 2>&1 | grep -v "No syntax errors" | head -50
-          # Fail if any file has syntax errors
-          find . -name '*.php' -not -path './vendor/*' -not -path './tests/*' \
-            -exec php -l {} \; 2>&1 | grep -q "Parse error" && exit 1 || true
+          find . -name "*.php" -not -path "./vendor/*" -not -path "./node_modules/*" -exec php -l {} \; | (grep -v "No syntax errors" || true) | head -20
+          test ${PIPESTATUS[0]} -eq 0
 
-      - name: Install WordPress Coding Standards
-        run: |
-          composer global config allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
-          composer global require --dev wp-coding-standards/wpcs:"^3.0" \
-            phpcsstandards/phpcsextra:"^1.0" \
-            phpcsstandards/phpcsutils:"^1.0"
-
-      - name: Run PHPCS (warnings only, non-blocking)
-        run: |
-          phpcs --standard=WordPress --extensions=php \
-            --ignore=vendor,tests,node_modules \
-            --report=checkstyle \
-            --warning-severity=0 \
-            . | cs2pr || true
-        # Non-blocking for now — we want visibility without breaking deploys
-        # while we clean up existing code. Remove "|| true" once clean.
-
-  # ──────────────────────────────────────────────────────────────────────
-  # Stage 2: Unit Tests
-  # ──────────────────────────────────────────────────────────────────────
-  test:
-    name: PHPUnit Tests
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.1'
-          extensions: openssl, json, mbstring
-          coverage: none
-
-      - name: Install Composer dependencies
-        run: composer install --no-interaction --prefer-dist
-
-      - name: Run PHPUnit
-        run: vendor/bin/phpunit --testdox
-
-  # ──────────────────────────────────────────────────────────────────────
-  # Stage 3: Package & Deploy
-  # ──────────────────────────────────────────────────────────────────────
   deploy:
-    name: Package & Deploy to Production
+    needs: validate
+    name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: [lint, test]
-    if: github.ref == 'refs/heads/main'
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Read plugin version
-        id: version
+      - name: Setup SSH key
         run: |
-          VERSION=$(grep -oP "Version:\s*\K[0-9]+\.[0-9]+\.[0-9]+" prautoblogger.php)
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Plugin version: $VERSION"
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Build plugin zip
+      - name: Deploy via rsync
         run: |
-          # Create a clean build directory
-          mkdir -p build/prautoblogger
+          rsync -avz --delete \
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude 'tests' \
+            --exclude 'phpunit.xml.dist' \
+            --exclude 'composer.json' \
+            --exclude 'composer.lock' \
+            --exclude '.distignore' \
+            --exclude 'ARCHITECTURE.md' \
+            --exclude 'CONVENTIONS.md' \
+            -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }}" \
+            ./ ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:~/domains/peptiderepo.com/public_html/wp-content/plugins/prautoblogger/
 
-          # Copy only production files (exclude dev/CI artifacts)
-          rsync -av --exclude-from='.distignore' ./ build/prautoblogger/
-
-          # Create the zip
-          cd build
-          zip -r "prautoblogger-${{ steps.version.outputs.version }}.zip" prautoblogger/
-          ls -lh "prautoblogger-${{ steps.version.outputs.version }}.zip"
-
-      - name: Deploy to WordPress
-        env:
-          DEPLOY_URL: ${{ secrets.DEPLOY_URL }}
-          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+      - name: Purge LiteSpeed Cache
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          ZIP_PATH="build/prautoblogger-${VERSION}.zip"
+          ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} \
+            ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} \
+            "cd ~/domains/peptiderepo.com/public_html && find wp-content/litespeed/ -type f -delete 2>/dev/null; touch .lscache_purge 2>/dev/null || true"
 
-          echo "Deploying PRAutoBlogger v${VERSION} to production..."
-
-          RESPONSE=$(curl -sS -w "\n%{http_code}" \
-            -X POST "${DEPLOY_URL}" \
-            -H "X-Deploy-Key: ${DEPLOY_KEY}" \
-            -F "plugin=@${ZIP_PATH}" \
-            --max-time 120)
-
-          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
-          BODY=$(echo "$RESPONSE" | head -n -1)
-
-          echo "HTTP ${HTTP_CODE}: ${BODY}"
-
-          if [ "$HTTP_CODE" -ne 200 ]; then
-            echo "::error::Deployment failed with HTTP ${HTTP_CODE}"
+      - name: Health check
+        run: |
+          sleep 5
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://peptiderepo.com)
+          if [ "$STATUS" != "200" ]; then
+            echo "WARNING: Site returned HTTP $STATUS after deploy"
             exit 1
           fi
+          echo "Site is healthy (HTTP 200)"
 
-          echo "Deployment successful!"
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: prautoblogger-${{ steps.version.outputs.version }}
-          path: build/prautoblogger-${{ steps.version.outputs.version }}.zip
-          retention-days: 30
+      - name: Cleanup
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

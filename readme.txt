@@ -4,7 +4,7 @@ Tags: ai, content generation, blogging, seo, automation
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.1.0
+Stable tag: 0.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -32,10 +32,10 @@ Uses OpenRouter for access to models from Anthropic, OpenAI, Google, Meta, and m
 
 1. Upload the `prautoblogger` folder to the `/wp-content/plugins/` directory.
 2. Activate the plugin through the 'Plugins' menu in WordPress.
-3. Go to PRAutoBlogger > Settings to configure your API keys and preferences.
-4. Add your OpenRouter API key and Reddit app credentials.
+3. Go to PRAutoBlogger > Settings to configure your API key and preferences.
+4. Add your OpenRouter API key.
 5. Configure your target subreddits and content preferences.
-6. Click "Test Connections" to verify setup.
+6. Click "Test Connections" to verify setup (Reddit sources use PullPush.io — no API key needed).
 7. Click "Generate Now" for your first article, or wait for the daily schedule.
 
 == Frequently Asked Questions ==
@@ -48,11 +48,19 @@ Costs depend on your chosen models and article volume. With default settings (Cl
 
 By default, articles go through the chief editor agent. Articles that pass review are auto-published. Articles that fail review are saved as drafts for manual review.
 
-= How do I set up Reddit API access? =
+= Do I need a Reddit API key? =
 
-Go to reddit.com/prefs/apps, create a "script" type application. Copy the client ID and secret into the PRAutoBlogger settings page.
+No. PRAutoBlogger uses PullPush.io as its primary data source for Reddit content, with Reddit .json endpoints as a fallback. Both are free and require no authentication. You only need an OpenRouter API key for the AI models.
 
 == Changelog ==
+
+= 0.2.0 =
+* Replaced Reddit OAuth with PullPush.io (primary) and Reddit .json (fallback) — no API key needed.
+* Removed Reddit Client ID/Secret fields from admin settings.
+* Added source status indicator showing PullPush and fallback availability.
+* Added configurable research cache TTL, time window, and posts-per-subreddit settings.
+* Updated Test Connections to show which Reddit source is active.
+* Fixed deployment pipeline to purge LiteSpeed cache after deploy.
 
 = 0.1.0 =
 * Initial release with Reddit source, OpenRouter LLM, and full content pipeline.

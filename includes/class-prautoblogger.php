@@ -276,10 +276,13 @@ class PRAutoBlogger {
 				: [ 'status' => 'error', 'message' => __( 'OpenRouter connection failed. Check your API key.', 'prautoblogger' ) ];
 		}
 		if ( 'reddit' === $service || 'all' === $service ) {
-			$reddit = new PRAutoBlogger_Reddit_Provider();
-			$results['reddit'] = $reddit->validate_credentials()
-				? [ 'status' => 'ok', 'message' => __( 'Reddit API connected.', 'prautoblogger' ) ]
-				: [ 'status' => 'error', 'message' => __( 'Reddit connection failed. Check client ID/secret.', 'prautoblogger' ) ];
+			$reddit  = new PRAutoBlogger_Reddit_Provider();
+			$is_ok   = $reddit->validate_credentials();
+			$pp_up   = get_transient( 'prautoblogger_pullpush_available' );
+			$source  = true === $pp_up ? 'PullPush.io' : 'Reddit .json fallback';
+			$results['reddit'] = $is_ok
+				? [ 'status' => 'ok', 'message' => sprintf( __( 'Reddit source available via %s.', 'prautoblogger' ), $source ) ]
+				: [ 'status' => 'error', 'message' => __( 'Both PullPush.io and Reddit .json are unreachable.', 'prautoblogger' ) ];
 		}
 		wp_send_json_success( $results );
 	}

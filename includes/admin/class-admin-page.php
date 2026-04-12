@@ -151,6 +151,10 @@ class PRAutoBlogger_Admin_Page {
 				}
 				break;
 
+			case 'source_status':
+				$this->render_source_status_field();
+				break;
+
 			case 'author_select':
 				wp_dropdown_users( [ 'name' => $id, 'id' => $id, 'selected' => absint( $value ), 'show_option_none' => __( '— Auto (first admin) —', 'prautoblogger' ), 'option_none_value' => '0', 'class' => 'ab-select' ] );
 				break;
@@ -169,6 +173,74 @@ class PRAutoBlogger_Admin_Page {
 	}
 
 	/**
+	 * Render the Reddit source status indicator.
+	 *
+	 * Shows PullPush.io (primary) and Reddit .json (fallback) availability
+	 * with live status checks via transient cache and rate limit info.
+	 *
+	 * Side effects: Reads transients for cached availability status.
+	 *
+	 * @return void
+	 */
+	private function render_source_status_field(): void {
+		$pullpush_available = get_transient( 'prautoblogger_pullpush_available' );
+		$last_collection    = get_option( 'prautoblogger_last_collection_time', '' );
+		$last_source_used   = get_option( 'prautoblogger_last_source_used', '' );
+
+		// Determine status display.
+		$pp_status_class = 'ab-status-unknown';
+		$pp_status_label = __( 'Unknown', 'prautoblogger' );
+		if ( true === $pullpush_available ) {
+			$pp_status_class = 'ab-status-ok';
+			$pp_status_label = __( 'Available', 'prautoblogger' );
+		} elseif ( false === $pullpush_available ) {
+			$pp_status_class = 'ab-status-warn';
+			$pp_status_label = __( 'Down — using fallback', 'prautoblogger' );
+		}
+
+		echo '<div class="ab-source-status">';
+
+		// PullPush status.
+		printf(
+			'<div class="ab-source-row">'
+			. '<span class="ab-source-dot %s"></span>'
+			. '<strong>%s</strong> <span class="ab-source-badge">%s</span>'
+			. '<span class="ab-source-label">%s</span>'
+			. '</div>',
+			esc_attr( $pp_status_class ),
+			esc_html__( 'PullPush.io', 'prautoblogger' ),
+			esc_html__( 'Primary', 'prautoblogger' ),
+			esc_html( $pp_status_label )
+		);
+
+		// Reddit .json fallback status.
+		printf(
+			'<div class="ab-source-row">'
+			. '<span class="ab-source-dot ab-status-ok"></span>'
+			. '<strong>%s</strong> <span class="ab-source-badge ab-badge-secondary">%s</span>'
+			. '<span class="ab-source-label">%s</span>'
+			. '</div>',
+			esc_html__( 'Reddit .json', 'prautoblogger' ),
+			esc_html__( 'Fallback', 'prautoblogger' ),
+			esc_html__( 'Always available (rate-limited)', 'prautoblogger' )
+		);
+
+		// Last collection info.
+		if ( '' !== $last_collection ) {
+			$time_ago = human_time_diff( (int) $last_collection, time() );
+			printf(
+				'<div class="ab-source-meta">%s <strong>%s</strong> %s</div>',
+				esc_html__( 'Last collection:', 'prautoblogger' ),
+				/* translators: %s is a human-readable time difference like "2 hours" */
+				esc_html( sprintf( __( '%s ago', 'prautoblogger' ), $time_ago ) ),
+				'' !== $last_source_used ? esc_html( sprintf( __( 'via %s', 'prautoblogger' ), $last_source_used ) ) : ''
+			);
+		}
+
+		echo '</div>';
+	}
+
+	/**
 	 * Sanitize a settings field value.
 	 *
 	 * @param mixed $value The submitted value.
@@ -181,7 +253,7 @@ class PRAutoBlogger_Admin_Page {
 			$option_name = substr( $filter, strlen( 'sanitize_option_' ) );
 		}
 
-		$encrypted = [ 'prautoblogger_openrouter_api_key', 'prautoblogger_reddit_client_secret', 'prautoblogger_ga4_credentials_json' ];
+		$encrypted = [ 'prautoblogger_openrouter_api_key', 'prautoblogger_ga4_credentials_json' ];
 		if ( in_array( $option_name, $encrypted, true ) ) {
 			if ( '' === $value ) { return get_option( $option_name, '' ); }
 			return PRAutoBlogger_Encryption::encrypt( sanitize_text_field( $value ) );
@@ -197,7 +269,7 @@ class PRAutoBlogger_Admin_Page {
 			return sanitize_text_field( $value );
 		}
 
-		$numeric = [ 'prautoblogger_daily_article_target', 'prautoblogger_monthly_budget_usd', 'prautoblogger_min_word_count', 'prautoblogger_max_word_count', 'prautoblogger_default_author', 'prautoblogger_default_category' ];
+		$numeric = [ 'prautoblogger_daily_article_target', 'prautoblogger_monthly_budget_usd', 'prautoblogger_min_word_count', 'prautoblogger_max_word_count', 'prautoblogger_default_author', 'prautoblogger_default_category', 'prautoblogger_pullpush_cache_ttl', 'prautoblogger_reddit_posts_per_subreddit' ];
 		if ( in_array( $option_name, $numeric, true ) ) {
 			return is_numeric( $value ) ? $value : 0;
 		}
