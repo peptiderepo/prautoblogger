@@ -26,6 +26,12 @@ abstract class BaseTestCase extends TestCase {
         // Common WordPress function stubs used across many classes.
         Functions\stubTranslationFunctions();
         Functions\stubEscapeFunctions();
+
+        // Stub transient functions — many classes use caching via transients.
+        // Individual tests can override with Functions\when() in their own setUp.
+        Functions\when( 'get_transient' )->justReturn( false );
+        Functions\when( 'set_transient' )->justReturn( true );
+        Functions\when( 'delete_transient' )->justReturn( true );
     }
 
     /**
