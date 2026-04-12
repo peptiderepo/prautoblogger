@@ -21,8 +21,10 @@ class OpenRouterProviderTest extends BaseTestCase {
         // Stub get_option — provider calls get_option('prautoblogger_openrouter_api_key', '')
         // for API key retrieval via private get_api_key() method.
         // Return empty string so decryption is skipped (no key = empty return).
+        // Also include prautoblogger_log_level for Logger singleton.
         $this->stub_get_option( [
             'prautoblogger_openrouter_api_key' => '',
+            'prautoblogger_log_level'          => 'info',
         ] );
 
         // Stub wp_salt — called by PRAutoBlogger_Encryption during API key decryption.
@@ -131,24 +133,26 @@ class OpenRouterProviderTest extends BaseTestCase {
     }
 
     /**
-     * Test send_chat_completion returns array.
+     * Test send_chat_completion throws RuntimeException when API key is empty.
+     *
+     * The guard clause at the top of send_chat_completion checks for a
+     * configured API key before making any HTTP calls.
      */
-    public function test_send_chat_completion_returns_array(): void {
+    public function test_send_chat_completion_throws_without_api_key(): void {
         $provider = new \PRAutoBlogger_OpenRouter_Provider();
 
         $messages = [
             [ 'role' => 'user', 'content' => 'Test message' ],
         ];
 
-        $result = $provider->send_chat_completion( $messages, 'model/test', [] );
-
-        $this->assertIsArray( $result );
+        $this->expectException( \RuntimeException::class );
+        $provider->send_chat_completion( $messages, 'model/test', [] );
     }
 
     /**
-     * Test send_chat_completion with options.
+     * Test send_chat_completion with options also throws when no key.
      */
-    public function test_send_chat_completion_with_options(): void {
+    public function test_send_chat_completion_with_options_throws_without_api_key(): void {
         $provider = new \PRAutoBlogger_OpenRouter_Provider();
 
         $messages = [
@@ -156,8 +160,7 @@ class OpenRouterProviderTest extends BaseTestCase {
         ];
         $options = [ 'temperature' => 0.7 ];
 
-        $result = $provider->send_chat_completion( $messages, 'model/test', $options );
-
-        $this->assertIsArray( $result );
+        $this->expectException( \RuntimeException::class );
+        $provider->send_chat_completion( $messages, 'model/test', $options );
     }
 }

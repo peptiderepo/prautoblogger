@@ -14,8 +14,27 @@ use Brain\Monkey\Functions;
 
 class OpenRouterPricingTest extends BaseTestCase {
 
+    /**
+     * @var \PHPUnit\Framework\MockObject\MockObject Mock $wpdb for Logger.
+     */
+    private $wpdb;
+
     protected function setUp(): void {
         parent::setUp();
+
+        // Logger (called on unknown-model warning) accesses $wpdb->prefix and $wpdb->insert.
+        $this->wpdb = $this->create_mock_wpdb();
+        $this->wpdb->method( 'insert' )->willReturn( 1 );
+        $GLOBALS['wpdb'] = $this->wpdb;
+
+        // Stub get_option for Logger's log_level and Pricing's API key lookup.
+        $this->stub_get_option( [
+            'prautoblogger_log_level'          => 'info',
+            'prautoblogger_openrouter_api_key'  => '',
+        ] );
+
+        // Stub current_time — used by Logger when writing log entries.
+        $this->stub_current_time( '2026-04-12 10:00:00' );
 
         // OpenRouterPricing::get_available_models() calls get_transient() to check cache.
         // Return a valid cached model list so it doesn't try to make HTTP calls.
@@ -42,6 +61,11 @@ class OpenRouterPricingTest extends BaseTestCase {
         );
 
         Functions\when( 'set_transient' )->justReturn( true );
+    }
+
+    protected function tearDown(): void {
+        unset( $GLOBALS['wpdb'] );
+        parent::tearDown();
     }
 
     /**

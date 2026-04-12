@@ -29,6 +29,17 @@ if ( ! defined( 'HOUR_IN_SECONDS' ) ) {
     define( 'HOUR_IN_SECONDS', 3600 );
 }
 
+// Plugin constants used by OpenRouter provider retry logic.
+if ( ! defined( 'PRAUTOBLOGGER_MAX_RETRIES' ) ) {
+    define( 'PRAUTOBLOGGER_MAX_RETRIES', 3 );
+}
+if ( ! defined( 'PRAUTOBLOGGER_API_TIMEOUT_SECONDS' ) ) {
+    define( 'PRAUTOBLOGGER_API_TIMEOUT_SECONDS', 30 );
+}
+if ( ! defined( 'PRAUTOBLOGGER_RETRY_BASE_DELAY_SECONDS' ) ) {
+    define( 'PRAUTOBLOGGER_RETRY_BASE_DELAY_SECONDS', 1 );
+}
+
 // WordPress database constants used in $wpdb queries.
 if ( ! defined( 'ARRAY_A' ) ) {
     define( 'ARRAY_A', 'ARRAY_A' );

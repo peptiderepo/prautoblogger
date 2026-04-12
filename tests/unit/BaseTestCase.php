@@ -32,12 +32,27 @@ abstract class BaseTestCase extends TestCase {
         Functions\when( 'get_transient' )->justReturn( false );
         Functions\when( 'set_transient' )->justReturn( true );
         Functions\when( 'delete_transient' )->justReturn( true );
+
+        // wp_json_encode is used by Logger and other classes for meta serialisation.
+        Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
+
+        // home_url is used by OpenRouter provider in request headers.
+        Functions\when( 'home_url' )->justReturn( 'https://test.example.com' );
     }
 
     /**
      * Tear down Brain\Monkey after each test.
      */
     protected function tearDown(): void {
+        // Reset Logger singleton to prevent state leakage between tests.
+        // Logger caches its log-level threshold and holds a static instance.
+        if ( class_exists( 'PRAutoBlogger_Logger', false ) ) {
+            $ref  = new \ReflectionClass( \PRAutoBlogger_Logger::class );
+            $prop = $ref->getProperty( 'instance' );
+            $prop->setAccessible( true );
+            $prop->setValue( null, null );
+        }
+
         Monkey\tearDown();
         parent::tearDown();
     }

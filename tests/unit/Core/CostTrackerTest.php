@@ -142,23 +142,23 @@ class CostTrackerTest extends BaseTestCase {
         $tracker = new \PRAutoBlogger_Cost_Tracker();
         $tracker->set_run_id( 'run_test' );
 
-        // Mock wpdb to expect an insert call.
-        $this->wpdb->expects( $this->once() )
+        // Allow multiple inserts — log_api_call inserts a generation log row,
+        // and Logger may also insert an event log row if a warning fires.
+        $this->wpdb->expects( $this->atLeastOnce() )
             ->method( 'insert' )
             ->willReturn( 1 );
 
-        // Signature: log_api_call(?int $post_id, string $stage, string $provider,
-        //   string $model, int $prompt_tokens, int $completion_tokens,
-        //   float $estimated_cost, float $duration_seconds).
+        // Actual signature: log_api_call(?int $post_id, string $stage,
+        //   string $provider, string $model, int $prompt_tokens,
+        //   int $completion_tokens, string $response_status, string $error_message).
+        // Use 'openai/gpt-4o' which IS in MODEL_PRICING to avoid unknown-model warnings.
         $tracker->log_api_call(
             123,
             'analysis',
             'openrouter',
-            'openai/gpt-4',
+            'openai/gpt-4o',
             500,
-            250,
-            0.01,
-            1.5
+            250
         );
 
         // If we get here without exception, the method worked.
