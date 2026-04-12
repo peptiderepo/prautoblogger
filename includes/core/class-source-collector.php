@@ -4,7 +4,7 @@ declare(strict_types=1);
 /**
  * Orchestrates data collection from all enabled source providers.
  *
- * Iterates through enabled sources (Reddit, TikTok, etc.), calls their
+ * Iterates through enabled sources (currently Reddit), calls their
  * collect_data() method, and stores results in the ab_source_data table.
  * Handles deduplication via UNIQUE index on (source_type, source_id).
  *
@@ -115,7 +115,7 @@ class PRAutoBlogger_Source_Collector {
 	private function get_provider( string $source_type ): ?PRAutoBlogger_Source_Provider_Interface {
 		$providers = [
 			'reddit' => PRAutoBlogger_Reddit_Provider::class,
-			// Future providers: 'tiktok', 'instagram', 'youtube'
+			// New providers can be added here — see CONVENTIONS.md for how-to.
 		];
 
 		/**

@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * Contract for any social media source provider (Reddit, TikTok, Instagram, YouTube).
+ * Contract for any social media source provider (e.g., Reddit).
  *
  * Any class implementing this interface can be registered as a data source.
  * The Source_Collector iterates through enabled providers and calls collect_data().

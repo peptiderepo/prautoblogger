@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * Value object representing a single piece of collected social media data
- * (a Reddit post, a TikTok comment, etc.).
+ * (e.g., a Reddit post or comment).
  *
  * Triggered by: Source providers create these; Content_Analyzer consumes them.
  * Dependencies: None — pure data object.

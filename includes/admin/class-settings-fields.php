@@ -186,9 +186,6 @@ class PRAutoBlogger_Settings_Fields {
 				'section'     => 'prautoblogger_sources',
 				'options'     => [
 					'reddit'    => __( 'Reddit (RSS + .json)', 'prautoblogger' ),
-					'tiktok'    => __( 'TikTok (coming soon)', 'prautoblogger' ),
-					'instagram' => __( 'Instagram (coming soon)', 'prautoblogger' ),
-					'youtube'   => __( 'YouTube (coming soon)', 'prautoblogger' ),
 				],
 				'default'     => '["reddit"]',
 				'description' => __( 'Select which platforms to monitor for topics.', 'prautoblogger' ),

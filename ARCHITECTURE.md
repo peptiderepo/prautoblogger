@@ -130,9 +130,7 @@ prautoblogger/
 │   │   ├── interface-source-provider.php # Contract for any social media source
 │   │   ├── class-reddit-json-client.php  # Reddit HTTP client — RSS (primary) + .json (fallback)
 │   │   ├── class-reddit-provider.php     # Reddit data collection orchestrator (RSS primary)
-│   │   ├── class-tiktok-provider.php     # TikTok — stub/future implementation
-│   │   ├── class-instagram-provider.php  # Instagram — stub/future implementation
-│   │   └── class-youtube-provider.php    # YouTube — stub/future implementation
+│   │   └── (new providers go here — see CONVENTIONS.md)
 │   │
 │   ├── frontend/
 │   │   └── class-posts-widget.php     # [prautoblogger_posts] shortcode + REST endpoint
@@ -221,7 +219,7 @@ All tables use `$wpdb->prefix` + `prautoblogger_` prefix.
 | Column        | Type              | Description                                      |
 |---------------|-------------------|--------------------------------------------------|
 | id            | BIGINT UNSIGNED   | Auto-increment PK                                |
-| source_type   | VARCHAR(50)       | 'reddit', 'tiktok', 'instagram', 'youtube'       |
+| source_type   | VARCHAR(50)       | 'reddit' (extensible for future providers)        |
 | source_id     | VARCHAR(255)      | Platform-specific unique ID (post/comment ID)     |
 | subreddit     | VARCHAR(255)      | Subreddit or channel name (nullable)              |
 | title         | TEXT              | Post/video title                                 |
@@ -386,7 +384,7 @@ Some users want cheap/fast, others want high quality. Making this configurable a
 Rather than just tracking raw metrics, we periodically have the LLM evaluate what made high-performing posts succeed and low-performing posts fail. This feeds back into the analysis and generation prompts. Trade-off: additional API cost for scoring, but enables the self-improvement loop.
 
 ### #6: Source provider interface for future platforms
-Reddit is first, but TikTok/Instagram/YouTube are planned. The interface pattern means adding a new source is one class implementation. Trade-off: slight over-engineering for day one, but pays off immediately at source #2.
+Reddit is the only implemented source, but the interface pattern means adding a new source (YouTube, TikTok, etc.) is one class implementation plus a settings checkbox. We removed the old stub provider files (TikTok, Instagram, YouTube) because dead code confuses AI agents and humans alike — the interface is the contract, not empty classes. Trade-off: slight over-engineering for day one, but pays off immediately at source #2.
 
 ### #7: Custom tables for high-volume data
 Source data, analysis results, and generation logs are high-write, time-series data. WordPress post_meta and options are wrong for this. Custom tables with proper indexes. Trade-off: more complex activation/uninstall, but correct.
@@ -411,3 +409,18 @@ Each pipeline execution generates a UUID (`run_id`) that tags every `prab_genera
 
 ### #14: Reddit RSS replaces PullPush.io (and earlier Reddit OAuth)
 Reddit rejected our OAuth API application (April 2026). We initially switched to PullPush.io, but its index was frequently stale or unavailable. Reddit's RSS/Atom feeds (`/r/{sub}/hot.rss`) proved the most reliable option — they work from datacenter IPs where .json gets 403, require no auth, and have no apparent rate limit. The .json endpoints are kept as a fallback for posts and as the sole source for comment data. Each collected item's metadata includes a `data_source` field (`reddit_rss` or `reddit_json`) for auditability.
+
+---
+
+## Cross-System LLM Budget Coordination
+
+PRAutoBlogger and Peptide News both call OpenRouter and may share a single API key / billing account. Their combined spend should be considered when setting per-plugin budgets.
+
+| Plugin | Default Models | Typical Daily Spend | Budget Control |
+|--------|---------------|--------------------:|----------------|
+| PRAutoBlogger | Gemini 2.5 Flash Lite (analysis + editing), Claude Sonnet 4 (writing) | $0.05–$0.30 depending on article count | Hard-stop monthly budget in plugin settings |
+| Peptide News | Google Gemini 2.0 Flash (keywords + summaries) | $0.01–$0.05 | No hard budget yet (planned) |
+
+**Important:** If your OpenRouter account has a global spending limit, set each plugin's budget to less than half the total. PRAutoBlogger will hard-stop when its budget is exhausted, but Peptide News currently has no budget enforcement — a spike in news fetches could consume shared quota.
+
+**Future improvement:** A shared `wp_options` key (e.g., `ecosystem_monthly_llm_budget`) that both plugins read, with each plugin reserving its allocation on startup. This requires coordination at the ecosystem level and is tracked as a medium-term goal.

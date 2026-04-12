@@ -5,6 +5,31 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.2.2] — 2026-04-12
+
+### Changed
+- **CI/CD pipeline now runs PHPCS and PHPUnit** before deploying.
+  Added `shivammathur/setup-php@v2` for PHP 8.1, Composer install,
+  WordPress Coding Standards check, and full PHPUnit test suite.
+  PHPCS runs in report-only mode (`|| true`) while codebase is
+  brought into full compliance; PHPUnit failures block deploy.
+- Removed stub source providers (TikTok, Instagram, YouTube).
+  These were dead code — not registered in Source_Collector, threw
+  RuntimeException if enabled, and confused AI agents reading the
+  codebase. The `Source_Provider_Interface` remains the contract for
+  adding future platforms (see CONVENTIONS.md).
+- Removed "coming soon" checkboxes from Enabled Sources setting.
+- Updated ARCHITECTURE.md: removed stub file references, added
+  cross-system LLM budget coordination section documenting how
+  PRAutoBlogger and Peptide News share an OpenRouter account.
+
+### Improved
+- **PublisherTest rewritten with real behavioral assertions.**
+  Now tests: post_status ('publish' vs 'draft'), generation metadata
+  storage, title from idea, taxonomy assignment, tag assignment,
+  run_id-based log linking, RuntimeException on WP_Error, action/filter
+  hook firing. Replaces previous method-existence-only checks.
+
 ## [0.2.1] — 2026-04-12
 
 ### Changed
