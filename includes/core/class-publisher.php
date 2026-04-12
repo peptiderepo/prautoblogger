@@ -85,7 +85,7 @@ class PRAutoBlogger_Publisher {
 	): int {
 		$post_data = [
 			'post_title'   => sanitize_text_field( $idea->get_suggested_title() ),
-			'post_content' => wp_kses_post( $content ),
+			'post_content' => wp_kses_post( $this->sanitize_llm_content( $content ) ),
 			'post_status'  => $post_status,
 			'post_type'    => 'post',
 			'post_author'  => $this->get_default_author_id(),
@@ -245,6 +245,47 @@ class PRAutoBlogger_Publisher {
 				)
 			);
 		}
+	}
+
+	/**
+	 * Strip common LLM output artifacts from generated content.
+	 *
+	 * LLMs sometimes ignore format instructions and wrap content in markdown
+	 * code fences (```html ... ```) or full HTML document structures
+	 * (<html><head><body>). This method strips those wrappers so only clean
+	 * article-body HTML reaches WordPress.
+	 *
+	 * @param string $content Raw LLM output.
+	 *
+	 * @return string Cleaned HTML suitable for post_content.
+	 */
+	private function sanitize_llm_content( string $content ): string {
+		$content = trim( $content );
+
+		// Strip markdown code fences: ```html ... ``` or ``` ... ```
+		// Handles optional language identifier after opening fence.
+		if ( preg_match( '/^```(?:\w+)?\s*\n(.*?)```\s*$/s', $content, $matches ) ) {
+			$content = trim( $matches[1] );
+		}
+
+		// Strip full HTML document wrappers: <html>...<body>content</body>...</html>
+		// Extract only the <body> inner content.
+		if ( preg_match( '/<body[^>]*>(.*)<\/body>/is', $content, $matches ) ) {
+			$content = trim( $matches[1] );
+		}
+
+		// Remove stray <html>, </html>, <head>...</head>, <body>, </body> tags
+		// in case they appear without a proper document structure.
+		$content = preg_replace( '/<\/?(html|head|body|meta|title|!DOCTYPE)[^>]*>/i', '', $content );
+
+		// Remove leftover <link> and <style> tags that belong in <head>, not post content.
+		$content = preg_replace( '/<link\s[^>]*>/i', '', $content );
+		$content = preg_replace( '/<style[^>]*>.*?<\/style>/is', '', $content );
+
+		// Collapse any resulting excess whitespace (multiple blank lines → single).
+		$content = preg_replace( '/\n{3,}/', "\n\n", $content );
+
+		return trim( $content );
 	}
 
 	/**
