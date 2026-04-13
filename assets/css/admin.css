@@ -54,6 +54,53 @@
 .ab-btn-outline:hover { border-color: var(--ab-primary); color: var(--ab-primary); background: var(--ab-primary-light); }
 .ab-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
+/* ── Button loading state ───────────────────────────────────────────── */
+.ab-btn-loading .dashicons { animation: ab-spin 1s linear infinite; }
+@keyframes ab-spin { to { transform: rotate(360deg); } }
+.ab-btn-loading { pointer-events: none; opacity: 0.85; }
+.ab-btn-loading .ab-btn-label { opacity: 0.9; }
+
+/* ── Save success / error notice ────────────────────────────────────── */
+.ab-save-notice {
+	margin: 16px 0 0; padding: 12px 16px; border-radius: var(--ab-radius);
+	border-left: 4px solid var(--ab-success); background: var(--ab-card-bg);
+	font-size: 13px; box-shadow: var(--ab-shadow); display: flex;
+	align-items: center; gap: 8px; animation: ab-slide-in 0.3s ease;
+}
+.ab-save-notice.notice-error { border-left-color: var(--ab-danger); }
+.ab-save-notice .dashicons {
+	font-size: 18px; width: 18px; height: 18px; line-height: 18px;
+	flex-shrink: 0;
+}
+.ab-save-notice .dashicons-saved { color: var(--ab-success); }
+.ab-save-notice .dashicons-warning { color: var(--ab-danger); }
+@keyframes ab-slide-in {
+	from { opacity: 0; transform: translateY(-8px); }
+	to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Pipeline progress stage ────────────────────────────────────────── */
+.ab-progress-stage {
+	margin: 16px 0; padding: 14px 18px; border-radius: var(--ab-radius);
+	background: var(--ab-primary-light); border: 1px solid #c7d2fe;
+	font-size: 13px; color: var(--ab-primary); font-weight: 500;
+	display: flex; align-items: center; gap: 10px;
+	animation: ab-slide-in 0.3s ease;
+}
+.ab-progress-stage .dashicons {
+	font-size: 16px; width: 16px; height: 16px; line-height: 16px;
+	animation: ab-spin 1s linear infinite;
+}
+.ab-progress-dots::after {
+	content: ''; animation: ab-dots 1.5s steps(3, end) infinite;
+}
+@keyframes ab-dots {
+	0%   { content: ''; }
+	33%  { content: '.'; }
+	66%  { content: '..'; }
+	100% { content: '...'; }
+}
+
 /* ── Stats bar ───────────────────────────────────────────────────────── */
 .ab-stats-bar {
 	display: flex; gap: 1px; margin: 20px 0 0; background: var(--ab-border);

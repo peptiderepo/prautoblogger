@@ -1,7 +1,8 @@
 /**
  * PRAutoBlogger admin JavaScript.
  *
- * Handles: tab switching, "Generate Now", "Test Connections", review queue actions.
+ * Handles: tab switching, "Generate Now" with pipeline progress stages,
+ * "Test Connections" with spinner, review queue actions, save feedback.
  * Uses vanilla jQuery (WordPress admin already loads it).
  *
  * @see admin/class-admin-page.php — Localizes prautobloggerAdmin object.
@@ -37,6 +38,29 @@
 		}
 	});
 
+	/*
+	 * ── Save Settings feedback ─────────────────────────────────────────
+	 * Shows "Saving…" on submit, auto-hides success notice after a delay.
+	 */
+	$(document).on('submit', '#ab-settings-form', function () {
+		var $btn = $(this).find('input[type="submit"]');
+		$btn.val('Saving…').prop('disabled', true);
+	});
+
+	// Auto-dismiss save notice after 6 seconds.
+	$(function () {
+		var $notice = $('#ab-save-notice');
+		if ($notice.length) {
+			setTimeout(function () {
+				$notice.fadeOut(400, function () { $(this).remove(); });
+			}, 6000);
+		}
+	});
+
+	/*
+	 * ── Helpers ─────────────────────────────────────────────────────────
+	 */
+
 	/**
 	 * Show a status message in the admin page.
 	 *
@@ -50,16 +74,81 @@
 		if (type === 'error') {
 			$el.addClass('error');
 		}
+		hideProgress();
 	}
 
 	/**
-	 * Handle "Generate Now" button click.
+	 * Show a progress stage message with spinner.
+	 *
+	 * @param {string} message The stage text to display.
 	 */
+	function showProgress(message) {
+		var $el = $('#prautoblogger-progress-stage');
+		$el.html(
+			'<span class="dashicons dashicons-update"></span>' +
+			'<span>' + message + '</span>'
+		).show();
+		// Hide the status message while progress is shown.
+		$('#prautoblogger-status-message').addClass('hidden');
+	}
+
+	/** Hide the progress stage message. */
+	function hideProgress() {
+		$('#prautoblogger-progress-stage').hide();
+	}
+
+	/**
+	 * Set a button into loading state with spinner.
+	 *
+	 * @param {jQuery}  $btn  The button element.
+	 * @param {string}  text  The loading text to show.
+	 */
+	function setButtonLoading($btn, text) {
+		$btn.addClass('ab-btn-loading')
+			.prop('disabled', true);
+		$btn.find('.ab-btn-label').text(text);
+	}
+
+	/**
+	 * Reset a button back to its default state.
+	 *
+	 * @param {jQuery}  $btn  The button element.
+	 * @param {string}  text  The default text to restore.
+	 */
+	function resetButton($btn, text) {
+		$btn.removeClass('ab-btn-loading')
+			.prop('disabled', false);
+		$btn.find('.ab-btn-label').text(text);
+	}
+
+	/*
+	 * ── Generate Now ───────────────────────────────────────────────────
+	 * Shows pipeline stages while the request is in-flight so the user
+	 * knows it hasn't hung.
+	 */
+	var generateStages = [
+		{ text: 'Collecting sources from Reddit…',      delay: 0 },
+		{ text: 'Analyzing topics and scoring…',        delay: 8000 },
+		{ text: 'Selecting best topic…',                delay: 16000 },
+		{ text: 'Generating article draft via AI…',     delay: 24000 },
+		{ text: 'Running editorial pass…',              delay: 50000 },
+		{ text: 'Saving and publishing…',               delay: 75000 },
+		{ text: 'Almost done — finalizing…',            delay: 100000 }
+	];
+	var stageTimers = [];
+
 	$(document).on('click', '#prautoblogger-generate-now', function () {
 		var $btn = $(this);
 		if ($btn.prop('disabled')) return;
 
-		$btn.prop('disabled', true).text(config.generatingText || 'Generating...');
+		setButtonLoading($btn, config.generatingText || 'Generating…');
+
+		// Start pipeline stage messages.
+		stageTimers = [];
+		$.each(generateStages, function (i, stage) {
+			var t = setTimeout(function () { showProgress(stage.text); }, stage.delay);
+			stageTimers.push(t);
+		});
 
 		$.ajax({
 			url: config.ajaxUrl,
@@ -93,19 +182,24 @@
 				);
 			},
 			complete: function () {
-				$btn.prop('disabled', false).text(config.generateText || 'Generate Now');
+				// Clear all stage timers.
+				$.each(stageTimers, function (_, t) { clearTimeout(t); });
+				stageTimers = [];
+				hideProgress();
+				resetButton($btn, config.generateText || 'Generate Now');
 			}
 		});
 	});
 
-	/**
-	 * Handle "Test Connections" button click.
+	/*
+	 * ── Test Connections ───────────────────────────────────────────────
 	 */
 	$(document).on('click', '#prautoblogger-test-connection', function () {
 		var $btn = $(this);
 		if ($btn.prop('disabled')) return;
 
-		$btn.prop('disabled', true).text(config.testingText || 'Testing...');
+		setButtonLoading($btn, config.testingText || 'Testing…');
+		showProgress('Testing API connections…');
 
 		$.ajax({
 			url: config.ajaxUrl,
@@ -133,7 +227,7 @@
 				showStatus('Connection test request failed.', 'error');
 			},
 			complete: function () {
-				$btn.prop('disabled', false).text(config.testText || 'Test Connections');
+				resetButton($btn, config.testText || 'Test Connections');
 			}
 		});
 	});
@@ -165,7 +259,7 @@
 		var postId = $btn.data('post-id');
 		if ($btn.prop('disabled')) return;
 
-		$btn.prop('disabled', true).text('Publishing...');
+		$btn.prop('disabled', true).text('Publishing…');
 
 		$.ajax({
 			url: config.ajaxUrl,
@@ -202,7 +296,7 @@
 
 		if (!confirm('Reject this post? It will be moved to trash.')) return;
 
-		$btn.prop('disabled', true).text('Rejecting...');
+		$btn.prop('disabled', true).text('Rejecting…');
 
 		$.ajax({
 			url: config.ajaxUrl,

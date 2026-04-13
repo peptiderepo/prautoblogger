@@ -34,11 +34,11 @@ $next_run       = wp_next_scheduled( 'prautoblogger_daily_generation' );
 		<div class="ab-header-actions">
 			<button type="button" id="prautoblogger-test-connection" class="ab-btn ab-btn-outline">
 				<span class="dashicons dashicons-yes-alt"></span>
-				<?php esc_html_e( 'Test Connections', 'prautoblogger' ); ?>
+				<span class="ab-btn-label"><?php esc_html_e( 'Test Connections', 'prautoblogger' ); ?></span>
 			</button>
 			<button type="button" id="prautoblogger-generate-now" class="ab-btn ab-btn-primary">
 				<span class="dashicons dashicons-update"></span>
-				<?php esc_html_e( 'Generate Now', 'prautoblogger' ); ?>
+				<span class="ab-btn-label"><?php esc_html_e( 'Generate Now', 'prautoblogger' ); ?></span>
 			</button>
 		</div>
 	</div>
@@ -66,6 +66,20 @@ $next_run       = wp_next_scheduled( 'prautoblogger_daily_generation' );
 		</div>
 	</div>
 
+	<?php if ( isset( $_GET['settings-updated'] ) && 'true' === $_GET['settings-updated'] ) : ?>
+		<div class="ab-save-notice" id="ab-save-notice">
+			<span class="dashicons dashicons-saved"></span>
+			<?php esc_html_e( 'Settings saved successfully.', 'prautoblogger' ); ?>
+		</div>
+	<?php endif; ?>
+	<?php if ( isset( $_GET['error'] ) ) : ?>
+		<div class="ab-save-notice notice-error" id="ab-save-notice">
+			<span class="dashicons dashicons-warning"></span>
+			<?php esc_html_e( 'There was a problem saving your settings. Please try again.', 'prautoblogger' ); ?>
+		</div>
+	<?php endif; ?>
+
+	<div id="prautoblogger-progress-stage" class="ab-progress-stage" style="display:none;"></div>
 	<div id="prautoblogger-status-message" class="hidden"></div>
 
 	<!-- Tab navigation + settings form -->
