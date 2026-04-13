@@ -30,8 +30,7 @@ jobs:
 
       - name: Install WordPress Coding Standards
         run: |
-          composer global require "wp-coding-standards/wpcs:^3.0" --no-interaction
-          composer global require "phpcsstandards/phpcsutils:^1.0" --no-interaction
+          composer global require "wp-coding-standards/wpcs:^3.0" "phpcsstandards/phpcsutils:^1.0" --no-interaction
           phpcs --config-set installed_paths "$(composer global config home)/vendor/wp-coding-standards/wpcs"
 
       - name: Run PHPCS (WordPress standards)
