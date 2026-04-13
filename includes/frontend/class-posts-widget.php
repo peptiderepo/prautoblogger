@@ -241,10 +241,18 @@ class PRAutoBlogger_Posts_Widget {
 		$featured_image = get_the_post_thumbnail_url( $post->ID, 'medium_large' );
 		$word_count     = str_word_count( wp_strip_all_tags( $post->post_content ) );
 
+		// Decode HTML entities in title and excerpt so React's textContent
+		// rendering shows proper characters (e.g., &#8217; → ').
+		// WordPress functions like get_the_title() return HTML-encoded strings,
+		// but since our React component sets text via createElement (not innerHTML),
+		// raw entities would display literally.
+		$title   = html_entity_decode( get_the_title( $post ), ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+		$excerpt = html_entity_decode( get_the_excerpt( $post ), ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+
 		return [
 			'id'             => $post->ID,
-			'title'          => get_the_title( $post ),
-			'excerpt'        => get_the_excerpt( $post ),
+			'title'          => $title,
+			'excerpt'        => $excerpt,
 			'url'            => get_permalink( $post ),
 			'date'           => get_the_date( 'c', $post ),
 			'category_name'  => $category_name,

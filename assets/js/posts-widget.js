@@ -97,6 +97,38 @@
 	}
 
 	/**
+	 * Decode HTML entities in a string (e.g., &#8217; → ').
+	 *
+	 * Uses a DOMParser to safely decode entities without executing scripts.
+	 * Falls back to common entity replacements if DOMParser is unavailable.
+	 *
+	 * @param {string} text Text that may contain HTML entities.
+	 * @return {string} Decoded plain text.
+	 */
+	function decodeEntities(text) {
+		if (!text) {
+			return '';
+		}
+		if (typeof DOMParser !== 'undefined') {
+			var doc = new DOMParser().parseFromString(text, 'text/html');
+			return doc.body.textContent || '';
+		}
+		// Fallback: decode common entities manually.
+		return text
+			.replace(/&#8217;/g, '\u2019')
+			.replace(/&#8216;/g, '\u2018')
+			.replace(/&#8220;/g, '\u201C')
+			.replace(/&#8221;/g, '\u201D')
+			.replace(/&#8211;/g, '\u2013')
+			.replace(/&#8212;/g, '\u2014')
+			.replace(/&amp;/g, '&')
+			.replace(/&lt;/g, '<')
+			.replace(/&gt;/g, '>')
+			.replace(/&quot;/g, '"')
+			.replace(/&#039;/g, "'");
+	}
+
+	/**
 	 * Strip HTML tags from a string.
 	 *
 	 * Uses a DOMParser to safely parse HTML without executing scripts.
@@ -124,6 +156,7 @@
 		var post = props.post;
 		var catClass = getCategoryClass(post.category_slug);
 		var minutes = readingTime(post.word_count);
+		var title = decodeEntities(post.title);
 		var excerpt = stripHtml(post.excerpt);
 
 		// Choose placeholder icon based on category
@@ -132,7 +165,7 @@
 		return el('a', {
 			href: post.url || '#',
 			className: 'prab-post-card',
-			'aria-label': post.title
+			'aria-label': title
 		},
 			// Image area
 			post.featured_image
@@ -161,7 +194,7 @@
 				),
 
 				// Title
-				el('h3', { className: 'prab-post-title' }, post.title),
+				el('h3', { className: 'prab-post-title' }, title),
 
 				// Excerpt
 				el('p', { className: 'prab-post-excerpt' }, excerpt),
