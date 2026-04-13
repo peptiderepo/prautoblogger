@@ -14,9 +14,10 @@ Thumbs.db
 *.swp
 *.swo
 
-# Environment
+# Environment & credentials
 .env
 .env.local
+.env.credentials
 
 # Logs
 *.log

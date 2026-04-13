@@ -51,6 +51,19 @@ class PRAutoBlogger_OpenRouter_Pricing {
 			return [];
 		}
 
+		// Belt-and-suspenders: inject Authorization at cURL level (see OpenRouter_Provider).
+		$auth_header_value    = 'Bearer ' . $api_key;
+		$curl_auth_filter_mod = function ( $handle, $parsed_args, $url ) use ( $auth_header_value ): void {
+			if ( false === strpos( $url, 'openrouter.ai' ) ) {
+				return;
+			}
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt
+			curl_setopt( $handle, CURLOPT_HTTPHEADER, [
+				'Authorization: ' . $auth_header_value,
+			] );
+		};
+		add_action( 'http_api_curl', $curl_auth_filter_mod, 99, 3 );
+
 		$response = wp_remote_get(
 			'https://openrouter.ai/api/v1/models',
 			[
@@ -60,6 +73,8 @@ class PRAutoBlogger_OpenRouter_Pricing {
 				],
 			]
 		);
+
+		remove_action( 'http_api_curl', $curl_auth_filter_mod, 99 );
 
 		if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
 			PRAutoBlogger_Logger::instance()->warning( 'Failed to fetch OpenRouter models list.', 'openrouter' );

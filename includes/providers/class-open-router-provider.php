@@ -55,6 +55,22 @@ class PRAutoBlogger_OpenRouter_Provider implements PRAutoBlogger_LLM_Provider_In
 			);
 		}
 
+		// Validate key format — OpenRouter keys start with "sk-or-".
+		// A key that decrypts to garbage (e.g. after a salt change) won't match.
+		if ( 0 !== strpos( $api_key, 'sk-or-' ) ) {
+			PRAutoBlogger_Logger::instance()->error(
+				sprintf(
+					'Decrypted API key has unexpected format (prefix="%s", len=%d). Re-enter your key in settings.',
+					substr( $api_key, 0, 6 ),
+					strlen( $api_key )
+				),
+				'openrouter'
+			);
+			throw new \RuntimeException(
+				__( 'OpenRouter API key appears corrupted (unexpected format). Please re-enter your key in PRAutoBlogger → Settings.', 'prautoblogger' )
+			);
+		}
+
 		$body = [
 			'model'    => $model,
 			'messages' => $messages,
@@ -72,101 +88,143 @@ class PRAutoBlogger_OpenRouter_Provider implements PRAutoBlogger_LLM_Provider_In
 
 		$last_error = '';
 
-		for ( $attempt = 1; $attempt <= PRAUTOBLOGGER_MAX_RETRIES; $attempt++ ) {
-			$response = wp_remote_post(
-				self::API_BASE_URL . '/chat/completions',
-				[
-					'timeout' => PRAUTOBLOGGER_API_TIMEOUT_SECONDS,
-					'headers' => [
-						'Authorization' => 'Bearer ' . $api_key,
-						'Content-Type'  => 'application/json',
-						'HTTP-Referer'  => home_url(),
-						'X-Title'       => 'PRAutoBlogger WordPress Plugin',
-					],
-					'body'    => wp_json_encode( $body ),
-				]
+		// Belt-and-suspenders: inject Authorization header at cURL level.
+		// Some hosting environments (Hostinger, certain proxies) strip the
+		// Authorization header from wp_remote_post's 'headers' array before
+		// the request is sent. The http_api_curl action fires after WordPress
+		// configures the cURL handle but before curl_exec — re-setting
+		// CURLOPT_HTTPHEADER here ensures the header reaches OpenRouter.
+		$auth_header_value = 'Bearer ' . $api_key;
+		$curl_auth_filter  = function ( $handle, $parsed_args, $url ) use ( $auth_header_value ): void {
+			// Only touch requests aimed at OpenRouter — leave all others alone.
+			if ( false === strpos( $url, 'openrouter.ai' ) ) {
+				return;
+			}
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt
+			curl_setopt( $handle, CURLOPT_HTTPHEADER, [
+				'Authorization: ' . $auth_header_value,
+				'Content-Type: application/json',
+				'HTTP-Referer: ' . home_url(),
+				'X-Title: PRAutoBlogger WordPress Plugin',
+			] );
+		};
+		add_action( 'http_api_curl', $curl_auth_filter, 99, 3 );
+
+		try {
+			for ( $attempt = 1; $attempt <= PRAUTOBLOGGER_MAX_RETRIES; $attempt++ ) {
+				$response = wp_remote_post(
+					self::API_BASE_URL . '/chat/completions',
+					[
+						'timeout' => PRAUTOBLOGGER_API_TIMEOUT_SECONDS,
+						'headers' => [
+							'Authorization' => 'Bearer ' . $api_key,
+							'Content-Type'  => 'application/json',
+							'HTTP-Referer'  => home_url(),
+							'X-Title'       => 'PRAutoBlogger WordPress Plugin',
+						],
+						'body'    => wp_json_encode( $body ),
+					]
+				);
+
+				if ( is_wp_error( $response ) ) {
+					$last_error = $response->get_error_message();
+					PRAutoBlogger_Logger::instance()->warning(
+						sprintf( 'OpenRouter request failed (attempt %d/%d): %s', $attempt, PRAUTOBLOGGER_MAX_RETRIES, $last_error ),
+						'openrouter'
+					);
+
+					if ( $attempt < PRAUTOBLOGGER_MAX_RETRIES ) {
+						$delay = PRAUTOBLOGGER_RETRY_BASE_DELAY_SECONDS * pow( 2, $attempt - 1 );
+						sleep( (int) $delay );
+					}
+					continue;
+				}
+
+				$status_code = wp_remote_retrieve_response_code( $response );
+				$body_raw    = wp_remote_retrieve_body( $response );
+				$data        = json_decode( $body_raw, true );
+
+				// Rate limited (429) or server error (5xx) — retry with backoff.
+				if ( 429 === $status_code || $status_code >= 500 ) {
+					$last_error = sprintf( 'HTTP %d: %s', $status_code, $body_raw );
+					PRAutoBlogger_Logger::instance()->warning(
+						sprintf( 'OpenRouter HTTP %d (attempt %d/%d): %s', $status_code, $attempt, PRAUTOBLOGGER_MAX_RETRIES, substr( $body_raw, 0, 500 ) ),
+						'openrouter'
+					);
+
+					if ( $attempt < PRAUTOBLOGGER_MAX_RETRIES ) {
+						// Respect Retry-After header if present.
+						$retry_after = wp_remote_retrieve_header( $response, 'retry-after' );
+						$delay       = $retry_after
+							? min( (int) $retry_after, 60 )
+							: PRAUTOBLOGGER_RETRY_BASE_DELAY_SECONDS * pow( 2, $attempt - 1 );
+						sleep( (int) $delay );
+					}
+					continue;
+				}
+
+				// Client error — don't retry, fail immediately.
+				if ( $status_code >= 400 ) {
+					$error_msg = isset( $data['error']['message'] )
+						? $data['error']['message']
+						: 'HTTP ' . $status_code;
+
+					// Log detailed diagnostic info for auth errors to aid debugging.
+					if ( 401 === $status_code || 403 === $status_code ) {
+						PRAutoBlogger_Logger::instance()->error(
+							sprintf(
+								'Auth failure HTTP %d: key_prefix=%s, key_len=%d, error=%s',
+								$status_code,
+								substr( $api_key, 0, 8 ),
+								strlen( $api_key ),
+								$error_msg
+							),
+							'openrouter'
+						);
+					}
+
+					throw new \RuntimeException(
+						sprintf(
+							/* translators: %d: HTTP status code, %s: error message */
+							__( 'OpenRouter API error (HTTP %1$d): %2$s', 'prautoblogger' ),
+							$status_code,
+							$error_msg
+						)
+					);
+				}
+
+				// Success — parse response.
+				if ( ! isset( $data['choices'][0]['message']['content'] ) ) {
+					throw new \RuntimeException(
+						__( 'OpenRouter returned unexpected response format.', 'prautoblogger' )
+					);
+				}
+
+				$usage = $data['usage'] ?? [];
+
+				return [
+					'content'           => $data['choices'][0]['message']['content'],
+					'model'             => $data['model'] ?? $model,
+					'prompt_tokens'     => (int) ( $usage['prompt_tokens'] ?? 0 ),
+					'completion_tokens' => (int) ( $usage['completion_tokens'] ?? 0 ),
+					'total_tokens'      => (int) ( $usage['total_tokens'] ?? 0 ),
+					'finish_reason'     => $data['choices'][0]['finish_reason'] ?? 'unknown',
+				];
+			}
+
+			// All retries exhausted.
+			throw new \RuntimeException(
+				sprintf(
+					/* translators: %d: max retries, %s: last error message */
+					__( 'OpenRouter API failed after %1$d attempts. Last error: %2$s', 'prautoblogger' ),
+					PRAUTOBLOGGER_MAX_RETRIES,
+					$last_error
+				)
 			);
-
-			if ( is_wp_error( $response ) ) {
-				$last_error = $response->get_error_message();
-				PRAutoBlogger_Logger::instance()->warning(
-					sprintf( 'OpenRouter request failed (attempt %d/%d): %s', $attempt, PRAUTOBLOGGER_MAX_RETRIES, $last_error ),
-					'openrouter'
-				);
-
-				if ( $attempt < PRAUTOBLOGGER_MAX_RETRIES ) {
-					$delay = PRAUTOBLOGGER_RETRY_BASE_DELAY_SECONDS * pow( 2, $attempt - 1 );
-					sleep( (int) $delay );
-				}
-				continue;
-			}
-
-			$status_code = wp_remote_retrieve_response_code( $response );
-			$body_raw    = wp_remote_retrieve_body( $response );
-			$data        = json_decode( $body_raw, true );
-
-			// Rate limited or server error — retry.
-			if ( $status_code >= 429 || $status_code >= 500 ) {
-				$last_error = sprintf( 'HTTP %d: %s', $status_code, $body_raw );
-				PRAutoBlogger_Logger::instance()->warning(
-					sprintf( 'OpenRouter HTTP %d (attempt %d/%d): %s', $status_code, $attempt, PRAUTOBLOGGER_MAX_RETRIES, substr( $body_raw, 0, 500 ) ),
-					'openrouter'
-				);
-
-				if ( $attempt < PRAUTOBLOGGER_MAX_RETRIES ) {
-					// Respect Retry-After header if present.
-					$retry_after = wp_remote_retrieve_header( $response, 'retry-after' );
-					$delay       = $retry_after
-						? min( (int) $retry_after, 60 )
-						: PRAUTOBLOGGER_RETRY_BASE_DELAY_SECONDS * pow( 2, $attempt - 1 );
-					sleep( (int) $delay );
-				}
-				continue;
-			}
-
-			// Client error — don't retry, fail immediately.
-			if ( $status_code >= 400 ) {
-				$error_msg = isset( $data['error']['message'] )
-					? $data['error']['message']
-					: 'HTTP ' . $status_code;
-				throw new \RuntimeException(
-					sprintf(
-						/* translators: %d: HTTP status code, %s: error message */
-						__( 'OpenRouter API error (HTTP %1$d): %2$s', 'prautoblogger' ),
-						$status_code,
-						$error_msg
-					)
-				);
-			}
-
-			// Success — parse response.
-			if ( ! isset( $data['choices'][0]['message']['content'] ) ) {
-				throw new \RuntimeException(
-					__( 'OpenRouter returned unexpected response format.', 'prautoblogger' )
-				);
-			}
-
-			$usage = $data['usage'] ?? [];
-
-			return [
-				'content'           => $data['choices'][0]['message']['content'],
-				'model'             => $data['model'] ?? $model,
-				'prompt_tokens'     => (int) ( $usage['prompt_tokens'] ?? 0 ),
-				'completion_tokens' => (int) ( $usage['completion_tokens'] ?? 0 ),
-				'total_tokens'      => (int) ( $usage['total_tokens'] ?? 0 ),
-				'finish_reason'     => $data['choices'][0]['finish_reason'] ?? 'unknown',
-			];
+		} finally {
+			// Always clean up the cURL filter to avoid leaking into other requests.
+			remove_action( 'http_api_curl', $curl_auth_filter, 99 );
 		}
-
-		// All retries exhausted.
-		throw new \RuntimeException(
-			sprintf(
-				/* translators: %d: max retries, %s: last error message */
-				__( 'OpenRouter API failed after %1$d attempts. Last error: %2$s', 'prautoblogger' ),
-				PRAUTOBLOGGER_MAX_RETRIES,
-				$last_error
-			)
-		);
 	}
 
 	/**
@@ -253,6 +311,19 @@ class PRAutoBlogger_OpenRouter_Provider implements PRAutoBlogger_LLM_Provider_In
 		$key_prefix = substr( $api_key, 0, 6 );
 		$key_len    = strlen( $api_key );
 
+		// Belt-and-suspenders: inject Authorization at cURL level (see send_chat_completion).
+		$auth_header_value     = 'Bearer ' . $api_key;
+		$curl_auth_filter_cred = function ( $handle, $parsed_args, $url ) use ( $auth_header_value ): void {
+			if ( false === strpos( $url, 'openrouter.ai' ) ) {
+				return;
+			}
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt
+			curl_setopt( $handle, CURLOPT_HTTPHEADER, [
+				'Authorization: ' . $auth_header_value,
+			] );
+		};
+		add_action( 'http_api_curl', $curl_auth_filter_cred, 99, 3 );
+
 		$response = wp_remote_get(
 			self::API_BASE_URL . '/auth/key',
 			[
@@ -262,6 +333,8 @@ class PRAutoBlogger_OpenRouter_Provider implements PRAutoBlogger_LLM_Provider_In
 				],
 			]
 		);
+
+		remove_action( 'http_api_curl', $curl_auth_filter_cred, 99 );
 
 		if ( is_wp_error( $response ) ) {
 			$err_msg = $response->get_error_message();
