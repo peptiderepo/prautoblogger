@@ -311,6 +311,22 @@ class PRAutoBlogger_OpenRouter_Provider implements PRAutoBlogger_LLM_Provider_In
 		$key_prefix = substr( $api_key, 0, 6 );
 		$key_len    = strlen( $api_key );
 
+		if ( 0 !== strpos( $api_key, 'sk-or-' ) ) {
+			PRAutoBlogger_Logger::instance()->error(
+				sprintf(
+					'API key format invalid (prefix="%s", len=%d). Likely salt changed — re-enter key.',
+					$key_prefix,
+					$key_len
+				),
+				'openrouter'
+			);
+			return [
+				'status'  => 'error',
+				'message' => __( 'API key appears corrupted (decryption produced invalid data). Your WordPress auth salt may have changed. Please re-enter your OpenRouter API key in settings.', 'prautoblogger' ),
+				'debug'   => sprintf( 'bad_format:prefix=%s,len=%d', $key_prefix, $key_len ),
+			];
+		}
+
 		// Belt-and-suspenders: inject Authorization at cURL level (see send_chat_completion).
 		$auth_header_value     = 'Bearer ' . $api_key;
 		$curl_auth_filter_cred = function ( $handle, $parsed_args, $url ) use ( $auth_header_value ): void {
