@@ -40,6 +40,19 @@ if ( ! defined( 'PRAUTOBLOGGER_RETRY_BASE_DELAY_SECONDS' ) ) {
     define( 'PRAUTOBLOGGER_RETRY_BASE_DELAY_SECONDS', 1 );
 }
 
+// Default model slugs used by Publisher, ChiefEditor, Activator, settings UI.
+// Source of truth: prautoblogger.php. Test-only duplicate so unit tests can
+// load without the main plugin bootstrap running.
+if ( ! defined( 'PRAUTOBLOGGER_DEFAULT_ANALYSIS_MODEL' ) ) {
+    define( 'PRAUTOBLOGGER_DEFAULT_ANALYSIS_MODEL', 'google/gemini-2.5-flash-lite' );
+}
+if ( ! defined( 'PRAUTOBLOGGER_DEFAULT_WRITING_MODEL' ) ) {
+    define( 'PRAUTOBLOGGER_DEFAULT_WRITING_MODEL', 'google/gemini-2.5-flash-lite' );
+}
+if ( ! defined( 'PRAUTOBLOGGER_DEFAULT_EDITOR_MODEL' ) ) {
+    define( 'PRAUTOBLOGGER_DEFAULT_EDITOR_MODEL', 'google/gemini-2.5-flash-lite' );
+}
+
 // WordPress database constants used in $wpdb queries.
 if ( ! defined( 'ARRAY_A' ) ) {
     define( 'ARRAY_A', 'ARRAY_A' );

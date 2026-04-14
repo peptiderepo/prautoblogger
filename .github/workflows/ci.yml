@@ -1,0 +1,94 @@
+name: CI — Lint & Test
+
+# Runs on every PR and every push to main. Validates PHPUnit tests + lint +
+# coding standards before deploy can happen. deploy.yml on main continues to
+# run its own validate job as a belt-and-suspenders check, but this CI workflow
+# is what gives PRs an immediate signal so fixes happen before merge.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  php-lint:
+    name: PHP Lint (${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.1', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP ${{ matrix.php }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Syntax check all PHP files
+        # Exclude .github/mu-plugins — those run on the production server (PHP 8+)
+        # and may use PHP 8+ syntax (union types etc.) that 7.4 rejects.
+        run: |
+          set -e
+          find . -name '*.php' \
+            -not -path './vendor/*' \
+            -not -path './node_modules/*' \
+            -not -path './.git/*' \
+            -not -path './.github/*' \
+            -print0 | xargs -0 -n1 -P4 php -l > /dev/null
+
+  phpcs:
+    name: PHPCS (WordPress standards)
+    runs-on: ubuntu-latest
+    continue-on-error: true  # non-blocking for now — see CONVENTIONS.md
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+          tools: composer:v2, phpcs
+      - name: Install WordPress Coding Standards
+        run: |
+          # Allow the PHPCS composer-installer plugin (auto-registers standards).
+          composer global config --no-plugins allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
+          # WPCS 3.x requires PHPCSExtra (for the Universal.* and NormalizedArrays.* sniffs)
+          # AND phpcsutils. Installing the installer itself lets it auto-register the standards path.
+          composer global require --no-interaction \
+            "dealerdirect/phpcodesniffer-composer-installer:^1.0" \
+            "wp-coding-standards/wpcs:^3.0" \
+            "phpcsstandards/phpcsutils:^1.0" \
+            "phpcsstandards/phpcsextra:^1.0"
+      - name: Run PHPCS
+        run: |
+          phpcs --standard=WordPress-Core \
+            --extensions=php \
+            --ignore=vendor/*,tests/*,node_modules/* \
+            --warning-severity=0 \
+            --report=summary \
+            includes/ prautoblogger.php uninstall.php
+
+  phpunit:
+    name: PHPUnit (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.1', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP ${{ matrix.php }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+          tools: composer:v2
+      - name: Install composer dependencies
+        run: composer install --no-progress --no-interaction --prefer-dist
+      - name: Run PHPUnit (Brain Monkey — no WP install required)
+        run: vendor/bin/phpunit --testdox
