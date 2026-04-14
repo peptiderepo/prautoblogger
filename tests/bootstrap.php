@@ -62,6 +62,22 @@ if ( ! defined( 'OBJECT' ) ) {
 }
 
 /**
+ * current_time() stub — WordPress returns formatted timestamps.
+ * Used by class-logger.php (which Publisher/ChiefEditor/etc call).
+ * Using a real function (not Brain Monkey mock) so tests that don't explicitly
+ * set up expectations for current_time still get a sensible value.
+ */
+if ( ! function_exists( 'current_time' ) ) {
+    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound
+    function current_time( $type = 'mysql', $gmt = 0 ) {
+        if ( $type === 'timestamp' || $type === 'U' ) {
+            return time();
+        }
+        return gmdate( 'Y-m-d H:i:s' );
+    }
+}
+
+/**
  * Minimal WP_Query stub for unit tests.
  *
  * IdeaScorer uses WP_Query to check for existing posts.
