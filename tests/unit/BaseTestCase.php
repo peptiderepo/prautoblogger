@@ -38,6 +38,15 @@ abstract class BaseTestCase extends TestCase {
 
         // home_url is used by OpenRouter provider in request headers.
         Functions\when( 'home_url' )->justReturn( 'https://test.example.com' );
+
+        // current_time is called by Logger on every log write. Stub returns a
+        // deterministic timestamp so tests are reproducible.
+        Functions\when( 'current_time' )->alias( static function ( $type = 'mysql', $gmt = 0 ) {
+            if ( $type === 'timestamp' || $type === 'U' ) {
+                return 1744588800; // 2026-04-14 00:00:00 UTC
+            }
+            return '2026-04-14 00:00:00';
+        } );
     }
 
     /**
