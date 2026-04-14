@@ -18,7 +18,52 @@ declare(strict_types=1);
  */
 class PRAutoBlogger_OpenRouter_Provider implements PRAutoBlogger_LLM_Provider_Interface {
 
-	private const API_BASE_URL = 'https://openrouter.ai/api/v1';
+	/**
+	 * Default direct-to-OpenRouter endpoint. Used when no Cloudflare AI Gateway
+	 * URL is configured. The active endpoint is resolved per-request via
+	 * get_api_base_url() so admins can flip to an AI Gateway proxy without code.
+	 */
+	private const DEFAULT_API_BASE_URL = 'https://openrouter.ai/api/v1';
+
+	/**
+	 * Resolve the API base URL.
+	 *
+	 * If an admin has configured a Cloudflare AI Gateway URL in settings,
+	 * we route through that instead of hitting OpenRouter directly. The
+	 * gateway is a transparent OpenAI/OpenRouter-compatible proxy that
+	 * adds caching, cost logging, rate-limiting, and provider fallback
+	 * — see ARCHITECTURE.md "External API Integrations".
+	 *
+	 * Expected gateway URL shape:
+	 *   https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/openrouter
+	 *
+	 * @return string Base URL with no trailing slash.
+	 */
+	private function get_api_base_url(): string {
+		$override = trim( (string) get_option( 'prautoblogger_ai_gateway_base_url', '' ) );
+		if ( '' === $override ) {
+			return self::DEFAULT_API_BASE_URL;
+		}
+		// Only accept https to avoid plaintext-auth regressions.
+		if ( 0 !== stripos( $override, 'https://' ) ) {
+			return self::DEFAULT_API_BASE_URL;
+		}
+		return rtrim( $override, '/' );
+	}
+
+	/**
+	 * Cache TTL (seconds) for AI Gateway response caching.
+	 *
+	 * Cloudflare honours the `cf-aig-cache-ttl` request header and serves
+	 * cached responses for identical payloads within the TTL window. Only
+	 * meaningful when a gateway base URL is configured; harmless otherwise.
+	 *
+	 * @return int Non-negative integer seconds; 0 disables caching.
+	 */
+	private function get_cache_ttl_seconds(): int {
+		$ttl = (int) get_option( 'prautoblogger_ai_gateway_cache_ttl', 0 );
+		return $ttl > 0 ? $ttl : 0;
+	}
 
 	/**
 	 * Send a chat completion request to OpenRouter.
@@ -88,40 +133,55 @@ class PRAutoBlogger_OpenRouter_Provider implements PRAutoBlogger_LLM_Provider_In
 
 		$last_error = '';
 
+		$base_url     = $this->get_api_base_url();
+		$base_host    = (string) wp_parse_url( $base_url, PHP_URL_HOST );
+		$cache_ttl    = $this->get_cache_ttl_seconds();
+		$via_gateway  = self::DEFAULT_API_BASE_URL !== $base_url;
+
+		// Build headers once so the wp_remote_post call and the cURL belt-and-
+		// suspenders filter stay in lockstep. The cf-aig-* headers are only
+		// meaningful when going through a Cloudflare AI Gateway; they are
+		// ignored by direct OpenRouter calls, so sending them unconditionally
+		// when a gateway is configured is safe and keeps the code branch-free.
+		$request_headers = [
+			'Authorization' => 'Bearer ' . $api_key,
+			'Content-Type'  => 'application/json',
+			'HTTP-Referer'  => home_url(),
+			'X-Title'       => 'PRAutoBlogger WordPress Plugin',
+		];
+		if ( $via_gateway && $cache_ttl > 0 ) {
+			$request_headers['cf-aig-cache-ttl'] = (string) $cache_ttl;
+		}
+
 		// Belt-and-suspenders: inject Authorization header at cURL level.
 		// Some hosting environments (Hostinger, certain proxies) strip the
 		// Authorization header from wp_remote_post's 'headers' array before
 		// the request is sent. The http_api_curl action fires after WordPress
 		// configures the cURL handle but before curl_exec — re-setting
-		// CURLOPT_HTTPHEADER here ensures the header reaches OpenRouter.
-		$auth_header_value = 'Bearer ' . $api_key;
-		$curl_auth_filter  = function ( $handle, $parsed_args, $url ) use ( $auth_header_value ): void {
-			// Only touch requests aimed at OpenRouter — leave all others alone.
-			if ( false === strpos( $url, 'openrouter.ai' ) ) {
+		// CURLOPT_HTTPHEADER here ensures the header reaches the upstream
+		// (either OpenRouter directly or the Cloudflare AI Gateway proxy).
+		$curl_auth_filter = function ( $handle, $parsed_args, $url ) use ( $request_headers, $base_host ): void {
+			// Scope to the configured upstream host only — never leak auth
+			// into unrelated outbound requests made elsewhere in WordPress.
+			if ( '' === $base_host || false === strpos( (string) $url, $base_host ) ) {
 				return;
 			}
+			$curl_headers = [];
+			foreach ( $request_headers as $name => $value ) {
+				$curl_headers[] = $name . ': ' . $value;
+			}
 			// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt
-			curl_setopt( $handle, CURLOPT_HTTPHEADER, [
-				'Authorization: ' . $auth_header_value,
-				'Content-Type: application/json',
-				'HTTP-Referer: ' . home_url(),
-				'X-Title: PRAutoBlogger WordPress Plugin',
-			] );
+			curl_setopt( $handle, CURLOPT_HTTPHEADER, $curl_headers );
 		};
 		add_action( 'http_api_curl', $curl_auth_filter, 99, 3 );
 
 		try {
 			for ( $attempt = 1; $attempt <= PRAUTOBLOGGER_MAX_RETRIES; $attempt++ ) {
 				$response = wp_remote_post(
-					self::API_BASE_URL . '/chat/completions',
+					$base_url . '/chat/completions',
 					[
 						'timeout' => PRAUTOBLOGGER_API_TIMEOUT_SECONDS,
-						'headers' => [
-							'Authorization' => 'Bearer ' . $api_key,
-							'Content-Type'  => 'application/json',
-							'HTTP-Referer'  => home_url(),
-							'X-Title'       => 'PRAutoBlogger WordPress Plugin',
-						],
+						'headers' => $request_headers,
 						'body'    => wp_json_encode( $body ),
 					]
 				);
@@ -328,9 +388,11 @@ class PRAutoBlogger_OpenRouter_Provider implements PRAutoBlogger_LLM_Provider_In
 		}
 
 		// Belt-and-suspenders: inject Authorization at cURL level (see send_chat_completion).
+		$base_url              = $this->get_api_base_url();
+		$base_host             = (string) wp_parse_url( $base_url, PHP_URL_HOST );
 		$auth_header_value     = 'Bearer ' . $api_key;
-		$curl_auth_filter_cred = function ( $handle, $parsed_args, $url ) use ( $auth_header_value ): void {
-			if ( false === strpos( $url, 'openrouter.ai' ) ) {
+		$curl_auth_filter_cred = function ( $handle, $parsed_args, $url ) use ( $auth_header_value, $base_host ): void {
+			if ( '' === $base_host || false === strpos( (string) $url, $base_host ) ) {
 				return;
 			}
 			// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt
@@ -341,7 +403,7 @@ class PRAutoBlogger_OpenRouter_Provider implements PRAutoBlogger_LLM_Provider_In
 		add_action( 'http_api_curl', $curl_auth_filter_cred, 99, 3 );
 
 		$response = wp_remote_get(
-			self::API_BASE_URL . '/auth/key',
+			$base_url . '/auth/key',
 			[
 				'timeout' => 15,
 				'headers' => [

@@ -84,6 +84,25 @@ class PRAutoBlogger_Settings_Fields {
 				'description' => __( 'Uses Reddit RSS (primary) and .json (fallback). No API key required.', 'prautoblogger' ),
 				'icon'        => '📡',
 			],
+			[
+				'id'          => 'prautoblogger_ai_gateway_base_url',
+				'label'       => __( 'Cloudflare AI Gateway URL', 'prautoblogger' ),
+				'type'        => 'text',
+				'section'     => 'prautoblogger_api',
+				'default'     => '',
+				'description' => __( 'Optional. Route OpenRouter calls through a Cloudflare AI Gateway for caching, cost logging, and rate limiting. Format: https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/openrouter — leave blank to call OpenRouter directly.', 'prautoblogger' ),
+				'icon'        => '☁️',
+			],
+			[
+				'id'          => 'prautoblogger_ai_gateway_cache_ttl',
+				'label'       => __( 'AI Gateway Cache TTL (seconds)', 'prautoblogger' ),
+				'type'        => 'number',
+				'section'     => 'prautoblogger_api',
+				'default'     => 0,
+				'min'         => 0,
+				'max'         => 2592000,
+				'description' => __( 'How long Cloudflare may serve cached responses for identical LLM calls. 0 disables caching. Only used when a gateway URL is set above. Safe values: 0 for article generation (always fresh), 3600+ for repeated classification/scoring calls.', 'prautoblogger' ),
+			],
 
 			// ── AI Models ───────────────────────────────────────────────
 			[

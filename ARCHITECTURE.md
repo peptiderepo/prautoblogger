@@ -313,6 +313,8 @@ All prefixed with `prautoblogger_`:
 | Option Key                             | Description                                           |
 |----------------------------------------|-------------------------------------------------------|
 | `prautoblogger_openrouter_api_key`     | Encrypted OpenRouter API key                          |
+| `prautoblogger_ai_gateway_base_url`    | Optional Cloudflare AI Gateway URL (proxies OpenRouter); empty = direct |
+| `prautoblogger_ai_gateway_cache_ttl`   | Seconds Cloudflare may cache identical LLM responses (0 = off)           |
 | `prautoblogger_ga4_property_id`        | Google Analytics 4 property ID                        |
 | `prautoblogger_ga4_credentials_json`   | Encrypted GA4 service account credentials             |
 | `prautoblogger_analysis_model`         | OpenRouter model for analysis (default: cheap)        |
@@ -360,6 +362,7 @@ Stored on every PRAutoBlogger-generated post:
 | Service | Purpose | Auth | Rate Limit | Code |
 |---------|---------|------|------------|------|
 | OpenRouter | All LLM calls (analysis, writing, editing) | API key (encrypted in wp_options) | Per-model | `providers/class-open-router-provider.php`, `providers/class-open-router-pricing.php` |
+| Cloudflare AI Gateway (optional) | Transparent proxy in front of OpenRouter — adds response caching, cost logging, rate limiting, provider fallback | Same OpenRouter key; gateway URL in `prautoblogger_ai_gateway_base_url` | Gateway-side quotas | Same provider file; activated when gateway URL option is non-empty |
 | Reddit RSS | Primary Reddit data source — Atom feeds for subreddit hot posts | None (unauthenticated) | No known rate limit; reliable from datacenter IPs | `providers/class-reddit-json-client.php` |
 | Reddit .json | Fallback for posts + only source for comments | None (unauthenticated) | ~10 req/min (datacenter IPs often blocked) | `providers/class-reddit-json-client.php` |
 | Google Analytics 4 | Post performance metrics | OAuth2 service account | Standard GA4 limits | `core/class-ga4-client.php`, `core/class-metrics-collector.php` |
@@ -409,6 +412,9 @@ Each pipeline execution generates a UUID (`run_id`) that tags every `prab_genera
 
 ### #14: Reddit RSS replaces PullPush.io (and earlier Reddit OAuth)
 Reddit rejected our OAuth API application (April 2026). We initially switched to PullPush.io, but its index was frequently stale or unavailable. Reddit's RSS/Atom feeds (`/r/{sub}/hot.rss`) proved the most reliable option — they work from datacenter IPs where .json gets 403, require no auth, and have no apparent rate limit. The .json endpoints are kept as a fallback for posts and as the sole source for comment data. Each collected item's metadata includes a `data_source` field (`reddit_rss` or `reddit_json`) for auditability.
+
+### #15: Optional Cloudflare AI Gateway in front of OpenRouter
+We already use Cloudflare for DNS/CDN on peptiderepo.com, so layering AI Gateway in front of OpenRouter is zero marginal infrastructure. It gives us response caching (meaningful for repeated classification/scoring calls), a unified cost/latency dashboard, rate limiting, and provider fallback — all of which we would otherwise have to build ourselves to satisfy the CTO cost-tracking rules. Kept as an opt-in URL setting (`prautoblogger_ai_gateway_base_url`) so the plugin still works unchanged out of the box and can be bypassed instantly if the gateway misbehaves. The gateway is a transparent OpenRouter-compatible proxy; no new provider class is needed, and the response parsing path (`usage`, `choices[0].message.content`) is unchanged.
 
 ---
 
