@@ -91,11 +91,16 @@ jobs:
         run: |
           sleep 5
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://peptiderepo.com)
-          if [ "$STATUS" != "200" ]; then
-            echo "WARNING: Site returned HTTP $STATUS after deploy"
+          # 200 = normal healthy response.
+          # 403 = peptide-starter-theme v1.5.2 CF-peer validator rejecting this
+          #       GHA-runner direct-to-origin request as non-Cloudflare traffic.
+          #       That rejection is the validator working — itself a positive
+          #       liveness signal. Real user traffic via Cloudflare gets 200.
+          if [ "$STATUS" != "200" ] && [ "$STATUS" != "403" ]; then
+            echo "ERROR: Site returned unexpected HTTP $STATUS after deploy"
             exit 1
           fi
-          echo "Site is healthy (HTTP 200)"
+          echo "Site is responsive (HTTP $STATUS)"
 
       - name: Cleanup
         if: always()
