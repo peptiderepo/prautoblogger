@@ -132,6 +132,11 @@ prautoblogger/
 │   │   ├── interface-source-provider.php # Contract for any social media source
 │   │   ├── class-reddit-json-client.php  # Reddit HTTP client — RSS (primary) + .json (fallback)
 │   │   ├── class-reddit-provider.php     # Reddit data collection orchestrator (RSS primary)
+│   │   ├── interface-image-provider.php  # Contract for any image generation provider
+│   │   ├── class-cloudflare-image-provider.php  # FLUX.1 via Cloudflare Workers AI
+│   │   ├── class-cloudflare-image-pricing.php   # Model alias + per-MP cost estimation
+│   │   ├── class-cloudflare-image-validator.php # Non-destructive credential + connectivity check
+│   │   ├── class-cloudflare-image-support.php   # Token, account, URL, and log helpers for the CF provider
 │   │   └── (new providers go here — see CONVENTIONS.md)
 │   │
 │   ├── frontend/
@@ -338,6 +343,10 @@ All prefixed with `prautoblogger_`:
 | `prautoblogger_log_level`              | Logging threshold: error/warning/info/debug           |
 | `prautoblogger_db_version`             | Schema version for migrations                         |
 | `prautoblogger_schedule_time`          | Daily generation time (HH:MM, default: '03:00')       |
+| `prautoblogger_cloudflare_ai_token`    | Encrypted Cloudflare Workers AI API token             |
+| `prautoblogger_cloudflare_account_id`  | Cloudflare account UUID (plaintext — identifier, not secret) |
+| `prautoblogger_image_model`            | Image model alias: `flux-1-schnell` (default) or `flux-1-dev` |
+| `prautoblogger_image_style_suffix`     | Text appended to every image prompt (default: CEO-locked 90s infomercial prompt) |
 
 ### Post Meta
 
@@ -368,6 +377,7 @@ Stored on every PRAutoBlogger-generated post:
 | Reddit RSS | Primary Reddit data source — Atom feeds for subreddit hot posts | None (unauthenticated) | No known rate limit; reliable from datacenter IPs | `providers/class-reddit-json-client.php` |
 | Reddit .json | Fallback for posts + only source for comments | None (unauthenticated) | ~10 req/min (datacenter IPs often blocked) | `providers/class-reddit-json-client.php` |
 | Google Analytics 4 | Post performance metrics | OAuth2 service account | Standard GA4 limits | `core/class-ga4-client.php`, `core/class-metrics-collector.php` |
+| Cloudflare Workers AI | Image generation (FLUX.1 schnell / dev) for article hero, thumbnail, and IG placements | API token (encrypted in wp_options) + account ID | Workers AI per-account quotas | `providers/class-cloudflare-image-provider.php`, `providers/class-cloudflare-image-pricing.php`, `providers/class-cloudflare-image-validator.php` |
 
 ---
 
@@ -414,6 +424,9 @@ Each pipeline execution generates a UUID (`run_id`) that tags every `prab_genera
 
 ### #14: Reddit RSS replaces PullPush.io (and earlier Reddit OAuth)
 Reddit rejected our OAuth API application (April 2026). We initially switched to PullPush.io, but its index was frequently stale or unavailable. Reddit's RSS/Atom feeds (`/r/{sub}/hot.rss`) proved the most reliable option — they work from datacenter IPs where .json gets 403, require no auth, and have no apparent rate limit. The .json endpoints are kept as a fallback for posts and as the sole source for comment data. Each collected item's metadata includes a `data_source` field (`reddit_rss` or `reddit_json`) for auditability.
+
+### #16: Image generation via Cloudflare Workers AI (FLUX.1), direct (not via AI Gateway)
+The image-generation layer (started 2026-04-15, tracked in `convo/prautoblogger/threads/2026-04-image-pipeline/`) uses FLUX.1 [schnell] on Cloudflare Workers AI as its default model, chosen for its ~$0.0011/MP cost and 2–3 sec latency. FLUX.1 [dev] is a ~4× cost upgrade exposed as a dropdown for specific posts that warrant it. Calls go directly to `https://api.cloudflare.com/client/v4/accounts/{id}/ai/run/@cf/black-forest-labs/...`, *not* through the Cloudflare AI Gateway that we use for OpenRouter — the gateway route to Workers AI currently 403s (pre-existing open issue). The provider lives behind `PRAutoBlogger_Image_Provider_Interface`, so the decision is trivially reversible: switching to a different image API (DALL-E, Replicate, a future AI Gateway route) is a new class implementation plus a one-line swap in the pipeline wiring. Trade-off: we run two different Cloudflare integration paths (gateway for OpenRouter LLMs, direct for Workers AI images) until the gateway route stabilizes — minor cognitive overhead, zero functional downside.
 
 ### #15: Optional Cloudflare AI Gateway in front of OpenRouter
 We already use Cloudflare for DNS/CDN on peptiderepo.com, so layering AI Gateway in front of OpenRouter is zero marginal infrastructure. It gives us response caching (meaningful for repeated classification/scoring calls), a unified cost/latency dashboard, rate limiting, and provider fallback — all of which we would otherwise have to build ourselves to satisfy the CTO cost-tracking rules. Kept as an opt-in URL setting (`prautoblogger_ai_gateway_base_url`) so the plugin still works unchanged out of the box and can be bypassed instantly if the gateway misbehaves. The gateway is a transparent OpenRouter-compatible proxy; no new provider class is needed, and the response parsing path (`usage`, `choices[0].message.content`) is unchanged.

@@ -5,6 +5,38 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **Image provider: Cloudflare Workers AI (FLUX.1 family).** First commit of
+  the image + Instagram A/B pipeline workstream. Ships the provider, its
+  pricing + validator helpers, four new settings fields in a new "Images"
+  admin section, and unit tests with mocked HTTP. Nothing calls the provider
+  yet from the article pipeline — integration lands in commit 1b.
+  - `includes/providers/interface-image-provider.php` (adopted from the CTO's
+    uncommitted draft) — contract for any image provider.
+  - `includes/providers/class-cloudflare-image-provider.php` — FLUX on Workers
+    AI, direct call to `/accounts/{id}/ai/run/...` (bypassing AI Gateway per
+    decision D-001); exponential-backoff retries on 429 / 5xx / network,
+    loud fail on 4xx; handles both raw-bytes and JSON-envelope response shapes.
+  - `includes/providers/class-cloudflare-image-pricing.php` — model alias →
+    full Workers AI id resolution + per-megapixel cost estimation.
+  - `includes/providers/class-cloudflare-image-validator.php` — non-destructive
+    "Test Connection" credential check that never generates a real image.
+  - Settings: `prautoblogger_cloudflare_ai_token` (encrypted),
+    `prautoblogger_cloudflare_account_id`, `prautoblogger_image_model`
+    (schnell / dev), `prautoblogger_image_style_suffix` (default = CEO-locked
+    90s infomercial prompt).
+  - Constants: `PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL`,
+    `PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX`.
+  - Tests: `tests/unit/Providers/CloudflareImageProviderTest.php` covers
+    happy path (raw bytes + JSON envelope), dimension + empty-prompt
+    validation, 4xx loud-fail without retry, unexpected response shape,
+    cost scaling across models and dimensions, and missing-token diagnostics.
+- ARCHITECTURE.md: new key decision #16 (image pipeline: Cloudflare Workers
+  AI), new external API integration row, new options rows, file tree updates.
+- CONVENTIONS.md: new "How To: Add a New Image Provider" section.
+
 ## [0.2.2] — 2026-04-12
 
 ### Changed

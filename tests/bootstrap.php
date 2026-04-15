@@ -37,7 +37,9 @@ if ( ! defined( 'PRAUTOBLOGGER_API_TIMEOUT_SECONDS' ) ) {
     define( 'PRAUTOBLOGGER_API_TIMEOUT_SECONDS', 30 );
 }
 if ( ! defined( 'PRAUTOBLOGGER_RETRY_BASE_DELAY_SECONDS' ) ) {
-    define( 'PRAUTOBLOGGER_RETRY_BASE_DELAY_SECONDS', 1 );
+    // Zero in the test bootstrap so retry-path tests don't spend real wall
+    // time in sleep(). Production default is 2 (see prautoblogger.php).
+    define( 'PRAUTOBLOGGER_RETRY_BASE_DELAY_SECONDS', 0 );
 }
 
 // Default model slugs used by Publisher, ChiefEditor, Activator, settings UI.
