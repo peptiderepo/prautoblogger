@@ -133,9 +133,10 @@ prautoblogger/
 │   │   ├── class-reddit-json-client.php  # Reddit HTTP client — RSS (primary) + .json (fallback)
 │   │   ├── class-reddit-provider.php     # Reddit data collection orchestrator (RSS primary)
 │   │   ├── interface-image-provider.php  # Contract for any image generation provider
-│   │   ├── class-cloudflare-image-provider.php # FLUX.1 via Cloudflare Workers AI
-│   │   ├── class-cloudflare-image-pricing.php  # Model alias + per-MP cost estimation
+│   │   ├── class-cloudflare-image-provider.php  # FLUX.1 via Cloudflare Workers AI
+│   │   ├── class-cloudflare-image-pricing.php   # Model alias + per-MP cost estimation
 │   │   ├── class-cloudflare-image-validator.php # Non-destructive credential + connectivity check
+│   │   ├── class-cloudflare-image-support.php   # Token, account, URL, and log helpers for the CF provider
 │   │   └── (new providers go here — see CONVENTIONS.md)
 │   │
 │   ├── frontend/
