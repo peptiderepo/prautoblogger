@@ -57,6 +57,11 @@ class PRAutoBlogger_Settings_Fields {
 				'icon'        => 'dashicons-chart-area',
 				'description' => __( 'Connect Google Analytics 4 for post performance scoring.', 'prautoblogger' ),
 			],
+			'prautoblogger_images' => [
+				'title'       => __( 'Images', 'prautoblogger' ),
+				'icon'        => 'dashicons-format-image',
+				'description' => __( 'Cloudflare Workers AI credentials and image style controls.', 'prautoblogger' ),
+			],
 		];
 	}
 
@@ -328,6 +333,45 @@ class PRAutoBlogger_Settings_Fields {
 				'type'        => 'password',
 				'section'     => 'prautoblogger_analytics',
 				'description' => __( 'Paste the full JSON key file for a service account with Analytics read access.', 'prautoblogger' ),
+			],
+
+			// ── Images ─────────────────────────────────────────────────
+			[
+				'id'          => 'prautoblogger_cloudflare_ai_token',
+				'label'       => __( 'Cloudflare API Token', 'prautoblogger' ),
+				'type'        => 'password',
+				'section'     => 'prautoblogger_images',
+				'description' => __( 'Workers AI token with Read + Edit scope. Create at dash.cloudflare.com → AI → API Tokens.', 'prautoblogger' ),
+				'icon'        => '🔑',
+			],
+			[
+				'id'          => 'prautoblogger_cloudflare_account_id',
+				'label'       => __( 'Cloudflare Account ID', 'prautoblogger' ),
+				'type'        => 'text',
+				'section'     => 'prautoblogger_images',
+				'default'     => '',
+				'description' => __( 'The Account ID shown on your Cloudflare dashboard sidebar. Used to build the Workers AI URL.', 'prautoblogger' ),
+			],
+			[
+				'id'          => 'prautoblogger_image_model',
+				'label'       => __( 'Image Model', 'prautoblogger' ),
+				'type'        => 'select',
+				'section'     => 'prautoblogger_images',
+				'default'     => PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL,
+				'options'     => [
+					'flux-1-schnell' => __( 'FLUX.1 [schnell] — fast + cheap (default)', 'prautoblogger' ),
+					'flux-1-dev'     => __( 'FLUX.1 [dev] — higher quality, ~4× cost', 'prautoblogger' ),
+				],
+				'description' => __( 'Schnell is the normal choice. Only switch to [dev] when a specific post needs higher quality.', 'prautoblogger' ),
+				'badge'       => __( 'Low cost', 'prautoblogger' ),
+			],
+			[
+				'id'          => 'prautoblogger_image_style_suffix',
+				'label'       => __( 'Style Suffix', 'prautoblogger' ),
+				'type'        => 'textarea',
+				'section'     => 'prautoblogger_images',
+				'default'     => PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX,
+				'description' => __( 'Appended to every image prompt. Controls the visual look across all placements. Changing this mid-run will cause visible style drift — prefer changing during quiet periods.', 'prautoblogger' ),
 			],
 		];
 	}

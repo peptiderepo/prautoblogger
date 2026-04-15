@@ -53,6 +53,19 @@ define( 'PRAUTOBLOGGER_DEFAULT_ANALYSIS_MODEL', 'google/gemini-2.5-flash-lite' )
 define( 'PRAUTOBLOGGER_DEFAULT_WRITING_MODEL', 'google/gemini-2.5-flash-lite' );
 define( 'PRAUTOBLOGGER_DEFAULT_EDITOR_MODEL', 'google/gemini-2.5-flash-lite' );
 
+// Image generation defaults (Cloudflare Workers AI, FLUX family).
+// Short alias; the Cloudflare image pricing helper expands it to the full
+// `@cf/black-forest-labs/...` model id when building the Workers AI URL.
+define( 'PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL', 'flux-1-schnell' );
+
+// CEO-approved image style suffix (decision locked 2026-04-15). Users may
+// override via Settings → Images → Style Suffix; this constant is the
+// fallback the setting reads on first install.
+define(
+	'PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX',
+	'Style: a screengrab from a 1995 late-night cable TV infomercial, oversaturated warm colors, VHS tape noise and scan lines, a bright yellow starburst graphic in the top right corner reading NEW, cheap studio lighting, dated 4:3 television framing, deadpan earnest expression, faint lens distortion, tacky low-budget commercial aesthetic.'
+);
+
 /*
 |--------------------------------------------------------------------------
 | Autoloader

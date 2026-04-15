@@ -122,6 +122,34 @@ interface PRAutoBlogger_Source_Provider_Interface {
 
 ---
 
+## How To: Add a New Image Provider
+
+1. Create `includes/providers/class-{name}-image-provider.php`
+2. Implement `PRAutoBlogger_Image_Provider_Interface` (see `interface-image-provider.php`)
+3. Required methods: `generate_image()`, `estimate_cost()`, `get_provider_name()`, `validate_credentials_detailed()`
+4. Split helpers into companions if you'd exceed the 300-line cap. The Cloudflare provider splits into provider + pricing + validator — mirror that shape.
+5. Add API credentials fields to `admin/class-settings-fields.php` under the `prautoblogger_images` section
+6. Register the provider in `class-prautoblogger.php` loader once the image pipeline lands (commit 1b of the image workstream)
+7. Update `ARCHITECTURE.md` file tree, external API integrations table, and the options table
+
+### Interface contract:
+```php
+interface PRAutoBlogger_Image_Provider_Interface {
+    public function generate_image( string $prompt, int $width, int $height, array $options = [] ): array; // {bytes, mime_type, width, height, model, seed, cost_usd, latency_ms}
+    public function estimate_cost( int $width, int $height, array $options = [] ): float;
+    public function get_provider_name(): string;                                   // e.g., 'cloudflare_workers_ai'
+    public function validate_credentials_detailed(): array;                         // {status, message, debug?}
+}
+```
+
+### Retry + cost rules (non-negotiable)
+- 5xx / 429 / network errors: retry with exponential backoff up to `PRAUTOBLOGGER_MAX_RETRIES`, respect `Retry-After` when present.
+- 4xx other than 429: fail loudly on the first response — never retry a deterministic bad request.
+- Validation check must be non-destructive (no image generation).
+- Every attempt logs via `PRAutoBlogger_Logger` with context `{provider-slug}-image`.
+
+---
+
 ## How To: Add a New Admin Setting
 
 1. Define the option key in the settings array in `admin/class-admin-page.php` → `get_settings_fields()` method
