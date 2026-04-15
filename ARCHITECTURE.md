@@ -1,5 +1,7 @@
 # PRAutoBlogger — Architecture
 
+> **Cross-app context:** decisions that affect multiple plugins (Cloudflare AI Gateway routing, OpenRouter account sharing, the interface pattern, image-generation stack, social distributor choice) are recorded in `Peptide Repo CTO/docs/engineering/decisions/`. The incident runbook for cross-app failure modes is at `Peptide Repo CTO/docs/engineering/INCIDENT-RUNBOOK.md`. Engineer PRAutoBlogger should read both before making decisions that cross plugin boundaries.
+
 PRAutoBlogger is a WordPress plugin that monitors social media (starting with Reddit) for recurring questions, complaints, and comparisons in a configured niche, uses LLM agents (via OpenRouter) to generate high-quality blog articles from those insights, runs them through a chief editor agent for quality review, and auto-publishes them on a configurable daily schedule. All collected data and generation metrics are stored for a self-improvement feedback loop.
 
 ---
