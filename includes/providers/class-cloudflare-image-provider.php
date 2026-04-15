@@ -18,6 +18,7 @@ declare(strict_types=1);
  *
  * @see interface-image-provider.php           Interface this class implements.
  * @see class-cloudflare-image-pricing.php     Cost + model id helpers.
+ * @see class-cloudflare-image-support.php     Token, account, URL, and log helpers.
  * @see class-cloudflare-image-validator.php   Credential check helper.
  * @see class-open-router-provider.php         Sibling provider; same retry pattern.
  * @see ARCHITECTURE.md                        External API Integrations, key decision #16.
@@ -37,8 +38,20 @@ class PRAutoBlogger_Cloudflare_Image_Provider implements PRAutoBlogger_Image_Pro
 	 */
 	private PRAutoBlogger_Cloudflare_Image_Pricing $pricing;
 
+	/**
+	 * Token, account, URL, and log helpers — pulled out of this class to
+	 * keep it under the 300-line cap.
+	 *
+	 * @var PRAutoBlogger_Cloudflare_Image_Support
+	 */
+	private PRAutoBlogger_Cloudflare_Image_Support $support;
+
+	/**
+	 * Construct the provider with its default pricing + support helpers.
+	 */
 	public function __construct() {
 		$this->pricing = new PRAutoBlogger_Cloudflare_Image_Pricing();
+		$this->support = new PRAutoBlogger_Cloudflare_Image_Support();
 	}
 
 	/**
@@ -64,8 +77,8 @@ class PRAutoBlogger_Cloudflare_Image_Provider implements PRAutoBlogger_Image_Pro
 			);
 		}
 
-		$account_id = $this->get_account_id();
-		$api_token  = $this->get_api_token();
+		$account_id = $this->support->get_account_id();
+		$api_token  = $this->support->get_api_token();
 		$model      = $this->pricing->resolve_model( (string) ( $options['model'] ?? '' ) );
 
 		$body = [
@@ -78,7 +91,7 @@ class PRAutoBlogger_Cloudflare_Image_Provider implements PRAutoBlogger_Image_Pro
 			$body['seed'] = (int) $options['seed'];
 		}
 
-		$url        = $this->build_endpoint_url( $account_id, $model );
+		$url        = $this->support->build_endpoint_url( $account_id, $model );
 		$headers    = [
 			'Authorization' => 'Bearer ' . $api_token,
 			'Content-Type'  => 'application/json',
@@ -99,7 +112,7 @@ class PRAutoBlogger_Cloudflare_Image_Provider implements PRAutoBlogger_Image_Pro
 
 			if ( is_wp_error( $response ) ) {
 				$last_error = $response->get_error_message();
-				$this->log_retryable_failure( $attempt, 'network', $last_error );
+				$this->support->log_retryable_failure( $attempt, 'network', $last_error );
 				$this->sleep_for_attempt( $attempt );
 				continue;
 			}
@@ -109,7 +122,7 @@ class PRAutoBlogger_Cloudflare_Image_Provider implements PRAutoBlogger_Image_Pro
 
 			if ( 429 === $status || $status >= 500 ) {
 				$last_error = sprintf( 'HTTP %d: %s', $status, substr( $raw, 0, 300 ) );
-				$this->log_retryable_failure( $attempt, (string) $status, $last_error );
+				$this->support->log_retryable_failure( $attempt, (string) $status, $last_error );
 				if ( $attempt < PRAUTOBLOGGER_MAX_RETRIES ) {
 					$retry_after = (int) wp_remote_retrieve_header( $response, 'retry-after' );
 					$this->sleep_for_attempt( $attempt, $retry_after );
@@ -118,13 +131,13 @@ class PRAutoBlogger_Cloudflare_Image_Provider implements PRAutoBlogger_Image_Pro
 			}
 
 			if ( $status >= 400 ) {
-				$this->log_client_error( $status, $api_token, $account_id, $raw );
+				$this->support->log_client_error( $status, $api_token, $account_id, $raw );
 				throw new \RuntimeException(
 					sprintf(
 						/* translators: %1$d: HTTP status, %2$s: error body. */
 						esc_html__( 'Cloudflare Workers AI error (HTTP %1$d): %2$s', 'prautoblogger' ),
 						$status,
-						substr( $raw, 0, 300 )
+						esc_html( substr( $raw, 0, 300 ) )
 					)
 				);
 			}
@@ -152,7 +165,7 @@ class PRAutoBlogger_Cloudflare_Image_Provider implements PRAutoBlogger_Image_Pro
 				/* translators: %1$d: max retries, %2$s: last error. */
 				esc_html__( 'Cloudflare Workers AI failed after %1$d attempts. Last error: %2$s', 'prautoblogger' ),
 				PRAUTOBLOGGER_MAX_RETRIES,
-				$last_error
+				esc_html( $last_error )
 			)
 		);
 	}
@@ -188,7 +201,14 @@ class PRAutoBlogger_Cloudflare_Image_Provider implements PRAutoBlogger_Image_Pro
 		return ( new PRAutoBlogger_Cloudflare_Image_Validator() )->run();
 	}
 
-	/** Enforce the interface's dimension contract. */
+	/**
+	 * Enforce the interface's dimension contract.
+	 *
+	 * @param int $width  Width in pixels.
+	 * @param int $height Height in pixels.
+	 * @return void
+	 * @throws \InvalidArgumentException If either dimension is outside [MIN, MAX].
+	 */
 	private function assert_valid_dimensions( int $width, int $height ): void {
 		if (
 			$width < self::MIN_DIMENSION_PX || $width > self::MAX_DIMENSION_PX ||
@@ -207,7 +227,15 @@ class PRAutoBlogger_Cloudflare_Image_Provider implements PRAutoBlogger_Image_Pro
 		}
 	}
 
-	/** Normalize a 2xx response into [bytes, mime-type] whether raw or JSON-wrapped. */
+	/**
+	 * Normalize a 2xx response into [bytes, mime-type] whether the body
+	 * arrives as raw image bytes or as a JSON envelope with base64 image.
+	 *
+	 * @param string $raw  Raw response body.
+	 * @param string $mime Response Content-Type header value (may be empty).
+	 * @return array{0: string, 1: string} [image bytes, mime type]
+	 * @throws \RuntimeException If the body matches neither expected shape.
+	 */
 	private function normalize_response_body( string $raw, string $mime ): array {
 		if ( '' !== $mime && 0 === stripos( $mime, 'image/' ) ) {
 			return [ $raw, $mime ];
@@ -224,55 +252,14 @@ class PRAutoBlogger_Cloudflare_Image_Provider implements PRAutoBlogger_Image_Pro
 		);
 	}
 
-	private function build_endpoint_url( string $account_id, string $model ): string {
-		return sprintf(
-			'https://api.cloudflare.com/client/v4/accounts/%s/ai/run/%s',
-			rawurlencode( $account_id ),
-			ltrim( $model, '/' )
-		);
-	}
-
-	private function get_api_token(): string {
-		$encrypted = (string) get_option( 'prautoblogger_cloudflare_ai_token', '' );
-		if ( '' === $encrypted ) {
-			return '';
-		}
-		return (string) PRAutoBlogger_Encryption::decrypt( $encrypted );
-	}
-
-	private function get_account_id(): string {
-		return trim( (string) get_option( 'prautoblogger_cloudflare_account_id', '' ) );
-	}
-
-	private function log_retryable_failure( int $attempt, string $failure_class, string $detail ): void {
-		PRAutoBlogger_Logger::instance()->warning(
-			sprintf(
-				'Cloudflare image gen %s failure (attempt %d/%d): %s',
-				$failure_class,
-				$attempt,
-				PRAUTOBLOGGER_MAX_RETRIES,
-				$detail
-			),
-			'cloudflare-image'
-		);
-	}
-
-	/** Log an unrecoverable 4xx with triage context (never the full secret). */
-	private function log_client_error( int $status, string $api_token, string $account_id, string $raw ): void {
-		PRAutoBlogger_Logger::instance()->error(
-			sprintf(
-				'Cloudflare image gen HTTP %d (token_prefix=%s, token_len=%d, account=%s): %s',
-				$status,
-				substr( $api_token, 0, 4 ),
-				strlen( $api_token ),
-				substr( $account_id, 0, 6 ),
-				substr( $raw, 0, 300 )
-			),
-			'cloudflare-image'
-		);
-	}
-
-	/** Sleep between retries; Retry-After header wins when present, else exponential backoff. */
+	/**
+	 * Sleep between retries. Retry-After header value wins when present,
+	 * otherwise exponential backoff from the PRAUTOBLOGGER_* constants.
+	 *
+	 * @param int $attempt          1-based attempt number that just failed.
+	 * @param int $retry_after_secs Retry-After header value (0 if absent).
+	 * @return void
+	 */
 	private function sleep_for_attempt( int $attempt, int $retry_after_secs = 0 ): void {
 		$backoff = PRAUTOBLOGGER_RETRY_BASE_DELAY_SECONDS * (int) pow( 2, $attempt - 1 );
 		$delay   = $retry_after_secs > 0 ? min( $retry_after_secs, self::RETRY_AFTER_CAP_S ) : $backoff;

@@ -71,7 +71,11 @@ class PRAutoBlogger_Cloudflare_Image_Validator {
 			);
 			return $this->err(
 				'wp_error:' . $msg,
-				sprintf( __( 'Network error reaching Cloudflare: %s', 'prautoblogger' ), $msg )
+				sprintf(
+					/* translators: %s: transport-layer error message. */
+					esc_html__( 'Network error reaching Cloudflare: %s', 'prautoblogger' ),
+					esc_html( $msg )
+				)
 			);
 		}
 
@@ -90,7 +94,12 @@ class PRAutoBlogger_Cloudflare_Image_Validator {
 		);
 		return $this->err(
 			sprintf( 'http_%d', $status ),
-			sprintf( __( 'Cloudflare returned HTTP %1$d. %2$s', 'prautoblogger' ), $status, substr( $body, 0, 200 ) )
+			sprintf(
+				/* translators: %1$d: HTTP status, %2$s: response body. */
+				esc_html__( 'Cloudflare returned HTTP %1$d. %2$s', 'prautoblogger' ),
+				$status,
+				esc_html( substr( $body, 0, 200 ) )
+			)
 		);
 	}
 

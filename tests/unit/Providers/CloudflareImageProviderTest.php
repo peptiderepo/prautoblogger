@@ -308,39 +308,29 @@ class CloudflareImageProviderTest extends BaseTestCase {
 	public function test_generate_image_retries_on_5xx_then_succeeds(): void {
 		$this->with_token( 'test-token' );
 
-		$codes = [ 500, 200 ];
-		Functions\when( 'wp_remote_post' )->alias(
-			function () use ( &$codes ) {
-				$code = array_shift( $codes ) ?? 200;
-				return [
-					'body'     => 500 === $code ? 'upstream hiccup' : self::FAKE_IMAGE_BYTES,
-					'response' => [ 'code' => $code ],
-					'headers'  => [ 'content-type' => 500 === $code ? 'text/plain' : 'image/png' ],
-				];
-			}
-		);
+		$response_codes  = [ 500, 200 ];
+		$response_bodies = [ 'upstream hiccup', self::FAKE_IMAGE_BYTES ];
 
-		$response_codes = [ 500, 200 ];
+		Functions\when( 'wp_remote_post' )->justReturn( [
+			'body'     => self::FAKE_IMAGE_BYTES,
+			'response' => [ 'code' => 200 ],
+			'headers'  => [ 'content-type' => 'image/png' ],
+		] );
 		Functions\when( 'wp_remote_retrieve_response_code' )->alias(
 			function () use ( &$response_codes ) {
 				return array_shift( $response_codes ) ?? 200;
 			}
 		);
-		$response_bodies = [ 'upstream hiccup', self::FAKE_IMAGE_BYTES ];
 		Functions\when( 'wp_remote_retrieve_body' )->alias(
 			function () use ( &$response_bodies ) {
 				return array_shift( $response_bodies ) ?? self::FAKE_IMAGE_BYTES;
 			}
 		);
-		$mime_types = [ 'text/plain', 'image/png' ];
-		Functions\when( 'wp_remote_retrieve_header' )->alias(
-			function ( $_resp, $name ) use ( &$mime_types ) {
-				if ( 'content-type' === strtolower( (string) $name ) ) {
-					return array_shift( $mime_types ) ?? 'image/png';
-				}
-				return '';
-			}
-		);
+		// wp_remote_retrieve_header is called only on the success attempt —
+		// the 5xx branch returns before any header lookup. One justReturn
+		// for the content-type is enough; retry-after lookups accept the
+		// same stub and will coerce to (int) 0.
+		Functions\when( 'wp_remote_retrieve_header' )->justReturn( 'image/png' );
 
 		$provider = new \PRAutoBlogger_Cloudflare_Image_Provider();
 		$result   = $provider->generate_image( 'a prompt', 1080, 1080 );
@@ -392,38 +382,28 @@ class CloudflareImageProviderTest extends BaseTestCase {
 	public function test_generate_image_retries_on_429(): void {
 		$this->with_token( 'test-token' );
 
-		$codes = [ 429, 200 ];
-		Functions\when( 'wp_remote_post' )->alias(
-			function () use ( &$codes ) {
-				$code = array_shift( $codes ) ?? 200;
-				return [
-					'body'     => 429 === $code ? 'slow down' : self::FAKE_IMAGE_BYTES,
-					'response' => [ 'code' => $code ],
-					'headers'  => [ 'content-type' => 429 === $code ? 'text/plain' : 'image/png' ],
-				];
-			}
-		);
-		$response_codes = [ 429, 200 ];
+		$response_codes  = [ 429, 200 ];
+		$response_bodies = [ 'slow down', self::FAKE_IMAGE_BYTES ];
+
+		Functions\when( 'wp_remote_post' )->justReturn( [
+			'body'     => self::FAKE_IMAGE_BYTES,
+			'response' => [ 'code' => 200 ],
+			'headers'  => [ 'content-type' => 'image/png' ],
+		] );
 		Functions\when( 'wp_remote_retrieve_response_code' )->alias(
 			function () use ( &$response_codes ) {
 				return array_shift( $response_codes ) ?? 200;
 			}
 		);
-		$response_bodies = [ 'slow down', self::FAKE_IMAGE_BYTES ];
 		Functions\when( 'wp_remote_retrieve_body' )->alias(
 			function () use ( &$response_bodies ) {
 				return array_shift( $response_bodies ) ?? self::FAKE_IMAGE_BYTES;
 			}
 		);
-		$mime_types = [ 'text/plain', 'image/png' ];
-		Functions\when( 'wp_remote_retrieve_header' )->alias(
-			function ( $_resp, $name ) use ( &$mime_types ) {
-				if ( 'content-type' === strtolower( (string) $name ) ) {
-					return array_shift( $mime_types ) ?? 'image/png';
-				}
-				return '';
-			}
-		);
+		// Content-type is only read on the success attempt; retry-after is
+		// read on the 429 attempt and (int)-coerces anything non-numeric
+		// back to 0, falling through to exponential backoff.
+		Functions\when( 'wp_remote_retrieve_header' )->justReturn( 'image/png' );
 
 		$provider = new \PRAutoBlogger_Cloudflare_Image_Provider();
 		$result   = $provider->generate_image( 'a prompt', 1080, 1080 );
