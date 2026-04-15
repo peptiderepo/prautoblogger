@@ -255,6 +255,183 @@ class CloudflareImageProviderTest extends BaseTestCase {
 	}
 
 	/**
+	 * validate_credentials_detailed reports 'account_id_empty' when the
+	 * account ID option is blank, without touching the network.
+	 */
+	public function test_validate_credentials_reports_missing_account_id(): void {
+		$this->stub_get_option( [
+			'prautoblogger_cloudflare_ai_token'   => 'not-empty',
+			'prautoblogger_cloudflare_account_id' => '',
+			'prautoblogger_log_level'             => 'info',
+		] );
+		$provider = new \PRAutoBlogger_Cloudflare_Image_Provider();
+		$result   = $provider->validate_credentials_detailed();
+
+		$this->assertSame( 'error', $result['status'] );
+		$this->assertSame( 'account_id_empty', $result['debug'] );
+	}
+
+	/**
+	 * validate_credentials_detailed must never invoke the generation endpoint.
+	 * Asserted by tracking every wp_remote_post call: a real-image call is
+	 * the only thing that POSTs to `/ai/run/...`. Validator uses GET on
+	 * `/ai/models/search`, which is the free read-only path.
+	 */
+	public function test_validate_credentials_never_calls_generate_endpoint(): void {
+		$this->with_token( 'test-token' );
+
+		$post_calls = [];
+		Functions\when( 'wp_remote_post' )->alias(
+			function ( $url, $args ) use ( &$post_calls ) {
+				$post_calls[] = $url;
+				return [ 'body' => '', 'response' => [ 'code' => 500 ] ];
+			}
+		);
+		Functions\when( 'wp_remote_get' )->justReturn( [
+			'body'     => '{"result":[]}',
+			'response' => [ 'code' => 200 ],
+		] );
+		Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
+		Functions\when( 'wp_remote_retrieve_body' )->justReturn( '{"result":[]}' );
+
+		$provider = new \PRAutoBlogger_Cloudflare_Image_Provider();
+		$provider->validate_credentials_detailed();
+
+		$this->assertSame( [], $post_calls, 'validate_credentials_detailed() must not POST to /ai/run/ endpoints.' );
+	}
+
+	/**
+	 * Retry path: a 500 followed by a 200 must yield the 200 payload.
+	 * Exercises the exponential-backoff loop end-to-end without sleeping
+	 * (bootstrap sets PRAUTOBLOGGER_RETRY_BASE_DELAY_SECONDS to 0).
+	 */
+	public function test_generate_image_retries_on_5xx_then_succeeds(): void {
+		$this->with_token( 'test-token' );
+
+		$codes = [ 500, 200 ];
+		Functions\when( 'wp_remote_post' )->alias(
+			function () use ( &$codes ) {
+				$code = array_shift( $codes ) ?? 200;
+				return [
+					'body'     => 500 === $code ? 'upstream hiccup' : self::FAKE_IMAGE_BYTES,
+					'response' => [ 'code' => $code ],
+					'headers'  => [ 'content-type' => 500 === $code ? 'text/plain' : 'image/png' ],
+				];
+			}
+		);
+
+		$response_codes = [ 500, 200 ];
+		Functions\when( 'wp_remote_retrieve_response_code' )->alias(
+			function () use ( &$response_codes ) {
+				return array_shift( $response_codes ) ?? 200;
+			}
+		);
+		$response_bodies = [ 'upstream hiccup', self::FAKE_IMAGE_BYTES ];
+		Functions\when( 'wp_remote_retrieve_body' )->alias(
+			function () use ( &$response_bodies ) {
+				return array_shift( $response_bodies ) ?? self::FAKE_IMAGE_BYTES;
+			}
+		);
+		$mime_types = [ 'text/plain', 'image/png' ];
+		Functions\when( 'wp_remote_retrieve_header' )->alias(
+			function ( $_resp, $name ) use ( &$mime_types ) {
+				if ( 'content-type' === strtolower( (string) $name ) ) {
+					return array_shift( $mime_types ) ?? 'image/png';
+				}
+				return '';
+			}
+		);
+
+		$provider = new \PRAutoBlogger_Cloudflare_Image_Provider();
+		$result   = $provider->generate_image( 'a prompt', 1080, 1080 );
+
+		$this->assertSame( self::FAKE_IMAGE_BYTES, $result['bytes'] );
+	}
+
+	/**
+	 * Retry exhaustion: persistent 502s must throw after MAX_RETRIES attempts
+	 * rather than hanging indefinitely.
+	 */
+	public function test_generate_image_fails_after_max_retries_on_persistent_5xx(): void {
+		$this->with_token( 'test-token' );
+
+		$call_count = 0;
+		Functions\when( 'wp_remote_post' )->alias(
+			function () use ( &$call_count ) {
+				++$call_count;
+				return [
+					'body'     => 'bad gateway',
+					'response' => [ 'code' => 502 ],
+					'headers'  => [],
+				];
+			}
+		);
+		Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 502 );
+		Functions\when( 'wp_remote_retrieve_body' )->justReturn( 'bad gateway' );
+
+		$provider = new \PRAutoBlogger_Cloudflare_Image_Provider();
+
+		try {
+			$provider->generate_image( 'a prompt', 1080, 1080 );
+			$this->fail( 'Expected RuntimeException after retry exhaustion.' );
+		} catch ( \RuntimeException $e ) {
+			$this->assertStringContainsString( '502', $e->getMessage() );
+		}
+		$this->assertSame(
+			PRAUTOBLOGGER_MAX_RETRIES,
+			$call_count,
+			'Provider must attempt exactly PRAUTOBLOGGER_MAX_RETRIES times before giving up.'
+		);
+	}
+
+	/**
+	 * 429 triggers the same retry loop as 5xx (rate-limited, not deterministic
+	 * error). The provider must retry and eventually succeed if the second
+	 * attempt returns 200.
+	 */
+	public function test_generate_image_retries_on_429(): void {
+		$this->with_token( 'test-token' );
+
+		$codes = [ 429, 200 ];
+		Functions\when( 'wp_remote_post' )->alias(
+			function () use ( &$codes ) {
+				$code = array_shift( $codes ) ?? 200;
+				return [
+					'body'     => 429 === $code ? 'slow down' : self::FAKE_IMAGE_BYTES,
+					'response' => [ 'code' => $code ],
+					'headers'  => [ 'content-type' => 429 === $code ? 'text/plain' : 'image/png' ],
+				];
+			}
+		);
+		$response_codes = [ 429, 200 ];
+		Functions\when( 'wp_remote_retrieve_response_code' )->alias(
+			function () use ( &$response_codes ) {
+				return array_shift( $response_codes ) ?? 200;
+			}
+		);
+		$response_bodies = [ 'slow down', self::FAKE_IMAGE_BYTES ];
+		Functions\when( 'wp_remote_retrieve_body' )->alias(
+			function () use ( &$response_bodies ) {
+				return array_shift( $response_bodies ) ?? self::FAKE_IMAGE_BYTES;
+			}
+		);
+		$mime_types = [ 'text/plain', 'image/png' ];
+		Functions\when( 'wp_remote_retrieve_header' )->alias(
+			function ( $_resp, $name ) use ( &$mime_types ) {
+				if ( 'content-type' === strtolower( (string) $name ) ) {
+					return array_shift( $mime_types ) ?? 'image/png';
+				}
+				return '';
+			}
+		);
+
+		$provider = new \PRAutoBlogger_Cloudflare_Image_Provider();
+		$result   = $provider->generate_image( 'a prompt', 1080, 1080 );
+
+		$this->assertSame( self::FAKE_IMAGE_BYTES, $result['bytes'] );
+	}
+
+	/**
 	 * validate_credentials_detailed returns 'ok' on a 200 from the models
 	 * listing endpoint.
 	 */
