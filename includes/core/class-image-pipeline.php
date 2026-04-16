@@ -124,7 +124,9 @@ class PRAutoBlogger_Image_Pipeline {
 				? $image_a_result->get_error_message()
 				: 'Image A generation produced no attachment ID.';
 		}
-		$result['cost_usd'] += $image_a_result['cost_usd'] ?? 0.0;
+		if ( ! is_wp_error( $image_a_result ) ) {
+			$result['cost_usd'] += $image_a_result['cost_usd'] ?? 0.0;
+		}
 
 		// Generate Image B (source-driven prompt) if source data is available.
 		if ( null !== $source_data && ! empty( $source_data ) ) {
@@ -136,7 +138,9 @@ class PRAutoBlogger_Image_Pipeline {
 					? $image_b_result->get_error_message()
 					: 'Image B generation produced no attachment ID.';
 			}
-			$result['cost_usd'] += $image_b_result['cost_usd'] ?? 0.0;
+			if ( ! is_wp_error( $image_b_result ) ) {
+				$result['cost_usd'] += $image_b_result['cost_usd'] ?? 0.0;
+			}
 		}
 
 		return $result;

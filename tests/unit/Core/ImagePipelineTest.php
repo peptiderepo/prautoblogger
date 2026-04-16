@@ -19,6 +19,9 @@ class ImagePipelineTest extends BaseTestCase {
 		parent::setUp();
 
 		// Mock WordPress functions used by the pipeline and its dependencies.
+		Functions\when( 'is_wp_error' )->alias( function ( $thing ) {
+			return $thing instanceof \WP_Error;
+		} );
 		Functions\when( 'wp_generate_uuid4' )->justReturn( 'test-uuid' );
 		Functions\when( 'get_option' )->alias( function ( $key, $default = false ) {
 			static $options = [
@@ -32,6 +35,8 @@ class ImagePipelineTest extends BaseTestCase {
 			return trim( strip_tags( $str ) );
 		} );
 		Functions\when( 'update_post_meta' )->justReturn( true );
+		Functions\when( 'sanitize_title' )->returnArg();
+		Functions\when( 'esc_html__' )->returnArg();
 	}
 
 	/**

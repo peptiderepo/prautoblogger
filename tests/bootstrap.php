@@ -55,6 +55,11 @@ if ( ! defined( 'PRAUTOBLOGGER_DEFAULT_EDITOR_MODEL' ) ) {
     define( 'PRAUTOBLOGGER_DEFAULT_EDITOR_MODEL', 'google/gemini-2.5-flash-lite' );
 }
 
+// Default image style suffix used by ImagePromptBuilder and settings UI.
+if ( ! defined( 'PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX' ) ) {
+    define( 'PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX', 'Style: test infomercial style.' );
+}
+
 // WordPress database constants used in $wpdb queries.
 if ( ! defined( 'ARRAY_A' ) ) {
     define( 'ARRAY_A', 'ARRAY_A' );
