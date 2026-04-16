@@ -35,18 +35,39 @@ and this project uses [Semantic Versioning](https://semver.org/).
 - ARCHITECTURE.md: added new image pipeline step (6b) to data flow, three new files
   to core/ section of file tree.
 
-### Previous Commit (1a)
+- **OpenRouter model registry (model-picker commit 1).** Foundation for the
+  smart model picker: fetches, normalizes, and caches the OpenRouter model
+  list (`/api/v1/models` — free, unauthenticated). Daily refresh via the
+  existing `prautoblogger_daily_generation` cron hook with 12h idempotency.
+  - `includes/services/interface-model-registry.php` — Phase 3-aware contract.
+  - `includes/services/class-openrouter-model-registry.php` — fetch + cache + query.
+  - `includes/services/class-openrouter-model-normalizer.php` — raw → standardized shape.
+  - Capability vocabulary: `text→text`, `text+image→text`, `text→embedding`, etc.
+  - Zero-coupling: no PRAUTOBLOGGER_* constants inside the class — Phase 2 lift
+    into a shared Composer package requires only a namespace rename.
+  - Cost impact: $0/month (free endpoint, no LLM tokens).
 
-- **Image provider: Cloudflare Workers AI (FLUX.1 family).** Shipped the provider, its
-  pricing + validator helpers, four new settings fields in a new "Images" admin section,
-  and unit tests with mocked HTTP. Nothing called the provider from the article pipeline
-  until this commit (1b).
-  - `includes/providers/interface-image-provider.php`, `class-cloudflare-image-provider.php`,
-    `class-cloudflare-image-pricing.php`, `class-cloudflare-image-validator.php`.
-  - Settings: `prautoblogger_cloudflare_ai_token`, `prautoblogger_cloudflare_account_id`,
-    `prautoblogger_image_model`, `prautoblogger_image_style_suffix`.
-  - Constants: `PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL`, `PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX`.
+- **Image provider: Cloudflare Workers AI (FLUX.1 family).** Ships the provider, its
+  pricing + validator helpers, four new settings fields in a new "Images"
+  admin section, and unit tests with mocked HTTP.
+  - `includes/providers/interface-image-provider.php` — contract for any image provider.
+  - `includes/providers/class-cloudflare-image-provider.php` — FLUX on Workers
+    AI, direct call to `/accounts/{id}/ai/run/...` (bypassing AI Gateway per
+    decision D-001); exponential-backoff retries on 429 / 5xx / network,
+    loud fail on 4xx; handles both raw-bytes and JSON-envelope response shapes.
+  - `includes/providers/class-cloudflare-image-pricing.php` — model alias →
+    full Workers AI id resolution + per-megapixel cost estimation.
+  - `includes/providers/class-cloudflare-image-validator.php` — non-destructive
+    "Test Connection" credential check that never generates a real image.
+  - Settings: `prautoblogger_cloudflare_ai_token` (encrypted),
+    `prautoblogger_cloudflare_account_id`, `prautoblogger_image_model`
+    (schnell / dev), `prautoblogger_image_style_suffix` (default = CEO-locked
+    90s infomercial prompt).
+  - Constants: `PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL`,
+    `PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX`.
   - Tests: `tests/unit/Providers/CloudflareImageProviderTest.php`.
+- ARCHITECTURE.md: new key decision #16 (image pipeline: Cloudflare Workers
+  AI), new external API integration row, new options rows, file tree updates.
 - CONVENTIONS.md: new "How To: Add a New Image Provider" section.
 
 ## [0.2.2] — 2026-04-12
