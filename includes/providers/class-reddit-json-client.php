@@ -10,10 +10,12 @@ declare(strict_types=1);
  * for comment fetching (comments are not available in RSS feeds).
  *
  * Triggered by: PRAutoBlogger_Reddit_Provider::collect_data().
- * Dependencies: wp_remote_get(), PRAutoBlogger_Logger.
+ * Dependencies: wp_remote_get(), PRAutoBlogger_Logger, PRAutoBlogger_Reddit_RSS_Parser.
  *
- * @see providers/class-reddit-provider.php — Instantiates and calls this class.
- * @see ARCHITECTURE.md                     — External API integrations table.
+ * @see providers/class-reddit-provider.php      — Instantiates and calls this class.
+ * @see providers/class-reddit-rss-parser.php    — Parses Atom XML into post arrays.
+ * @see providers/class-reddit-availability.php  — Endpoint health checks.
+ * @see ARCHITECTURE.md                         — External API integrations table.
  */
 class PRAutoBlogger_Reddit_JSON_Client {
 
@@ -38,13 +40,6 @@ class PRAutoBlogger_Reddit_JSON_Client {
 	 * @var int
 	 */
 	private const TIMEOUT_SECONDS = 30;
-
-	/**
-	 * Transient key for rate limit tracking (.json endpoints only).
-	 *
-	 * @var string
-	 */
-	private const RATE_LIMIT_TRANSIENT = 'prautoblogger_reddit_json_rate_limit';
 
 	/**
 	 * Fetch hot posts from a subreddit. Tries RSS first, .json fallback.
@@ -129,7 +124,8 @@ class PRAutoBlogger_Reddit_JSON_Client {
 		}
 
 		$body = wp_remote_retrieve_body( $response );
-		return $this->parse_atom_feed( $body, $subreddit );
+		$parser = new PRAutoBlogger_Reddit_RSS_Parser();
+		return $parser->parse( $body, $subreddit );
 	}
 
 	/**
@@ -169,105 +165,6 @@ class PRAutoBlogger_Reddit_JSON_Client {
 				$posts[] = $post;
 			}
 		}
-
-		return $posts;
-	}
-
-	/**
-	 * Parse a Reddit Atom feed into post-data arrays matching .json format.
-	 *
-	 * Maps Atom entry fields to the standard Reddit post fields so the rest
-	 * of the pipeline can consume RSS data without changes. Fields unavailable
-	 * in RSS (score, num_comments, upvote_ratio) are set to reasonable defaults.
-	 *
-	 * @param string $xml       Raw Atom XML string.
-	 * @param string $subreddit The subreddit name for context.
-	 *
-	 * @return array<int, array<string, mixed>> Parsed post data.
-	 */
-	private function parse_atom_feed( string $xml, string $subreddit ): array {
-		// Suppress XML errors for malformed feeds.
-		$prev_errors = libxml_use_internal_errors( true );
-		$feed        = simplexml_load_string( $xml );
-		libxml_use_internal_errors( $prev_errors );
-
-		if ( false === $feed ) {
-			PRAutoBlogger_Logger::instance()->error( 'Failed to parse Reddit RSS XML.', 'reddit' );
-			return [];
-		}
-
-		// Register the Atom namespace.
-		$feed->registerXPathNamespace( 'atom', 'http://www.w3.org/2005/Atom' );
-		$entries = $feed->xpath( '//atom:entry' );
-
-		if ( empty( $entries ) ) {
-			return [];
-		}
-
-		$posts = [];
-		foreach ( $entries as $entry ) {
-			$title   = (string) $entry->title;
-			$link    = '';
-			$content = '';
-
-			// Get the HTML link (type="text/html").
-			foreach ( $entry->link as $link_el ) {
-				if ( 'text/html' === (string) $link_el['type'] || 'alternate' === (string) $link_el['rel'] ) {
-					$link = (string) $link_el['href'];
-					break;
-				}
-			}
-
-			// Content is in <content> tag as HTML.
-			if ( isset( $entry->content ) ) {
-				$content = wp_strip_all_tags( (string) $entry->content );
-			}
-
-			// Extract post ID from the entry id (format: /r/subreddit/comments/ID/...).
-			$entry_id = (string) $entry->id;
-			$post_id  = '';
-			if ( preg_match( '#/comments/([a-z0-9]+)#', $entry_id, $m ) ) {
-				$post_id = $m[1];
-			}
-
-			// Extract author name.
-			$author = '[deleted]';
-			if ( isset( $entry->author->name ) ) {
-				$author = str_replace( '/u/', '', (string) $entry->author->name );
-			}
-
-			// Parse published date to Unix timestamp.
-			$published   = (string) ( $entry->published ?? $entry->updated ?? '' );
-			$created_utc = '' !== $published ? (int) strtotime( $published ) : time();
-
-			// Extract permalink (relative path) from full URL.
-			$permalink = '';
-			if ( '' !== $link ) {
-				$parsed    = wp_parse_url( $link );
-				$permalink = $parsed['path'] ?? '';
-			}
-
-			$posts[] = [
-				'id'                  => $post_id,
-				'title'               => $title,
-				'selftext'            => $content,
-				'author'              => $author,
-				'score'               => 1,     // Not available in RSS.
-				'num_comments'        => 0,     // Not available in RSS.
-				'permalink'           => $permalink,
-				'created_utc'         => $created_utc,
-				'is_self'             => true,
-				'link_flair_text'     => null,
-				'upvote_ratio'        => null,
-				'is_original_content' => false,
-				'data_source'         => 'reddit_rss',
-			];
-		}
-
-		PRAutoBlogger_Logger::instance()->info(
-			sprintf( 'Parsed %d posts from Reddit RSS for r/%s.', count( $posts ), $subreddit ),
-			'reddit'
-		);
 
 		return $posts;
 	}
@@ -324,145 +221,47 @@ class PRAutoBlogger_Reddit_JSON_Client {
 	 * @return bool True if we got a valid response from either endpoint.
 	 */
 	public function is_available(): bool {
-		return $this->is_rss_available() || $this->is_json_available();
+		return ( new PRAutoBlogger_Reddit_Availability() )->is_available();
 	}
 
 	/**
 	 * Check if Reddit RSS endpoints are reachable.
 	 *
-	 * RSS endpoints are rarely blocked by Reddit, even for datacenter IPs.
-	 *
 	 * @return bool True if RSS endpoint returns HTTP 200.
 	 */
 	public function is_rss_available(): bool {
-		$url      = self::BASE_URL . '/r/all/hot.rss?limit=1';
-		$response = wp_remote_get(
-			$url,
-			[
-				'timeout' => 10,
-				'headers' => [
-					'User-Agent' => self::USER_AGENT,
-				],
-			]
-		);
-
-		if ( is_wp_error( $response ) ) {
-			return false;
-		}
-
-		return 200 === wp_remote_retrieve_response_code( $response );
+		return ( new PRAutoBlogger_Reddit_Availability() )->is_rss_available();
 	}
 
 	/**
 	 * Check if Reddit .json endpoints are reachable.
 	 *
-	 * Datacenter IPs are often blocked by Reddit for .json endpoints.
-	 *
 	 * @return bool True if .json endpoint returns HTTP 200.
 	 */
 	public function is_json_available(): bool {
-		$url      = self::BASE_URL . '/r/all/hot.json?limit=1';
-		$response = wp_remote_get(
-			$url,
-			[
-				'timeout' => 10,
-				'headers' => [
-					'User-Agent' => self::USER_AGENT,
-				],
-			]
-		);
-
-		if ( is_wp_error( $response ) ) {
-			return false;
-		}
-
-		return 200 === wp_remote_retrieve_response_code( $response );
+		return ( new PRAutoBlogger_Reddit_Availability() )->is_json_available();
 	}
 
 	/**
 	 * Get current rate limit status.
 	 *
-	 * Reddit .json endpoints return rate limit headers. RSS has no rate limits.
-	 *
 	 * @return array{remaining: int, limit: int, resets_at: string}
 	 */
 	public function get_rate_limit_status(): array {
-		$status = get_transient( self::RATE_LIMIT_TRANSIENT );
-
-		if ( is_array( $status ) ) {
-			return $status;
-		}
-
-		return [
-			'remaining' => 10,
-			'limit'     => 10,
-			'resets_at' => '',
-		];
+		return ( new PRAutoBlogger_Reddit_Availability() )->get_rate_limit_status();
 	}
 
 	/**
 	 * Make an HTTP GET request to a Reddit .json endpoint.
 	 *
-	 * No authentication — just a plain GET with a descriptive User-Agent.
-	 * Tracks rate limits from response headers when available.
-	 *
-	 * Side effects: HTTP request, sets rate limit transient, logs errors.
+	 * Delegates to PRAutoBlogger_Reddit_Availability which owns the HTTP
+	 * transport layer and rate-limit tracking.
 	 *
 	 * @param string $url Full URL with .json suffix and query params.
 	 *
 	 * @return array<string, mixed>|null Decoded JSON, or null on failure.
 	 */
 	private function api_get( string $url ): ?array {
-		$response = wp_remote_get(
-			$url,
-			[
-				'timeout' => self::TIMEOUT_SECONDS,
-				'headers' => [
-					'User-Agent' => self::USER_AGENT,
-					'Accept'     => 'application/json',
-				],
-			]
-		);
-
-		if ( is_wp_error( $response ) ) {
-			PRAutoBlogger_Logger::instance()->error(
-				'Reddit .json GET failed: ' . $response->get_error_message(),
-				'reddit'
-			);
-			return null;
-		}
-
-		// Track rate limits from response headers.
-		$rate_remaining = wp_remote_retrieve_header( $response, 'x-ratelimit-remaining' );
-		$rate_used      = wp_remote_retrieve_header( $response, 'x-ratelimit-used' );
-		$rate_reset     = wp_remote_retrieve_header( $response, 'x-ratelimit-reset' );
-
-		if ( '' !== $rate_remaining ) {
-			set_transient(
-				self::RATE_LIMIT_TRANSIENT,
-				[
-					'remaining' => (int) $rate_remaining,
-					'limit'     => (int) $rate_used + (int) $rate_remaining,
-					'resets_at' => gmdate( 'Y-m-d H:i:s', time() + (int) $rate_reset ),
-				],
-				120
-			);
-		}
-
-		$status_code = wp_remote_retrieve_response_code( $response );
-
-		if ( 200 !== $status_code ) {
-			PRAutoBlogger_Logger::instance()->error(
-				sprintf(
-					'Reddit .json HTTP %d: %s',
-					$status_code,
-					substr( wp_remote_retrieve_body( $response ), 0, 300 )
-				),
-				'reddit'
-			);
-			return null;
-		}
-
-		return json_decode( wp_remote_retrieve_body( $response ), true );
+		return ( new PRAutoBlogger_Reddit_Availability() )->api_get( $url );
 	}
 }
