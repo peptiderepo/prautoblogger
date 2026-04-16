@@ -48,6 +48,9 @@ class OpenRouterProviderTest extends BaseTestCase {
         );
         Functions\when( 'set_transient' )->justReturn( true );
 
+        // Stub URL parsing.
+        Functions\when( 'wp_parse_url' )->alias( 'parse_url' );
+
         // Stub HTTP functions for API calls.
         Functions\when( 'wp_remote_post' )->justReturn( [
             'body'     => '{"choices":[{"message":{"content":"test"},"finish_reason":"stop"}],"usage":{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15}}',

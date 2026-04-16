@@ -30,6 +30,9 @@ class OpenRouterValidatorTest extends BaseTestCase {
 		// Stub wp_salt for encryption.
 		Functions\when( 'wp_salt' )->justReturn( 'test_salt_key_for_unit_tests' );
 
+		// Stub URL parsing.
+		Functions\when( 'wp_parse_url' )->alias( 'parse_url' );
+
 		// Stub HTTP functions.
 		Functions\when( 'wp_remote_get' )->justReturn( [
 			'body'     => '{}',
