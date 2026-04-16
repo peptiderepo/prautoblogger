@@ -337,6 +337,14 @@ class PRAutoBlogger_Settings_Fields {
 
 			// ── Images ─────────────────────────────────────────────────
 			[
+				'id'          => 'prautoblogger_image_enabled',
+				'label'       => __( 'Enable Image Generation', 'prautoblogger' ),
+				'type'        => 'toggle',
+				'section'     => 'prautoblogger_images',
+				'default'     => '0',
+				'description' => __( 'When enabled, generate two images (A/B) for each published article. Requires Cloudflare credentials.', 'prautoblogger' ),
+			],
+			[
 				'id'          => 'prautoblogger_cloudflare_ai_token',
 				'label'       => __( 'Cloudflare API Token', 'prautoblogger' ),
 				'type'        => 'password',
