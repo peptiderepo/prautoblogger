@@ -10,10 +10,11 @@ declare(strict_types=1);
  * for comment fetching (comments are not available in RSS feeds).
  *
  * Triggered by: PRAutoBlogger_Reddit_Provider::collect_data().
- * Dependencies: wp_remote_get(), PRAutoBlogger_Logger.
+ * Dependencies: wp_remote_get(), PRAutoBlogger_Logger, PRAutoBlogger_Reddit_RSS_Parser.
  *
- * @see providers/class-reddit-provider.php — Instantiates and calls this class.
- * @see ARCHITECTURE.md                     — External API integrations table.
+ * @see providers/class-reddit-provider.php      — Instantiates and calls this class.
+ * @see providers/class-reddit-rss-parser.php    — Parses Atom XML into post arrays.
+ * @see ARCHITECTURE.md                         — External API integrations table.
  */
 class PRAutoBlogger_Reddit_JSON_Client {
 
@@ -129,7 +130,8 @@ class PRAutoBlogger_Reddit_JSON_Client {
 		}
 
 		$body = wp_remote_retrieve_body( $response );
-		return $this->parse_atom_feed( $body, $subreddit );
+		$parser = new PRAutoBlogger_Reddit_RSS_Parser();
+		return $parser->parse( $body, $subreddit );
 	}
 
 	/**
@@ -169,105 +171,6 @@ class PRAutoBlogger_Reddit_JSON_Client {
 				$posts[] = $post;
 			}
 		}
-
-		return $posts;
-	}
-
-	/**
-	 * Parse a Reddit Atom feed into post-data arrays matching .json format.
-	 *
-	 * Maps Atom entry fields to the standard Reddit post fields so the rest
-	 * of the pipeline can consume RSS data without changes. Fields unavailable
-	 * in RSS (score, num_comments, upvote_ratio) are set to reasonable defaults.
-	 *
-	 * @param string $xml       Raw Atom XML string.
-	 * @param string $subreddit The subreddit name for context.
-	 *
-	 * @return array<int, array<string, mixed>> Parsed post data.
-	 */
-	private function parse_atom_feed( string $xml, string $subreddit ): array {
-		// Suppress XML errors for malformed feeds.
-		$prev_errors = libxml_use_internal_errors( true );
-		$feed        = simplexml_load_string( $xml );
-		libxml_use_internal_errors( $prev_errors );
-
-		if ( false === $feed ) {
-			PRAutoBlogger_Logger::instance()->error( 'Failed to parse Reddit RSS XML.', 'reddit' );
-			return [];
-		}
-
-		// Register the Atom namespace.
-		$feed->registerXPathNamespace( 'atom', 'http://www.w3.org/2005/Atom' );
-		$entries = $feed->xpath( '//atom:entry' );
-
-		if ( empty( $entries ) ) {
-			return [];
-		}
-
-		$posts = [];
-		foreach ( $entries as $entry ) {
-			$title   = (string) $entry->title;
-			$link    = '';
-			$content = '';
-
-			// Get the HTML link (type="text/html").
-			foreach ( $entry->link as $link_el ) {
-				if ( 'text/html' === (string) $link_el['type'] || 'alternate' === (string) $link_el['rel'] ) {
-					$link = (string) $link_el['href'];
-					break;
-				}
-			}
-
-			// Content is in <content> tag as HTML.
-			if ( isset( $entry->content ) ) {
-				$content = wp_strip_all_tags( (string) $entry->content );
-			}
-
-			// Extract post ID from the entry id (format: /r/subreddit/comments/ID/...).
-			$entry_id = (string) $entry->id;
-			$post_id  = '';
-			if ( preg_match( '#/comments/([a-z0-9]+)#', $entry_id, $m ) ) {
-				$post_id = $m[1];
-			}
-
-			// Extract author name.
-			$author = '[deleted]';
-			if ( isset( $entry->author->name ) ) {
-				$author = str_replace( '/u/', '', (string) $entry->author->name );
-			}
-
-			// Parse published date to Unix timestamp.
-			$published   = (string) ( $entry->published ?? $entry->updated ?? '' );
-			$created_utc = '' !== $published ? (int) strtotime( $published ) : time();
-
-			// Extract permalink (relative path) from full URL.
-			$permalink = '';
-			if ( '' !== $link ) {
-				$parsed    = wp_parse_url( $link );
-				$permalink = $parsed['path'] ?? '';
-			}
-
-			$posts[] = [
-				'id'                  => $post_id,
-				'title'               => $title,
-				'selftext'            => $content,
-				'author'              => $author,
-				'score'               => 1,     // Not available in RSS.
-				'num_comments'        => 0,     // Not available in RSS.
-				'permalink'           => $permalink,
-				'created_utc'         => $created_utc,
-				'is_self'             => true,
-				'link_flair_text'     => null,
-				'upvote_ratio'        => null,
-				'is_original_content' => false,
-				'data_source'         => 'reddit_rss',
-			];
-		}
-
-		PRAutoBlogger_Logger::instance()->info(
-			sprintf( 'Parsed %d posts from Reddit RSS for r/%s.', count( $posts ), $subreddit ),
-			'reddit'
-		);
 
 		return $posts;
 	}
