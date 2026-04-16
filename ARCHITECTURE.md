@@ -104,14 +104,16 @@ prautoblogger/
 │       └── posts-widget.js            # React component for frontend post cards (wp.element)
 │
 ├── includes/
-│   ├── class-prautoblogger.php        # Main orchestrator — registers all hooks via loader
+│   ├── class-prautoblogger.php        # Main orchestrator — registers all hooks, delegates execution
+│   ├── class-executor.php             # Cron/AJAX handlers, generation lock, model registry access
 │   ├── class-activator.php            # Activation: create DB tables, set defaults, schedule cron
 │   ├── class-deactivator.php          # Deactivation: clear cron, cleanup transients
 │   ├── class-autoloader.php           # PSR-4-style autoloader for plugin classes
 │   │
 │   ├── admin/
 │   │   ├── class-admin-page.php       # Main settings page (tabbed SaaS-style UI)
-│   │   ├── class-settings-fields.php  # Declarative settings definitions (sections + fields)
+│   │   ├── class-settings-fields.php  # Declarative settings: sections + core fields (API/Models/Content/Sources)
+│   │   ├── class-settings-fields-extended.php # Operational fields: schedule, publishing, analytics, images
 │   │   ├── class-admin-notices.php    # Onboarding notices, error alerts, budget warnings
 │   │   ├── class-dashboard-widget.php # WP Dashboard widget showing generation status
 │   │   ├── class-post-metabox.php     # Metabox on posts showing generation metadata
@@ -123,10 +125,12 @@ prautoblogger/
 │   │   ├── class-scheduler.php        # WP-Cron / Action Scheduler job management
 │   │   ├── class-source-collector.php # Orchestrates data collection from all sources
 │   │   ├── class-content-analyzer.php # LLM-powered analysis of collected social data
+│   │   ├── class-analysis-prompts.php # System/user prompt builders + performance context for analyzer
 │   │   ├── class-idea-scorer.php      # Ranks and deduplicates article ideas
 │   │   ├── class-content-generator.php# Writer agent — manages the generation pipeline
 │   │   ├── class-chief-editor.php     # Editor agent — LLM-powered editorial review
 │   │   ├── class-publisher.php        # Creates WordPress posts from approved content
+│   │   ├── class-post-assembler.php   # Post-creation helpers: taxonomy, log linking, images, sanitization
 │   │   ├── class-image-pipeline.php   # Orchestrates A/B image generation (commit 1b)
 │   │   ├── class-image-prompt-builder.php # Generates visual prompts from article/source data
 │   │   ├── class-image-media-sideloader.php # Imports images into WordPress media library
