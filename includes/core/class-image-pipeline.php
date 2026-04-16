@@ -124,7 +124,9 @@ class PRAutoBlogger_Image_Pipeline {
 				? $image_a_result->get_error_message()
 				: 'Image A generation produced no attachment ID.';
 		}
-		$result['cost_usd'] += $image_a_result['cost_usd'] ?? 0.0;
+		if ( ! is_wp_error( $image_a_result ) ) {
+			$result['cost_usd'] += $image_a_result['cost_usd'] ?? 0.0;
+		}
 
 		// Generate Image B (source-driven prompt) if source data is available.
 		if ( null !== $source_data && ! empty( $source_data ) ) {
@@ -136,7 +138,9 @@ class PRAutoBlogger_Image_Pipeline {
 					? $image_b_result->get_error_message()
 					: 'Image B generation produced no attachment ID.';
 			}
-			$result['cost_usd'] += $image_b_result['cost_usd'] ?? 0.0;
+			if ( ! is_wp_error( $image_b_result ) ) {
+				$result['cost_usd'] += $image_b_result['cost_usd'] ?? 0.0;
+			}
 		}
 
 		return $result;
@@ -153,7 +157,7 @@ class PRAutoBlogger_Image_Pipeline {
 	 *     cost_usd: float,
 	 * }|\WP_Error
 	 */
-	private function generate_image_a( int $post_id, array $article_data ): array | \WP_Error {
+	private function generate_image_a( int $post_id, array $article_data ) {
 		try {
 			// Build the article-driven prompt.
 			$prompt = $this->prompt_builder->build_article_prompt( $article_data );
@@ -219,7 +223,7 @@ class PRAutoBlogger_Image_Pipeline {
 	 *     cost_usd: float,
 	 * }|\WP_Error
 	 */
-	private function generate_image_b( int $post_id, array $source_data ): array | \WP_Error {
+	private function generate_image_b( int $post_id, array $source_data ) {
 		try {
 			// Build the source-driven prompt.
 			$prompt = $this->prompt_builder->build_source_prompt( $source_data );

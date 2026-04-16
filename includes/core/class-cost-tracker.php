@@ -135,6 +135,65 @@ class PRAutoBlogger_Cost_Tracker {
 	}
 
 	/**
+	 * Log an image generation API call with a known cost.
+	 *
+	 * Unlike log_api_call() which calculates cost from token counts, image
+	 * generation uses per-megapixel pricing that the image provider already
+	 * computed. This method accepts the pre-calculated cost directly.
+	 *
+	 * @param float  $cost_usd Estimated cost in USD (from image provider pricing).
+	 * @param string $model    Image model alias (e.g. 'flux-1-schnell').
+	 * @param int    $post_id  WordPress post ID the image is attached to.
+	 * @param string $stage    Pipeline stage ('image_a' or 'image_b').
+	 * @return void
+	 */
+	public function log_image_generation( float $cost_usd, string $model, int $post_id, string $stage ): void {
+		$this->current_run_cost += $cost_usd;
+
+		global $wpdb;
+		if ( null === $wpdb ) {
+			return;
+		}
+		$table = $wpdb->prefix . 'prautoblogger_generation_log';
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		$wpdb->insert( $table, [
+			'post_id'           => $post_id,
+			'run_id'            => $this->run_id,
+			'stage'             => $stage,
+			'provider'          => 'cloudflare-workers-ai',
+			'model'             => $model,
+			'prompt_tokens'     => 0,
+			'completion_tokens' => 0,
+			'estimated_cost'    => $cost_usd,
+			'response_status'   => 'success',
+			'error_message'     => '',
+			'created_at'        => current_time( 'mysql' ),
+		] );
+	}
+
+	/**
+	 * Check if adding an estimated cost would exceed the monthly budget.
+	 *
+	 * Unlike is_budget_exceeded() which checks current state, this method
+	 * proactively checks whether a planned expenditure would push spend
+	 * over the budget. Used by the image pipeline to pre-check before
+	 * making an API call.
+	 *
+	 * @param float $estimated_cost_usd Estimated cost in USD for the planned operation.
+	 * @return bool True if (current spend + estimated cost) >= configured budget.
+	 */
+	public function would_exceed_budget( float $estimated_cost_usd ): bool {
+		$budget = (float) get_option( 'prautoblogger_monthly_budget_usd', 50.00 );
+		if ( $budget <= 0 ) {
+			return false;
+		}
+
+		$projected = $this->get_monthly_spend() + $estimated_cost_usd;
+		return round( $projected, 4 ) >= round( $budget, 4 );
+	}
+
+	/**
 	 * Get total estimated spend for the current calendar month.
 	 *
 	 * @return float Total USD spend this month.

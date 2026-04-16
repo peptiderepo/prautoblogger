@@ -55,6 +55,11 @@ if ( ! defined( 'PRAUTOBLOGGER_DEFAULT_EDITOR_MODEL' ) ) {
     define( 'PRAUTOBLOGGER_DEFAULT_EDITOR_MODEL', 'google/gemini-2.5-flash-lite' );
 }
 
+// Default image style suffix used by ImagePromptBuilder and settings UI.
+if ( ! defined( 'PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX' ) ) {
+    define( 'PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX', 'Style: test infomercial style.' );
+}
+
 // WordPress database constants used in $wpdb queries.
 if ( ! defined( 'ARRAY_A' ) ) {
     define( 'ARRAY_A', 'ARRAY_A' );
@@ -89,6 +94,42 @@ if ( ! class_exists( 'WP_Query' ) ) {
 
         public function the_post(): void {
             // No-op.
+        }
+    }
+}
+
+// NOTE: Do NOT stub wp_strip_all_tags() or sanitize_text_field() here.
+// Brain Monkey / Patchwork manages these stubs in individual tests via
+// Functions\when(). Defining them in bootstrap causes Patchwork's
+// "DefinedTooEarly" error.
+
+// WP_Error stub — used by model registry and image pipeline tests.
+// This is safe to define here because it's a class (not a function),
+// so Patchwork doesn't need to intercept its definition.
+if ( ! class_exists( 'WP_Error' ) ) {
+    class WP_Error {
+        public $errors     = [];
+        public $error_data = [];
+
+        public function __construct( $code = '', $message = '', $data = '' ) {
+            if ( $code ) {
+                $this->errors[ $code ][] = $message;
+                if ( $data ) {
+                    $this->error_data[ $code ] = $data;
+                }
+            }
+        }
+
+        public function get_error_code() {
+            $codes = array_keys( $this->errors );
+            return $codes ? $codes[0] : '';
+        }
+
+        public function get_error_message( $code = '' ) {
+            if ( ! $code ) {
+                $code = $this->get_error_code();
+            }
+            return isset( $this->errors[ $code ] ) ? $this->errors[ $code ][0] : '';
         }
     }
 }

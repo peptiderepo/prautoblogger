@@ -20,7 +20,7 @@ class ImagePromptBuilderTest extends BaseTestCase {
 
 		// Mock WordPress functions.
 		Functions\when( 'wp_strip_all_tags' )->alias( function ( $str ) {
-			return wp_strip_all_tags( $str );
+			return trim( strip_tags( $str ) );
 		} );
 		Functions\when( 'sanitize_text_field' )->returnArg();
 		Functions\when( 'get_option' )->alias( function ( $key, $default = false ) {

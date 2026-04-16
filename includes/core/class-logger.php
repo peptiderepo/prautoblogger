@@ -126,6 +126,11 @@ class PRAutoBlogger_Logger {
 		}
 
 		global $wpdb;
+		if ( null === $wpdb ) {
+			// No database available (unit test environment). PHP error_log
+			// was already called above for warnings/errors; silently skip DB write.
+			return;
+		}
 		$table = $wpdb->prefix . 'prautoblogger_event_log';
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
