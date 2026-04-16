@@ -11,59 +11,16 @@ declare(strict_types=1);
  * Triggered by: Content_Analyzer, Content_Generator, Chief_Editor, Metrics_Collector.
  * Dependencies: PRAutoBlogger_Encryption (for API key decryption), wp_remote_post(), PRAutoBlogger_OpenRouter_Pricing.
  *
- * @see interface-llm-provider.php      — Interface this class implements.
- * @see class-open-router-pricing.php   — Pricing and model list lookups.
- * @see class-cost-tracker.php          — Called after every request to log token usage.
- * @see ARCHITECTURE.md                 — Data flow diagram showing where this fits.
+ * @see interface-llm-provider.php            — Interface this class implements.
+ * @see class-open-router-config.php          — Config helpers (base URL, cache TTL).
+ * @see class-open-router-pricing.php         — Pricing and model list lookups.
+ * @see class-open-router-validator.php       — Credential validation (delegated).
+ * @see class-open-router-request-builder.php — Request header building + cURL filter.
+ * @see class-open-router-response-parser.php — Response parsing + error classification.
+ * @see class-cost-tracker.php                — Called after every request to log token usage.
+ * @see ARCHITECTURE.md                       — Data flow diagram showing where this fits.
  */
 class PRAutoBlogger_OpenRouter_Provider implements PRAutoBlogger_LLM_Provider_Interface {
-
-	/**
-	 * Default direct-to-OpenRouter endpoint. Used when no Cloudflare AI Gateway
-	 * URL is configured. The active endpoint is resolved per-request via
-	 * get_api_base_url() so admins can flip to an AI Gateway proxy without code.
-	 */
-	private const DEFAULT_API_BASE_URL = 'https://openrouter.ai/api/v1';
-
-	/**
-	 * Resolve the API base URL.
-	 *
-	 * If an admin has configured a Cloudflare AI Gateway URL in settings,
-	 * we route through that instead of hitting OpenRouter directly. The
-	 * gateway is a transparent OpenAI/OpenRouter-compatible proxy that
-	 * adds caching, cost logging, rate-limiting, and provider fallback
-	 * — see ARCHITECTURE.md "External API Integrations".
-	 *
-	 * Expected gateway URL shape:
-	 *   https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/openrouter
-	 *
-	 * @return string Base URL with no trailing slash.
-	 */
-	private function get_api_base_url(): string {
-		$override = trim( (string) get_option( 'prautoblogger_ai_gateway_base_url', '' ) );
-		if ( '' === $override ) {
-			return self::DEFAULT_API_BASE_URL;
-		}
-		// Only accept https to avoid plaintext-auth regressions.
-		if ( 0 !== stripos( $override, 'https://' ) ) {
-			return self::DEFAULT_API_BASE_URL;
-		}
-		return rtrim( $override, '/' );
-	}
-
-	/**
-	 * Cache TTL (seconds) for AI Gateway response caching.
-	 *
-	 * Cloudflare honours the `cf-aig-cache-ttl` request header and serves
-	 * cached responses for identical payloads within the TTL window. Only
-	 * meaningful when a gateway base URL is configured; harmless otherwise.
-	 *
-	 * @return int Non-negative integer seconds; 0 disables caching.
-	 */
-	private function get_cache_ttl_seconds(): int {
-		$ttl = (int) get_option( 'prautoblogger_ai_gateway_cache_ttl', 0 );
-		return $ttl > 0 ? $ttl : 0;
-	}
 
 	/**
 	 * Send a chat completion request to OpenRouter.
@@ -133,49 +90,19 @@ class PRAutoBlogger_OpenRouter_Provider implements PRAutoBlogger_LLM_Provider_In
 
 		$last_error = '';
 
-		$base_url     = $this->get_api_base_url();
-		$base_host    = (string) wp_parse_url( $base_url, PHP_URL_HOST );
-		$cache_ttl    = $this->get_cache_ttl_seconds();
-		$via_gateway  = self::DEFAULT_API_BASE_URL !== $base_url;
+		$config      = new PRAutoBlogger_OpenRouter_Config();
+		$base_url    = $config->get_api_base_url();
+		$base_host   = (string) wp_parse_url( $base_url, PHP_URL_HOST );
+		$cache_ttl   = $config->get_cache_ttl_seconds();
+		$via_gateway = $config->is_via_gateway();
 
-		// Build headers once so the wp_remote_post call and the cURL belt-and-
-		// suspenders filter stay in lockstep. The cf-aig-* headers are only
-		// meaningful when going through a Cloudflare AI Gateway; they are
-		// ignored by direct OpenRouter calls, so sending them unconditionally
-		// when a gateway is configured is safe and keeps the code branch-free.
-		$request_headers = [
-			'Authorization' => 'Bearer ' . $api_key,
-			'Content-Type'  => 'application/json',
-			'HTTP-Referer'  => home_url(),
-			'X-Title'       => 'PRAutoBlogger WordPress Plugin',
-		];
-		if ( $via_gateway && $cache_ttl > 0 ) {
-			$request_headers['cf-aig-cache-ttl'] = (string) $cache_ttl;
-		}
-
-		// Belt-and-suspenders: inject Authorization header at cURL level.
-		// Some hosting environments (Hostinger, certain proxies) strip the
-		// Authorization header from wp_remote_post's 'headers' array before
-		// the request is sent. The http_api_curl action fires after WordPress
-		// configures the cURL handle but before curl_exec — re-setting
-		// CURLOPT_HTTPHEADER here ensures the header reaches the upstream
-		// (either OpenRouter directly or the Cloudflare AI Gateway proxy).
-		$curl_auth_filter = function ( $handle, $parsed_args, $url ) use ( $request_headers, $base_host ): void {
-			// Scope to the configured upstream host only — never leak auth
-			// into unrelated outbound requests made elsewhere in WordPress.
-			if ( '' === $base_host || false === strpos( (string) $url, $base_host ) ) {
-				return;
-			}
-			$curl_headers = [];
-			foreach ( $request_headers as $name => $value ) {
-				$curl_headers[] = $name . ': ' . $value;
-			}
-			// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt
-			curl_setopt( $handle, CURLOPT_HTTPHEADER, $curl_headers );
-		};
-		add_action( 'http_api_curl', $curl_auth_filter, 99, 3 );
+		$builder         = new PRAutoBlogger_OpenRouter_Request_Builder();
+		$request_headers = $builder->build_headers( $api_key, $via_gateway, $cache_ttl );
+		$curl_auth_filter = $builder->register_curl_auth_filter( $request_headers, $base_host );
 
 		try {
+			$parser = new PRAutoBlogger_OpenRouter_Response_Parser();
+
 			for ( $attempt = 1; $attempt <= PRAUTOBLOGGER_MAX_RETRIES; $attempt++ ) {
 				$response = wp_remote_post(
 					$base_url . '/chat/completions',
@@ -205,7 +132,7 @@ class PRAutoBlogger_OpenRouter_Provider implements PRAutoBlogger_LLM_Provider_In
 				$data        = json_decode( $body_raw, true );
 
 				// Rate limited (429) or server error (5xx) — retry with backoff.
-				if ( 429 === $status_code || $status_code >= 500 ) {
+				if ( $parser->is_retryable( $status_code ) ) {
 					$last_error = sprintf( 'HTTP %d: %s', $status_code, $body_raw );
 					PRAutoBlogger_Logger::instance()->warning(
 						sprintf( 'OpenRouter HTTP %d (attempt %d/%d): %s', $status_code, $attempt, PRAUTOBLOGGER_MAX_RETRIES, substr( $body_raw, 0, 500 ) ),
@@ -225,9 +152,7 @@ class PRAutoBlogger_OpenRouter_Provider implements PRAutoBlogger_LLM_Provider_In
 
 				// Client error — don't retry, fail immediately.
 				if ( $status_code >= 400 ) {
-					$error_msg = isset( $data['error']['message'] )
-						? $data['error']['message']
-						: 'HTTP ' . $status_code;
+					$error_msg = $parser->get_error_message( $data, $status_code );
 
 					// Log detailed diagnostic info for auth errors to aid debugging.
 					if ( 401 === $status_code || 403 === $status_code ) {
@@ -254,22 +179,7 @@ class PRAutoBlogger_OpenRouter_Provider implements PRAutoBlogger_LLM_Provider_In
 				}
 
 				// Success — parse response.
-				if ( ! isset( $data['choices'][0]['message']['content'] ) ) {
-					throw new \RuntimeException(
-						__( 'OpenRouter returned unexpected response format.', 'prautoblogger' )
-					);
-				}
-
-				$usage = $data['usage'] ?? [];
-
-				return [
-					'content'           => $data['choices'][0]['message']['content'],
-					'model'             => $data['model'] ?? $model,
-					'prompt_tokens'     => (int) ( $usage['prompt_tokens'] ?? 0 ),
-					'completion_tokens' => (int) ( $usage['completion_tokens'] ?? 0 ),
-					'total_tokens'      => (int) ( $usage['total_tokens'] ?? 0 ),
-					'finish_reason'     => $data['choices'][0]['finish_reason'] ?? 'unknown',
-				];
+				return $parser->parse_success( $data, $model );
 			}
 
 			// All retries exhausted.
@@ -327,9 +237,9 @@ class PRAutoBlogger_OpenRouter_Provider implements PRAutoBlogger_LLM_Provider_In
 	/**
 	 * Validate that the OpenRouter API key is configured and working.
 	 *
-	 * Makes a lightweight request to the /auth/key endpoint.
+	 * Delegates to PRAutoBlogger_OpenRouter_Validator for the actual checks.
 	 *
-	 * Side effects: HTTP request to OpenRouter, logs diagnostic info.
+	 * Side effects: HTTP request to OpenRouter (via validator), logs diagnostic info.
 	 *
 	 * @return bool
 	 */
@@ -341,112 +251,16 @@ class PRAutoBlogger_OpenRouter_Provider implements PRAutoBlogger_LLM_Provider_In
 	/**
 	 * Validate credentials with detailed diagnostic info.
 	 *
-	 * Returns an array with status ('ok' or 'error') and a human-readable
-	 * message explaining what went wrong if validation fails.
+	 * Delegates to PRAutoBlogger_OpenRouter_Validator which returns an array
+	 * with status ('ok' or 'error') and a human-readable message explaining
+	 * what went wrong if validation fails.
 	 *
-	 * Side effects: HTTP request to OpenRouter, logs diagnostic info.
+	 * Side effects: HTTP request to OpenRouter (via validator), logs diagnostic info.
 	 *
 	 * @return array{status: string, message: string, debug?: string}
 	 */
 	public function validate_credentials_detailed(): array {
-		$encrypted = get_option( 'prautoblogger_openrouter_api_key', '' );
-		if ( '' === $encrypted ) {
-			return [
-				'status'  => 'error',
-				'message' => __( 'No API key saved. Enter your OpenRouter key in settings.', 'prautoblogger' ),
-				'debug'   => 'option_empty',
-			];
-		}
-
-		$api_key = PRAutoBlogger_Encryption::decrypt( $encrypted );
-		if ( '' === $api_key ) {
-			return [
-				'status'  => 'error',
-				'message' => __( 'API key decryption failed. Re-enter your key.', 'prautoblogger' ),
-				'debug'   => 'decrypt_failed:encrypted_len=' . strlen( $encrypted ),
-			];
-		}
-
-		// Sanity check: OpenRouter keys typically start with "sk-or-".
-		$key_prefix = substr( $api_key, 0, 6 );
-		$key_len    = strlen( $api_key );
-
-		if ( 0 !== strpos( $api_key, 'sk-or-' ) ) {
-			PRAutoBlogger_Logger::instance()->error(
-				sprintf(
-					'API key format invalid (prefix="%s", len=%d). Likely salt changed — re-enter key.',
-					$key_prefix,
-					$key_len
-				),
-				'openrouter'
-			);
-			return [
-				'status'  => 'error',
-				'message' => __( 'API key appears corrupted (decryption produced invalid data). Your WordPress auth salt may have changed. Please re-enter your OpenRouter API key in settings.', 'prautoblogger' ),
-				'debug'   => sprintf( 'bad_format:prefix=%s,len=%d', $key_prefix, $key_len ),
-			];
-		}
-
-		// Belt-and-suspenders: inject Authorization at cURL level (see send_chat_completion).
-		$base_url              = $this->get_api_base_url();
-		$base_host             = (string) wp_parse_url( $base_url, PHP_URL_HOST );
-		$auth_header_value     = 'Bearer ' . $api_key;
-		$curl_auth_filter_cred = function ( $handle, $parsed_args, $url ) use ( $auth_header_value, $base_host ): void {
-			if ( '' === $base_host || false === strpos( (string) $url, $base_host ) ) {
-				return;
-			}
-			// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt
-			curl_setopt( $handle, CURLOPT_HTTPHEADER, [
-				'Authorization: ' . $auth_header_value,
-			] );
-		};
-		add_action( 'http_api_curl', $curl_auth_filter_cred, 99, 3 );
-
-		$response = wp_remote_get(
-			$base_url . '/auth/key',
-			[
-				'timeout' => 15,
-				'headers' => [
-					'Authorization' => 'Bearer ' . $api_key,
-				],
-			]
-		);
-
-		remove_action( 'http_api_curl', $curl_auth_filter_cred, 99 );
-
-		if ( is_wp_error( $response ) ) {
-			$err_msg = $response->get_error_message();
-			PRAutoBlogger_Logger::instance()->error(
-				sprintf( 'OpenRouter credential check wp_error: %s (key_prefix=%s, key_len=%d)', $err_msg, $key_prefix, $key_len ),
-				'openrouter'
-			);
-			return [
-				'status'  => 'error',
-				'message' => sprintf( __( 'Network error reaching OpenRouter: %s', 'prautoblogger' ), $err_msg ),
-				'debug'   => 'wp_error:' . $err_msg,
-			];
-		}
-
-		$status_code = wp_remote_retrieve_response_code( $response );
-		$body_raw    = wp_remote_retrieve_body( $response );
-
-		if ( 200 === $status_code ) {
-			return [
-				'status'  => 'ok',
-				'message' => __( 'OpenRouter connected.', 'prautoblogger' ),
-			];
-		}
-
-		PRAutoBlogger_Logger::instance()->warning(
-			sprintf( 'OpenRouter credential check HTTP %d (key_prefix=%s, key_len=%d): %s', $status_code, $key_prefix, $key_len, substr( $body_raw, 0, 300 ) ),
-			'openrouter'
-		);
-
-		return [
-			'status'  => 'error',
-			'message' => sprintf( __( 'OpenRouter returned HTTP %d. %s', 'prautoblogger' ), $status_code, substr( $body_raw, 0, 200 ) ),
-			'debug'   => sprintf( 'http_%d:key_prefix=%s,key_len=%d', $status_code, $key_prefix, $key_len ),
-		];
+		return ( new PRAutoBlogger_OpenRouter_Validator() )->run();
 	}
 
 	/**
