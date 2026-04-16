@@ -7,9 +7,11 @@ declare(strict_types=1);
  * Handles both publishing (editor-approved) and saving as draft (editor-rejected).
  * Stores all generation metadata as post_meta for transparency and auditability.
  *
- * Triggered by: PRAutoBlogger::run_generation_pipeline() (step 6).
- * Dependencies: WordPress wp_insert_post(), post meta API.
+ * Triggered by: PRAutoBlogger_Pipeline_Runner (step 6).
+ * Dependencies: PRAutoBlogger_Post_Assembler (taxonomy, images, sanitization),
+ *               WordPress wp_insert_post(), post meta API.
  *
+ * @see core/class-post-assembler.php   — Post-creation helpers (taxonomy, images, logs).
  * @see core/class-chief-editor.php     — Produces the editorial review we consume.
  * @see core/class-content-generator.php — Produces the content we publish.
  * @see ARCHITECTURE.md                  — Data flow step 6.
@@ -19,18 +21,11 @@ class PRAutoBlogger_Publisher {
 	/**
 	 * Publish an editor-approved article.
 	 *
-	 * Creates a WordPress post with 'publish' status and stores all generation
-	 * metadata as post_meta.
-	 *
-	 * Side effects: Creates a WordPress post, writes post_meta.
-	 *
 	 * @param string                        $content The final HTML content.
 	 * @param PRAutoBlogger_Article_Idea      $idea    The original article idea.
 	 * @param PRAutoBlogger_Editorial_Review  $review  The editor's review.
 	 * @param string|null                   $run_id  Pipeline run ID for log linking.
-	 *
 	 * @return int The created post ID.
-	 *
 	 * @throws \RuntimeException If post creation fails.
 	 */
 	public function publish(
@@ -49,9 +44,7 @@ class PRAutoBlogger_Publisher {
 	 * @param PRAutoBlogger_Article_Idea      $idea    The original article idea.
 	 * @param PRAutoBlogger_Editorial_Review  $review  The editor's review with rejection notes.
 	 * @param string|null                   $run_id  Pipeline run ID for log linking.
-	 *
 	 * @return int The created post ID.
-	 *
 	 * @throws \RuntimeException If post creation fails.
 	 */
 	public function save_as_draft(
@@ -71,9 +64,7 @@ class PRAutoBlogger_Publisher {
 	 * @param PRAutoBlogger_Editorial_Review  $review      Editorial review.
 	 * @param string                        $post_status 'publish' or 'draft'.
 	 * @param string|null                   $run_id      Pipeline run ID for log linking.
-	 *
 	 * @return int Post ID.
-	 *
 	 * @throws \RuntimeException If wp_insert_post fails.
 	 */
 	private function create_post(
@@ -85,45 +76,28 @@ class PRAutoBlogger_Publisher {
 	): int {
 		$post_data = [
 			'post_title'   => sanitize_text_field( $idea->get_suggested_title() ),
-			'post_content' => wp_kses_post( $this->sanitize_llm_content( $content ) ),
+			'post_content' => wp_kses_post( PRAutoBlogger_Post_Assembler::sanitize_llm_content( $content ) ),
 			'post_status'  => $post_status,
 			'post_type'    => 'post',
-			'post_author'  => $this->get_default_author_id(),
+			'post_author'  => PRAutoBlogger_Post_Assembler::get_default_author_id(),
 			'meta_input'   => $this->build_meta( $idea, $review ),
 		];
 
-		/**
-		 * Fires before an PRAutoBlogger post is created.
-		 *
-		 * Listeners registered in: class-prautoblogger.php (main loader).
-		 *
-		 * @param array                        $post_data Post data array.
-		 * @param PRAutoBlogger_Article_Idea     $idea      The article idea.
-		 * @param PRAutoBlogger_Editorial_Review $review    The editorial review.
-		 */
+		/** @see class-prautoblogger.php — listeners registered in main loader. */
 		$post_data = apply_filters( 'prautoblogger_filter_post_data', $post_data, $idea, $review );
 
 		$post_id = wp_insert_post( $post_data, true );
-
 		if ( is_wp_error( $post_id ) ) {
 			throw new \RuntimeException(
-				sprintf(
-					/* translators: %s: WordPress error message */
-					__( 'Failed to create post: %s', 'prautoblogger' ),
-					$post_id->get_error_message()
-				)
+				sprintf( __( 'Failed to create post: %s', 'prautoblogger' ), $post_id->get_error_message() )
 			);
 		}
 
-		// Assign categories/tags based on article type and keywords.
-		$this->assign_taxonomy_terms( $post_id, $idea );
+		PRAutoBlogger_Post_Assembler::assign_taxonomy_terms( $post_id, $idea );
+		PRAutoBlogger_Post_Assembler::link_generation_logs( $post_id, $run_id );
 
-		// Update generation log entries to reference this post.
-		$this->link_generation_logs( $post_id, $run_id );
-
-		// Generate and attach images if published and images enabled.
 		if ( 'publish' === $post_status ) {
-			$this->attach_generated_images( $post_id, $idea, $post_data );
+			PRAutoBlogger_Post_Assembler::attach_generated_images( $post_id, $idea, $post_data );
 		}
 
 		PRAutoBlogger_Logger::instance()->info(
@@ -131,14 +105,6 @@ class PRAutoBlogger_Publisher {
 			'publisher'
 		);
 
-		/**
-		 * Fires after an PRAutoBlogger post is successfully created.
-		 *
-		 * @param int                          $post_id     The new post ID.
-		 * @param string                       $post_status 'publish' or 'draft'.
-		 * @param PRAutoBlogger_Article_Idea     $idea        The article idea.
-		 * @param PRAutoBlogger_Editorial_Review $review      The editorial review.
-		 */
 		do_action( 'prautoblogger_post_created', $post_id, $post_status, $idea, $review );
 
 		return $post_id;
@@ -149,239 +115,26 @@ class PRAutoBlogger_Publisher {
 	 *
 	 * @param PRAutoBlogger_Article_Idea     $idea
 	 * @param PRAutoBlogger_Editorial_Review $review
-	 *
 	 * @return array<string, mixed>
 	 */
 	private function build_meta(
 		PRAutoBlogger_Article_Idea $idea,
 		PRAutoBlogger_Editorial_Review $review
 	): array {
-		$pipeline_mode = get_option( 'prautoblogger_writing_pipeline', 'multi_step' );
-		$model         = get_option( 'prautoblogger_writing_model', PRAUTOBLOGGER_DEFAULT_WRITING_MODEL );
-
 		return [
-			'_prautoblogger_generated'        => '1',
-			'_prautoblogger_analysis_id'      => $idea->get_analysis_id(),
-			'_prautoblogger_source_ids'       => wp_json_encode( $idea->get_source_ids() ),
-			'_prautoblogger_model_used'       => $model,
-			'_prautoblogger_pipeline_mode'    => $pipeline_mode,
-			'_prautoblogger_editor_verdict'   => $review->get_verdict(),
-			'_prautoblogger_editor_notes'     => $review->get_notes(),
-			'_prautoblogger_quality_score'    => $review->get_quality_score(),
-			'_prautoblogger_seo_score'        => $review->get_seo_score(),
-			'_prautoblogger_generated_at'     => gmdate( 'c' ),
-			'_prautoblogger_topic'            => $idea->get_topic(),
-			'_prautoblogger_article_type'     => $idea->get_article_type(),
-			'_prautoblogger_target_keywords'  => wp_json_encode( $idea->get_target_keywords() ),
+			'_prautoblogger_generated'       => '1',
+			'_prautoblogger_analysis_id'     => $idea->get_analysis_id(),
+			'_prautoblogger_source_ids'      => wp_json_encode( $idea->get_source_ids() ),
+			'_prautoblogger_model_used'      => get_option( 'prautoblogger_writing_model', PRAUTOBLOGGER_DEFAULT_WRITING_MODEL ),
+			'_prautoblogger_pipeline_mode'   => get_option( 'prautoblogger_writing_pipeline', 'multi_step' ),
+			'_prautoblogger_editor_verdict'  => $review->get_verdict(),
+			'_prautoblogger_editor_notes'    => $review->get_notes(),
+			'_prautoblogger_quality_score'   => $review->get_quality_score(),
+			'_prautoblogger_seo_score'       => $review->get_seo_score(),
+			'_prautoblogger_generated_at'    => gmdate( 'c' ),
+			'_prautoblogger_topic'           => $idea->get_topic(),
+			'_prautoblogger_article_type'    => $idea->get_article_type(),
+			'_prautoblogger_target_keywords' => wp_json_encode( $idea->get_target_keywords() ),
 		];
-	}
-
-	/**
-	 * Assign category and tags to a generated post.
-	 *
-	 * @param int                      $post_id
-	 * @param PRAutoBlogger_Article_Idea $idea
-	 *
-	 * @return void
-	 */
-	private function assign_taxonomy_terms( int $post_id, PRAutoBlogger_Article_Idea $idea ): void {
-		$type_category_map = [
-			'guide'      => 'Guides',
-			'solution'   => 'Solutions',
-			'comparison' => 'Comparisons',
-			'article'    => 'Articles',
-		];
-
-		$category_name = $type_category_map[ $idea->get_article_type() ] ?? 'Articles';
-
-		$category = get_term_by( 'name', $category_name, 'category' );
-		if ( ! $category ) {
-			$result = wp_insert_term( $category_name, 'category' );
-			if ( ! is_wp_error( $result ) ) {
-				wp_set_post_categories( $post_id, [ $result['term_id'] ] );
-			}
-		} else {
-			wp_set_post_categories( $post_id, [ $category->term_id ] );
-		}
-
-		$keywords = $idea->get_target_keywords();
-		if ( ! empty( $keywords ) ) {
-			wp_set_post_tags( $post_id, $keywords, true );
-		}
-	}
-
-	/**
-	 * Link generation log entries to the newly created post using run_id.
-	 *
-	 * The previous timestamp-based approach could misattribute costs in batch runs
-	 * where multiple articles are generated in the same pipeline execution. Using
-	 * run_id ensures each post is linked only to the log entries from its own run.
-	 *
-	 * Falls back to timestamp-based linking if no run_id is set (e.g. legacy data
-	 * from before the run_id migration).
-	 *
-	 * @param int         $post_id The newly created post ID.
-	 * @param string|null $run_id  Pipeline run identifier, or null for legacy fallback.
-	 *
-	 * @return void
-	 */
-	private function link_generation_logs( int $post_id, ?string $run_id = null ): void {
-		global $wpdb;
-		$table = $wpdb->prefix . 'prautoblogger_generation_log';
-
-		if ( null !== $run_id && '' !== $run_id ) {
-			// Precise linking via run_id — no risk of cross-article misattribution.
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-			$wpdb->query(
-				$wpdb->prepare(
-					"UPDATE {$table} SET post_id = %d WHERE post_id IS NULL AND run_id = %s",
-					$post_id,
-					$run_id
-				)
-			);
-		} else {
-			// Legacy fallback: timestamp-based linking for pre-migration log entries.
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-			$wpdb->query(
-				$wpdb->prepare(
-					"UPDATE {$table} SET post_id = %d WHERE post_id IS NULL AND created_at >= %s",
-					$post_id,
-					gmdate( 'Y-m-d H:i:s', time() - HOUR_IN_SECONDS )
-				)
-			);
-		}
-	}
-
-	/**
-	 * Strip common LLM output artifacts from generated content.
-	 *
-	 * LLMs sometimes ignore format instructions and wrap content in markdown
-	 * code fences (```html ... ```) or full HTML document structures
-	 * (<html><head><body>). This method strips those wrappers so only clean
-	 * article-body HTML reaches WordPress.
-	 *
-	 * @param string $content Raw LLM output.
-	 *
-	 * @return string Cleaned HTML suitable for post_content.
-	 */
-	private function sanitize_llm_content( string $content ): string {
-		$content = trim( $content );
-
-		// Strip markdown code fences: ```html ... ``` or ``` ... ```
-		// Handles optional language identifier after opening fence.
-		if ( preg_match( '/^```(?:\w+)?\s*\n(.*?)```\s*$/s', $content, $matches ) ) {
-			$content = trim( $matches[1] );
-		}
-
-		// Strip full HTML document wrappers: <html>...<body>content</body>...</html>
-		// Extract only the <body> inner content.
-		if ( preg_match( '/<body[^>]*>(.*)<\/body>/is', $content, $matches ) ) {
-			$content = trim( $matches[1] );
-		}
-
-		// Remove stray <html>, </html>, <head>...</head>, <body>, </body> tags
-		// in case they appear without a proper document structure.
-		$content = preg_replace( '/<\/?(html|head|body|meta|title|!DOCTYPE)[^>]*>/i', '', $content );
-
-		// Remove leftover <link> and <style> tags that belong in <head>, not post content.
-		$content = preg_replace( '/<link\s[^>]*>/i', '', $content );
-		$content = preg_replace( '/<style[^>]*>.*?<\/style>/is', '', $content );
-
-		// Collapse any resulting excess whitespace (multiple blank lines → single).
-		$content = preg_replace( '/\n{3,}/', "\n\n", $content );
-
-		return trim( $content );
-	}
-
-	/**
-	 * Get the default author ID for generated posts.
-	 *
-	 * @return int WordPress user ID.
-	 */
-	private function get_default_author_id(): int {
-		$author_id = absint( get_option( 'prautoblogger_default_author', 0 ) );
-		if ( $author_id > 0 ) {
-			return $author_id;
-		}
-
-		$admins = get_users( [
-			'role'   => 'administrator',
-			'number' => 1,
-			'fields' => 'ID',
-		] );
-
-		return ! empty( $admins ) ? (int) $admins[0] : 1;
-	}
-
-	/**
-	 * Generate and attach images to a published post.
-	 *
-	 * Calls the image pipeline to generate Image A (featured image) and Image B
-	 * (secondary image). Sets _thumbnail_id and _prautoblogger_image_b_id post meta.
-	 * Gracefully handles image generation failures — post is already created, so
-	 * this is a non-blocking operation.
-	 *
-	 * @param int                        $post_id The newly created post ID.
-	 * @param PRAutoBlogger_Article_Idea   $idea    The article idea (contains source IDs).
-	 * @param array                      $post_data The post data array (for article content).
-	 *
-	 * @return void
-	 */
-	private function attach_generated_images( int $post_id, PRAutoBlogger_Article_Idea $idea, array $post_data ): void {
-		// Build source data from idea's source IDs (if available).
-		$source_data = null;
-		$source_ids  = $idea->get_source_ids();
-		if ( ! empty( $source_ids ) ) {
-			// Attempt to fetch the original source data for Image B.
-			// For now, we pass null; the image pipeline will handle gracefully.
-			$source_data = null;
-		}
-
-		try {
-			$image_pipeline = new PRAutoBlogger_Image_Pipeline();
-			$result         = $image_pipeline->generate_and_attach_images( $post_id, $post_data, $source_data );
-
-			// Set Image A as the featured image.
-			if ( isset( $result['image_a_id'] ) ) {
-				set_post_thumbnail( $post_id, $result['image_a_id'] );
-				PRAutoBlogger_Logger::instance()->info(
-					sprintf( 'Set featured image (attachment %d) for post %d', $result['image_a_id'], $post_id ),
-					'publisher'
-				);
-			}
-
-			// Store Image B ID in post meta for A/B tracking.
-			if ( isset( $result['image_b_id'] ) ) {
-				update_post_meta( $post_id, '_prautoblogger_image_b_id', $result['image_b_id'] );
-				PRAutoBlogger_Logger::instance()->info(
-					sprintf( 'Stored Image B (attachment %d) in post meta for post %d', $result['image_b_id'], $post_id ),
-					'publisher'
-				);
-			}
-
-			// Log errors if any occurred (but don't let them block post creation).
-			if ( ! empty( $result['errors'] ) ) {
-				foreach ( $result['errors'] as $error ) {
-					PRAutoBlogger_Logger::instance()->warning(
-						'Image generation warning for post ' . $post_id . ': ' . $error,
-						'publisher'
-					);
-				}
-			}
-
-			// Log total cost.
-			if ( $result['cost_usd'] > 0.0 ) {
-				PRAutoBlogger_Logger::instance()->info(
-					sprintf( 'Image generation cost: $%.4f for post %d', $result['cost_usd'], $post_id ),
-					'publisher'
-				);
-			}
-		} catch ( \Exception $e ) {
-			// Log the error but don't re-throw — post is already created.
-			PRAutoBlogger_Logger::instance()->warning(
-				'Image pipeline exception for post ' . $post_id . ': ' . $e->getMessage(),
-				'publisher'
-			);
-		}
 	}
 }
