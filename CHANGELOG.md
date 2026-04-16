@@ -8,6 +8,18 @@ and this project uses [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **OpenRouter model registry (model-picker commit 1).** Foundation for the
+  smart model picker: fetches, normalizes, and caches the OpenRouter model
+  list (`/api/v1/models` — free, unauthenticated). Daily refresh via the
+  existing `prautoblogger_daily_generation` cron hook with 12h idempotency.
+  - `includes/services/interface-model-registry.php` — Phase 3-aware contract.
+  - `includes/services/class-openrouter-model-registry.php` — fetch + cache + query.
+  - `includes/services/class-openrouter-model-normalizer.php` — raw → standardized shape.
+  - Capability vocabulary: `text→text`, `text+image→text`, `text→embedding`, etc.
+  - Zero-coupling: no PRAUTOBLOGGER_* constants inside the class — Phase 2 lift
+    into a shared Composer package requires only a namespace rename.
+  - Cost impact: $0/month (free endpoint, no LLM tokens).
+
 - **Image provider: Cloudflare Workers AI (FLUX.1 family).** First commit of
   the image + Instagram A/B pipeline workstream. Ships the provider, its
   pricing + validator helpers, four new settings fields in a new "Images"
