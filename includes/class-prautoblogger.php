@@ -18,10 +18,10 @@ declare(strict_types=1);
  */
 class PRAutoBlogger {
 
-	/**
-	 * Whether the plugin has been initialized.
-	 */
 	private bool $initialized = false;
+
+	/** @var PRAutoBlogger_OpenRouter_Model_Registry|null Lazy-loaded singleton. */
+	private ?PRAutoBlogger_OpenRouter_Model_Registry $model_registry = null;
 
 	/**
 	 * Register all hooks and initialize the plugin.
@@ -118,6 +118,11 @@ class PRAutoBlogger {
 	private function register_cron_hooks(): void {
 		add_action( 'prautoblogger_daily_generation', [ $this, 'on_daily_generation' ] );
 		add_action( 'prautoblogger_collect_metrics', [ $this, 'on_collect_metrics' ] );
+
+		// Model registry refresh — fires inside on_daily_generation() before the
+		// generation lock, so a stuck lock doesn't freeze the registry too.
+		$registry = $this->get_model_registry();
+		add_action( 'prautoblogger_refresh_model_registry', [ $registry, 'refresh' ] );
 	}
 
 	/** Register AJAX handlers for admin actions. */
@@ -218,6 +223,10 @@ class PRAutoBlogger {
 	 * @return void
 	 */
 	public function on_daily_generation(): void {
+		// Refresh the OpenRouter model registry (idempotent, skips if <12h old).
+		// Fires BEFORE the generation lock so a stuck lock doesn't block the refresh.
+		do_action( 'prautoblogger_refresh_model_registry', false );
+
 		if ( ! $this->acquire_generation_lock() ) {
 			PRAutoBlogger_Logger::instance()->info( 'Daily generation skipped: already running (lock held).', 'scheduler' );
 			return;
@@ -359,6 +368,24 @@ class PRAutoBlogger {
 		);
 
 		return $result > 0;
+	}
+
+	/**
+	 * Lazy-load the OpenRouter model registry singleton.
+	 *
+	 * Config (option names, transient names) is injected here — the registry
+	 * class itself has no knowledge of PRAUTOBLOGGER_* constants.
+	 *
+	 * @return PRAutoBlogger_OpenRouter_Model_Registry
+	 */
+	public function get_model_registry(): PRAutoBlogger_OpenRouter_Model_Registry {
+		if ( null === $this->model_registry ) {
+			$this->model_registry = new PRAutoBlogger_OpenRouter_Model_Registry(
+				'prautoblogger_openrouter_model_registry',
+				'prautoblogger_openrouter_model_registry_cache'
+			);
+		}
+		return $this->model_registry;
 	}
 
 	/** Release the generation mutex. */

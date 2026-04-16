@@ -26,6 +26,7 @@ class PRAutoBlogger_Autoloader {
 		'providers/',
 		'models/',
 		'frontend/',
+		'services/',
 	];
 
 	/**
