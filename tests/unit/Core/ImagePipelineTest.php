@@ -18,8 +18,8 @@ class ImagePipelineTest extends BaseTestCase {
 	protected function setUp(): void {
 		parent::setUp();
 
-		// Mock WordPress functions.
-		Functions\when( 'wp_generate_uuid4' )->returnArg();
+		// Mock WordPress functions used by the pipeline and its dependencies.
+		Functions\when( 'wp_generate_uuid4' )->justReturn( 'test-uuid' );
 		Functions\when( 'get_option' )->alias( function ( $key, $default = false ) {
 			static $options = [
 				'prautoblogger_image_enabled'      => '1',
@@ -28,6 +28,9 @@ class ImagePipelineTest extends BaseTestCase {
 			return $options[ $key ] ?? $default;
 		} );
 		Functions\when( 'sanitize_text_field' )->returnArg();
+		Functions\when( 'wp_strip_all_tags' )->alias( function ( $str ) {
+			return trim( strip_tags( $str ) );
+		} );
 		Functions\when( 'update_post_meta' )->justReturn( true );
 	}
 
@@ -40,13 +43,10 @@ class ImagePipelineTest extends BaseTestCase {
 			return $options[ $key ] ?? $default;
 		} );
 
-		// Mock the logger.
-		$logger = $this->createMock( \PRAutoBlogger_Logger::class );
-		$logger->expects( $this->once() )->method( 'info' );
-
-		$provider       = $this->createMock( \PRAutoBlogger_Image_Provider_Interface::class );
+		$provider = $this->createMock( \PRAutoBlogger_Image_Provider_Interface::class );
 		$provider->expects( $this->never() )->method( 'generate_image' );
-		$cost_tracker   = $this->createMock( \PRAutoBlogger_Cost_Tracker::class );
+
+		$cost_tracker = $this->createMock( \PRAutoBlogger_Cost_Tracker::class );
 
 		$pipeline = new \PRAutoBlogger_Image_Pipeline( $provider, $cost_tracker );
 		$result   = $pipeline->generate_and_attach_images( 1, [ 'post_title' => 'Test' ] );
@@ -75,7 +75,6 @@ class ImagePipelineTest extends BaseTestCase {
 
 		$cost_tracker = $this->createMock( \PRAutoBlogger_Cost_Tracker::class );
 		$cost_tracker->method( 'would_exceed_budget' )->willReturn( false );
-		$cost_tracker->method( 'log_image_generation' )->willReturn( true );
 
 		$pipeline = new \PRAutoBlogger_Image_Pipeline( $provider, $cost_tracker );
 
