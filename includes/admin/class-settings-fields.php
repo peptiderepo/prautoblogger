@@ -6,12 +6,15 @@ declare(strict_types=1);
  *
  * Centralizes all field and section definitions in one place, making it trivial
  * to add new settings (just add one array entry). Decoupled from page rendering logic.
+ * Core fields (API, Models, Content, Sources) live here; operational fields
+ * (Schedule, Publishing, Analytics, Images) are in Settings_Fields_Extended.
  *
  * Triggered by: PRAutoBlogger_Admin_Page::on_register_settings() calls static methods here.
- * Dependencies: None — contains only data definitions and static methods.
+ * Dependencies: PRAutoBlogger_Settings_Fields_Extended for operational field definitions.
  *
- * @see admin/class-admin-page.php — Calls get_sections() and get_fields() to register settings.
- * @see CONVENTIONS.md             — "How To: Add a New Admin Setting".
+ * @see admin/class-settings-fields-extended.php — Schedule, publishing, analytics, images fields.
+ * @see admin/class-admin-page.php               — Calls get_sections() and get_fields() to register settings.
+ * @see CONVENTIONS.md                           — "How To: Add a New Admin Setting".
  */
 class PRAutoBlogger_Settings_Fields {
 
@@ -66,11 +69,20 @@ class PRAutoBlogger_Settings_Fields {
 	}
 
 	/**
-	 * Get all settings fields. Adding a new setting = adding one entry to this array.
+	 * Get all settings fields. Core fields here, operational fields merged from Extended.
 	 *
 	 * @return array<int, array<string, mixed>>
 	 */
 	public static function get_fields(): array {
+		return array_merge( self::get_core_fields(), PRAutoBlogger_Settings_Fields_Extended::get_fields() );
+	}
+
+	/**
+	 * Core fields: API Keys, AI Models, Content, and Sources.
+	 *
+	 * @return array<int, array<string, mixed>>
+	 */
+	private static function get_core_fields(): array {
 		return [
 			// ── API Keys ────────────────────────────────────────────────
 			[
@@ -246,140 +258,6 @@ class PRAutoBlogger_Settings_Fields {
 				'min'         => 5,
 				'max'         => 100,
 				'description' => __( 'Maximum posts to fetch per subreddit per collection run.', 'prautoblogger' ),
-			],
-
-			// ── Schedule & Budget ───────────────────────────────────────
-			[
-				'id'      => 'prautoblogger_daily_article_target',
-				'label'   => __( 'Articles per Day', 'prautoblogger' ),
-				'type'    => 'number',
-				'section' => 'prautoblogger_schedule',
-				'default' => 1,
-				'min'     => 1,
-				'max'     => 10,
-			],
-			[
-				'id'          => 'prautoblogger_schedule_time',
-				'label'       => __( 'Generation Time', 'prautoblogger' ),
-				'type'        => 'time',
-				'section'     => 'prautoblogger_schedule',
-				'default'     => '03:00',
-				'description' => __( 'Daily generation runs at this time (server timezone).', 'prautoblogger' ),
-			],
-			[
-				'id'          => 'prautoblogger_monthly_budget_usd',
-				'label'       => __( 'Monthly Budget (USD)', 'prautoblogger' ),
-				'type'        => 'number',
-				'section'     => 'prautoblogger_schedule',
-				'default'     => 50,
-				'min'         => 0,
-				'step'        => '0.01',
-				'description' => __( 'Hard stop when reached. 0 = unlimited.', 'prautoblogger' ),
-			],
-
-			// ── Publishing ──────────────────────────────────────────────
-			[
-				'id'          => 'prautoblogger_auto_publish',
-				'label'       => __( 'Auto-Publish', 'prautoblogger' ),
-				'type'        => 'toggle',
-				'section'     => 'prautoblogger_publishing',
-				'default'     => '0',
-				'description' => __( 'Automatically publish editor-approved posts. When off, all posts go to the Review Queue as drafts.', 'prautoblogger' ),
-			],
-			[
-				'id'          => 'prautoblogger_default_author',
-				'label'       => __( 'Default Author', 'prautoblogger' ),
-				'type'        => 'author_select',
-				'section'     => 'prautoblogger_publishing',
-				'default'     => 0,
-				'description' => __( 'WordPress user assigned as author of generated posts.', 'prautoblogger' ),
-			],
-			[
-				'id'          => 'prautoblogger_default_category',
-				'label'       => __( 'Default Category', 'prautoblogger' ),
-				'type'        => 'category_select',
-				'section'     => 'prautoblogger_publishing',
-				'default'     => 0,
-				'description' => __( 'Fallback category for generated posts.', 'prautoblogger' ),
-			],
-
-			// ── Logging ─────────────────────────────────────────────────
-			[
-				'id'          => 'prautoblogger_log_level',
-				'label'       => __( 'Log Level', 'prautoblogger' ),
-				'type'        => 'select',
-				'section'     => 'prautoblogger_publishing',
-				'default'     => 'info',
-				'options'     => [
-					'error'   => __( 'Error — only failures', 'prautoblogger' ),
-					'warning' => __( 'Warning — errors + warnings', 'prautoblogger' ),
-					'info'    => __( 'Info — key events (recommended)', 'prautoblogger' ),
-					'debug'   => __( 'Debug — everything (verbose)', 'prautoblogger' ),
-				],
-				'description' => __( 'Controls detail level in the Activity Log.', 'prautoblogger' ),
-			],
-
-			// ── Analytics ───────────────────────────────────────────────
-			[
-				'id'          => 'prautoblogger_ga4_property_id',
-				'label'       => __( 'GA4 Property ID', 'prautoblogger' ),
-				'type'        => 'text',
-				'section'     => 'prautoblogger_analytics',
-				'description' => __( 'Format: properties/XXXXXXXXX. Leave blank to skip GA4.', 'prautoblogger' ),
-			],
-			[
-				'id'          => 'prautoblogger_ga4_credentials_json',
-				'label'       => __( 'Service Account JSON', 'prautoblogger' ),
-				'type'        => 'password',
-				'section'     => 'prautoblogger_analytics',
-				'description' => __( 'Paste the full JSON key file for a service account with Analytics read access.', 'prautoblogger' ),
-			],
-
-			// ── Images ─────────────────────────────────────────────────
-			[
-				'id'          => 'prautoblogger_image_enabled',
-				'label'       => __( 'Enable Image Generation', 'prautoblogger' ),
-				'type'        => 'toggle',
-				'section'     => 'prautoblogger_images',
-				'default'     => '0',
-				'description' => __( 'When enabled, generate two images (A/B) for each published article. Requires Cloudflare credentials.', 'prautoblogger' ),
-			],
-			[
-				'id'          => 'prautoblogger_cloudflare_ai_token',
-				'label'       => __( 'Cloudflare API Token', 'prautoblogger' ),
-				'type'        => 'password',
-				'section'     => 'prautoblogger_images',
-				'description' => __( 'Workers AI token with Read + Edit scope. Create at dash.cloudflare.com → AI → API Tokens.', 'prautoblogger' ),
-				'icon'        => '🔑',
-			],
-			[
-				'id'          => 'prautoblogger_cloudflare_account_id',
-				'label'       => __( 'Cloudflare Account ID', 'prautoblogger' ),
-				'type'        => 'text',
-				'section'     => 'prautoblogger_images',
-				'default'     => '',
-				'description' => __( 'The Account ID shown on your Cloudflare dashboard sidebar. Used to build the Workers AI URL.', 'prautoblogger' ),
-			],
-			[
-				'id'          => 'prautoblogger_image_model',
-				'label'       => __( 'Image Model', 'prautoblogger' ),
-				'type'        => 'select',
-				'section'     => 'prautoblogger_images',
-				'default'     => PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL,
-				'options'     => [
-					'flux-1-schnell' => __( 'FLUX.1 [schnell] — fast + cheap (default)', 'prautoblogger' ),
-					'flux-1-dev'     => __( 'FLUX.1 [dev] — higher quality, ~4× cost', 'prautoblogger' ),
-				],
-				'description' => __( 'Schnell is the normal choice. Only switch to [dev] when a specific post needs higher quality.', 'prautoblogger' ),
-				'badge'       => __( 'Low cost', 'prautoblogger' ),
-			],
-			[
-				'id'          => 'prautoblogger_image_style_suffix',
-				'label'       => __( 'Style Suffix', 'prautoblogger' ),
-				'type'        => 'textarea',
-				'section'     => 'prautoblogger_images',
-				'default'     => PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX,
-				'description' => __( 'Appended to every image prompt. Controls the visual look across all placements. Changing this mid-run will cause visible style drift — prefer changing during quiet periods.', 'prautoblogger' ),
 			],
 		];
 	}
