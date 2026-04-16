@@ -153,7 +153,7 @@ class PRAutoBlogger_Image_Pipeline {
 	 *     cost_usd: float,
 	 * }|\WP_Error
 	 */
-	private function generate_image_a( int $post_id, array $article_data ): array | \WP_Error {
+	private function generate_image_a( int $post_id, array $article_data ) {
 		try {
 			// Build the article-driven prompt.
 			$prompt = $this->prompt_builder->build_article_prompt( $article_data );
@@ -219,7 +219,7 @@ class PRAutoBlogger_Image_Pipeline {
 	 *     cost_usd: float,
 	 * }|\WP_Error
 	 */
-	private function generate_image_b( int $post_id, array $source_data ): array | \WP_Error {
+	private function generate_image_b( int $post_id, array $source_data ) {
 		try {
 			// Build the source-driven prompt.
 			$prompt = $this->prompt_builder->build_source_prompt( $source_data );

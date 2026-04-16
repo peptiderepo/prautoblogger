@@ -38,7 +38,7 @@ class PRAutoBlogger_Image_Media_Sideloader {
 	 *
 	 * @return int|\WP_Error Attachment ID on success, WP_Error on failure.
 	 */
-	public function sideload_image( array $image_data, int $post_id, string $alt_text = '' ): int | \WP_Error {
+	public function sideload_image( array $image_data, int $post_id, string $alt_text = '' ) {
 		// Validate input.
 		if ( empty( $image_data['bytes'] ) ) {
 			return new \WP_Error( 'invalid_image_data', 'Image data (bytes) is empty.' );
@@ -97,7 +97,7 @@ class PRAutoBlogger_Image_Media_Sideloader {
 	 *
 	 * @return string|\WP_Error Path to temporary file on success, WP_Error on failure.
 	 */
-	private function create_temp_file( string $bytes, string $mime_type ): string | \WP_Error {
+	private function create_temp_file( string $bytes, string $mime_type ) {
 		$temp_dir = get_temp_dir();
 		$filename = 'prautoblogger_img_' . wp_generate_uuid4() . $this->get_extension_for_mime( $mime_type );
 		$temp_path = $temp_dir . $filename;
