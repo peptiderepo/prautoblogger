@@ -8,7 +8,7 @@ declare(strict_types=1);
  * and budget utilization.
  *
  * Triggered by: Could be registered via wp_dashboard_setup hook.
- * Dependencies: PRAutoBlogger_Cost_Tracker.
+ * Dependencies: PRAutoBlogger_Cost_Reporter.
  *
  * @see class-prautoblogger.php — Can register this on wp_dashboard_setup.
  */
@@ -37,10 +37,10 @@ class PRAutoBlogger_Dashboard_Widget {
 	 * @return void
 	 */
 	public function render_widget(): void {
-		$cost_tracker = new PRAutoBlogger_Cost_Tracker();
-		$monthly_spend = $cost_tracker->get_monthly_spend();
+		$cost_reporter = new PRAutoBlogger_Cost_Reporter();
+		$monthly_spend = $cost_reporter->get_monthly_spend();
 		$budget        = (float) get_option( 'prautoblogger_monthly_budget_usd', 50.00 );
-		$utilization   = $cost_tracker->get_budget_utilization();
+		$utilization   = $cost_reporter->get_budget_utilization();
 
 		$next_run = wp_next_scheduled( 'prautoblogger_daily_generation' );
 

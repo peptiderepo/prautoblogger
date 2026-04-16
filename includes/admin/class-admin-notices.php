@@ -5,7 +5,7 @@ declare(strict_types=1);
  * Displays admin notices for onboarding, errors, and budget warnings.
  *
  * Triggered by: PRAutoBlogger::register_admin_hooks() on `admin_notices`.
- * Dependencies: PRAutoBlogger_Cost_Tracker (for budget warnings).
+ * Dependencies: PRAutoBlogger_Cost_Reporter (for budget warnings).
  *
  * @see class-prautoblogger.php — Registers the hook.
  */
@@ -51,8 +51,8 @@ class PRAutoBlogger_Admin_Notices {
 	 * @return void
 	 */
 	private function check_budget_notice(): void {
-		$cost_tracker = new PRAutoBlogger_Cost_Tracker();
-		$utilization  = $cost_tracker->get_budget_utilization();
+		$cost_reporter = new PRAutoBlogger_Cost_Reporter();
+		$utilization   = $cost_reporter->get_budget_utilization();
 
 		if ( $utilization >= 100.0 ) {
 			printf(

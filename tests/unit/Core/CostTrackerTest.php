@@ -69,20 +69,6 @@ class CostTrackerTest extends BaseTestCase {
     }
 
     /**
-     * Test get_monthly_spend returns float.
-     */
-    public function test_get_monthly_spend_returns_float(): void {
-        $this->wpdb->method( 'prepare' )->willReturn( 'prepared' );
-        $this->wpdb->method( 'get_var' )->willReturn( '10.50' );
-
-        $tracker = new \PRAutoBlogger_Cost_Tracker();
-        $spend = $tracker->get_monthly_spend();
-
-        $this->assertIsFloat( $spend );
-        $this->assertGreaterThanOrEqual( 0.0, $spend );
-    }
-
-    /**
      * Test get_current_run_cost returns float.
      */
     public function test_get_current_run_cost_returns_float(): void {
@@ -96,43 +82,6 @@ class CostTrackerTest extends BaseTestCase {
 
         $this->assertIsFloat( $cost );
         $this->assertGreaterThanOrEqual( 0.0, $cost );
-    }
-
-    /**
-     * Test get_daily_spend returns array.
-     */
-    public function test_get_daily_spend_returns_array(): void {
-        $this->wpdb->method( 'prepare' )->willReturn( 'prepared' );
-        $this->wpdb->method( 'get_results' )->willReturn( [] );
-
-        $tracker = new \PRAutoBlogger_Cost_Tracker();
-        $daily = $tracker->get_daily_spend( 30 );
-
-        $this->assertIsArray( $daily );
-    }
-
-    /**
-     * Test get_spend_by_stage returns array.
-     */
-    public function test_get_spend_by_stage_returns_array(): void {
-        $this->wpdb->method( 'prepare' )->willReturn( 'prepared' );
-        $this->wpdb->method( 'get_results' )->willReturn( [] );
-
-        $tracker = new \PRAutoBlogger_Cost_Tracker();
-        $spend = $tracker->get_spend_by_stage( '2026-04-01', '2026-04-30' );
-
-        $this->assertIsArray( $spend );
-    }
-
-    /**
-     * Test get_budget_utilization returns float between 0 and 1.
-     */
-    public function test_get_budget_utilization_returns_float(): void {
-        $tracker = new \PRAutoBlogger_Cost_Tracker();
-        $utilization = $tracker->get_budget_utilization();
-
-        $this->assertIsFloat( $utilization );
-        $this->assertGreaterThanOrEqual( 0.0, $utilization );
     }
 
     /**
