@@ -224,8 +224,7 @@ class OpenRouterModelRegistryTest extends BaseTestCase {
 			return 'Connection timed out';
 		};
 		Functions\when( 'wp_remote_get' )->alias( function () {
-			$e = new \WP_Error_Stub();
-			return $e;
+			return new \WP_Error( 'http_request_failed', 'Connection timed out' );
 		} );
 
 		// Accept that update_option will be called for the stale flag.
@@ -240,13 +239,3 @@ class OpenRouterModelRegistryTest extends BaseTestCase {
 	}
 }
 
-/**
- * Minimal WP_Error stub for testing is_wp_error() branches.
- */
-if ( ! class_exists( 'WP_Error_Stub' ) ) {
-	class WP_Error_Stub {
-		public function get_error_message(): string {
-			return 'Connection timed out';
-		}
-	}
-}

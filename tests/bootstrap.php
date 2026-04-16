@@ -93,18 +93,38 @@ if ( ! class_exists( 'WP_Query' ) ) {
     }
 }
 
-// Stub WP text-processing functions used by image prompt builder.
-if ( ! function_exists( 'wp_strip_all_tags' ) ) {
-    function wp_strip_all_tags( $string, $remove_breaks = false ) {
-        $string = strip_tags( $string );
-        if ( $remove_breaks ) {
-            $string = preg_replace( '/[\r\n\t ]+/', ' ', $string );
+// NOTE: Do NOT stub wp_strip_all_tags() or sanitize_text_field() here.
+// Brain Monkey / Patchwork manages these stubs in individual tests via
+// Functions\when(). Defining them in bootstrap causes Patchwork's
+// "DefinedTooEarly" error.
+
+// WP_Error stub — used by model registry and image pipeline tests.
+// This is safe to define here because it's a class (not a function),
+// so Patchwork doesn't need to intercept its definition.
+if ( ! class_exists( 'WP_Error' ) ) {
+    class WP_Error {
+        public $errors     = [];
+        public $error_data = [];
+
+        public function __construct( $code = '', $message = '', $data = '' ) {
+            if ( $code ) {
+                $this->errors[ $code ][] = $message;
+                if ( $data ) {
+                    $this->error_data[ $code ] = $data;
+                }
+            }
         }
-        return trim( $string );
-    }
-}
-if ( ! function_exists( 'sanitize_text_field' ) ) {
-    function sanitize_text_field( $str ) {
-        return trim( strip_tags( $str ) );
+
+        public function get_error_code() {
+            $codes = array_keys( $this->errors );
+            return $codes ? $codes[0] : '';
+        }
+
+        public function get_error_message( $code = '' ) {
+            if ( ! $code ) {
+                $code = $this->get_error_code();
+            }
+            return isset( $this->errors[ $code ] ) ? $this->errors[ $code ][0] : '';
+        }
     }
 }
