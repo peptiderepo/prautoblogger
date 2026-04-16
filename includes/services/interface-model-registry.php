@@ -4,7 +4,7 @@ declare(strict_types=1);
 /**
  * Contract for a provider-specific AI model registry.
  *
- * Phase 1 (v1): single implementation for OpenRouter (`class-openrouter-model-registry.php`).
+ * Phase 1 (v1): single implementation for OpenRouter (`class-open-router-model-registry.php`).
  * Phase 3: a second implementation wraps Cloudflare Workers AI FLUX model data. A
  * higher-level dispatcher iterates registered registries, calls each with the same
  * capability, and unions the results — the per-registry interface stays unchanged.
@@ -19,7 +19,7 @@ declare(strict_types=1);
  *               (commit 3), daily cron via the main plugin loader.
  * Dependencies: None at interface level — implementations wrap an HTTP API.
  *
- * @see services/class-openrouter-model-registry.php — Default implementation.
+ * @see services/class-open-router-model-registry.php — Default implementation.
  * @see admin/fields/class-openrouter-model-field.php — Field renderer that queries this interface.
  * @see ARCHITECTURE.md                               — AI Model Registries section.
  */

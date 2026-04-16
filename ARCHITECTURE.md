@@ -152,8 +152,8 @@ prautoblogger/
 │   │
 │   ├── services/
 │   │   ├── interface-model-registry.php           # Contract for provider-specific model registries
-│   │   ├── class-openrouter-model-registry.php    # Fetches, caches, queries the OpenRouter model list
-│   │   ├── class-openrouter-model-normalizer.php  # Maps raw OpenRouter data → standardized record shape
+│   │   ├── class-open-router-model-registry.php    # Fetches, caches, queries the OpenRouter model list
+│   │   ├── class-open-router-model-normalizer.php  # Maps raw OpenRouter data → standardized record shape
 │   │   └── (Phase 3: class-cloudflare-workers-ai-model-registry.php)
 │   │
 │   ├── frontend/
@@ -446,7 +446,7 @@ Reddit rejected our OAuth API application (April 2026). We initially switched to
 
 ### #18: OpenRouter model registry — daily refresh, WP option + transient cache, zero-coupling
 
-The admin model picker (v1) needs to list OpenRouter models with pricing and capabilities. We fetch `https://openrouter.ai/api/v1/models` (free, unauthenticated) once daily and store the normalized payload in a WP option fronted by a 24h transient. On stale-and-fetch-fails, we serve last-good + surface a warning. The registry class (`class-openrouter-model-registry.php`) takes all config via constructor (option name, transient name, endpoint URL) — no PRAUTOBLOGGER_* constants inside the class body. Phase 2 lifts it into a shared Composer package with zero internal edits. Phase 3 adds a parallel `Cloudflare_WorkersAI_Model_Registry` behind the same interface. Capability vocabulary: `text→text`, `text+image→text`, `text+audio→text`, `text→image`, `text→audio`, `text→video`, `text→embedding`. Cost: $0/month.
+The admin model picker (v1) needs to list OpenRouter models with pricing and capabilities. We fetch `https://openrouter.ai/api/v1/models` (free, unauthenticated) once daily and store the normalized payload in a WP option fronted by a 24h transient. On stale-and-fetch-fails, we serve last-good + surface a warning. The registry class (`class-open-router-model-registry.php`) takes all config via constructor (option name, transient name, endpoint URL) — no PRAUTOBLOGGER_* constants inside the class body. Phase 2 lifts it into a shared Composer package with zero internal edits. Phase 3 adds a parallel `Cloudflare_WorkersAI_Model_Registry` behind the same interface. Capability vocabulary: `text→text`, `text+image→text`, `text+audio→text`, `text→image`, `text→audio`, `text→video`, `text→embedding`. Cost: $0/month.
 
 ### #16: Image generation via Cloudflare Workers AI (FLUX.1), direct (not via AI Gateway)
 The image-generation layer (started 2026-04-15, tracked in `convo/prautoblogger/threads/2026-04-image-pipeline/`) uses FLUX.1 [schnell] on Cloudflare Workers AI as its default model, chosen for its ~$0.0011/MP cost and 2–3 sec latency. FLUX.1 [dev] is a ~4× cost upgrade exposed as a dropdown for specific posts that warrant it. Calls go directly to `https://api.cloudflare.com/client/v4/accounts/{id}/ai/run/@cf/black-forest-labs/...`, *not* through the Cloudflare AI Gateway that we use for OpenRouter — the gateway route to Workers AI currently 403s (pre-existing open issue). The provider lives behind `PRAutoBlogger_Image_Provider_Interface`, so the decision is trivially reversible: switching to a different image API (DALL-E, Replicate, a future AI Gateway route) is a new class implementation plus a one-line swap in the pipeline wiring. Trade-off: we run two different Cloudflare integration paths (gateway for OpenRouter LLMs, direct for Workers AI images) until the gateway route stabilizes — minor cognitive overhead, zero functional downside.

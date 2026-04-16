@@ -17,7 +17,7 @@ declare(strict_types=1);
  *               PRAutoBlogger_OpenRouter_Model_Normalizer.
  *
  * @see interface-model-registry.php               — Interface.
- * @see class-openrouter-model-normalizer.php       — Normalization logic.
+ * @see class-open-router-model-normalizer.php       — Normalization logic.
  * @see class-prautoblogger.php                     — Hooks the refresh action.
  * @see ARCHITECTURE.md                             — AI Model Registries section.
  */

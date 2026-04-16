@@ -11,7 +11,7 @@ declare(strict_types=1);
  * Triggered by: PRAutoBlogger_OpenRouter_Model_Registry::refresh().
  * Dependencies: None — pure data transformation, no I/O.
  *
- * @see services/class-openrouter-model-registry.php — Sole consumer.
+ * @see services/class-open-router-model-registry.php — Sole consumer.
  * @see interface-model-registry.php                  — Defines the normalized record shape.
  * @see ARCHITECTURE.md                               — Capability vocabulary.
  */
