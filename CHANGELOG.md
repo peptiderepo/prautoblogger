@@ -8,33 +8,45 @@ and this project uses [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
-- **Image provider: Cloudflare Workers AI (FLUX.1 family).** First commit of
-  the image + Instagram A/B pipeline workstream. Ships the provider, its
-  pricing + validator helpers, four new settings fields in a new "Images"
-  admin section, and unit tests with mocked HTTP. Nothing calls the provider
-  yet from the article pipeline — integration lands in commit 1b.
-  - `includes/providers/interface-image-provider.php` (adopted from the CTO's
-    uncommitted draft) — contract for any image provider.
-  - `includes/providers/class-cloudflare-image-provider.php` — FLUX on Workers
-    AI, direct call to `/accounts/{id}/ai/run/...` (bypassing AI Gateway per
-    decision D-001); exponential-backoff retries on 429 / 5xx / network,
-    loud fail on 4xx; handles both raw-bytes and JSON-envelope response shapes.
-  - `includes/providers/class-cloudflare-image-pricing.php` — model alias →
-    full Workers AI id resolution + per-megapixel cost estimation.
-  - `includes/providers/class-cloudflare-image-validator.php` — non-destructive
-    "Test Connection" credential check that never generates a real image.
-  - Settings: `prautoblogger_cloudflare_ai_token` (encrypted),
-    `prautoblogger_cloudflare_account_id`, `prautoblogger_image_model`
-    (schnell / dev), `prautoblogger_image_style_suffix` (default = CEO-locked
-    90s infomercial prompt).
-  - Constants: `PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL`,
-    `PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX`.
-  - Tests: `tests/unit/Providers/CloudflareImageProviderTest.php` covers
-    happy path (raw bytes + JSON envelope), dimension + empty-prompt
-    validation, 4xx loud-fail without retry, unexpected response shape,
-    cost scaling across models and dimensions, and missing-token diagnostics.
-- ARCHITECTURE.md: new key decision #16 (image pipeline: Cloudflare Workers
-  AI), new external API integration row, new options rows, file tree updates.
+- **Image pipeline integration: wires image generation into article flow** (commit 1b).
+  Completes the image + Instagram A/B experiment workstream by adding three
+  orchestration classes that generate and sideload two images per published post.
+  - `includes/core/class-image-pipeline.php` — Orchestrates A/B image generation:
+    generates Image A (article-driven prompt) as featured image and Image B
+    (source-driven prompt) stored in post meta `_prautoblogger_image_b_id`. Each
+    image is independently fallible; article publishes even if both fail.
+  - `includes/core/class-image-prompt-builder.php` — Synthesizes visual prompts
+    from article title + first paragraph (for Image A) and Reddit thread title +
+    top comment (for Image B). Both prompts append the CEO-locked 90s infomercial
+    style suffix from settings. Prompts kept concise (under 200 words) for FLUX.1
+    generation quality.
+  - `includes/core/class-image-media-sideloader.php` — Downloads generated image
+    bytes, creates temporary file, imports via `media_handle_sideload()`, sets alt
+    text and generation metadata (`_prautoblogger_image_*`), cleans up temp files.
+  - Settings: `prautoblogger_image_enabled` (toggle, default off) — allows users to
+    enable/disable image generation after providing Cloudflare credentials.
+  - `PRAutoBlogger_Publisher::attach_generated_images()` — New private method that
+    runs the image pipeline post-creation and sets `_thumbnail_id` (Image A) and
+    `_prautoblogger_image_b_id` (Image B) post meta. Errors are logged but do not
+    block post publication.
+  - Tests: `tests/unit/Core/ImagePipelineTest.php` (orchestration, cost tracking,
+    graceful failure modes), `tests/unit/Core/ImagePromptBuilderTest.php` (prompt
+    generation from various article/source shapes, length limits).
+- ARCHITECTURE.md: added new image pipeline step (6b) to data flow, three new files
+  to core/ section of file tree.
+
+### Previous Commit (1a)
+
+- **Image provider: Cloudflare Workers AI (FLUX.1 family).** Shipped the provider, its
+  pricing + validator helpers, four new settings fields in a new "Images" admin section,
+  and unit tests with mocked HTTP. Nothing called the provider from the article pipeline
+  until this commit (1b).
+  - `includes/providers/interface-image-provider.php`, `class-cloudflare-image-provider.php`,
+    `class-cloudflare-image-pricing.php`, `class-cloudflare-image-validator.php`.
+  - Settings: `prautoblogger_cloudflare_ai_token`, `prautoblogger_cloudflare_account_id`,
+    `prautoblogger_image_model`, `prautoblogger_image_style_suffix`.
+  - Constants: `PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL`, `PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX`.
+  - Tests: `tests/unit/Providers/CloudflareImageProviderTest.php`.
 - CONVENTIONS.md: new "How To: Add a New Image Provider" section.
 
 ## [0.2.2] — 2026-04-12

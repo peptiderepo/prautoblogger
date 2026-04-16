@@ -65,6 +65,14 @@ PRAutoBlogger is a WordPress plugin that monitors social media (starting with Re
              │
              ▼
 ┌─────────────────────────┐
+│  6b. Image Pipeline     │  (commit 1b) Generates two A/B images:
+│  (optional, if enabled) │  - Image A: article-driven (featured)
+│                         │  - Image B: source-driven (post meta)
+│                         │  Sideloads to media library, logs costs
+└────────────┬────────────┘
+             │
+             ▼
+┌─────────────────────────┐
 │  7. Metrics Collector   │  Tracks post-publish performance:
 │  (Separate cron job)    │  - WordPress native (views, comments)
 │                         │  - GA4 (pageviews, bounce rate, time on page)
@@ -119,6 +127,9 @@ prautoblogger/
 │   │   ├── class-content-generator.php# Writer agent — manages the generation pipeline
 │   │   ├── class-chief-editor.php     # Editor agent — LLM-powered editorial review
 │   │   ├── class-publisher.php        # Creates WordPress posts from approved content
+│   │   ├── class-image-pipeline.php   # Orchestrates A/B image generation (commit 1b)
+│   │   ├── class-image-prompt-builder.php # Generates visual prompts from article/source data
+│   │   ├── class-image-media-sideloader.php # Imports images into WordPress media library
 │   │   ├── class-cost-tracker.php     # Logs all API costs, enforces budget limits
 │   │   ├── class-logger.php           # Structured logging singleton (error/warning/info/debug)
 │   │   ├── class-pipeline-runner.php  # Orchestrates the full generation pipeline

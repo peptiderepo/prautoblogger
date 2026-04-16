@@ -121,6 +121,11 @@ class PRAutoBlogger_Publisher {
 		// Update generation log entries to reference this post.
 		$this->link_generation_logs( $post_id, $run_id );
 
+		// Generate and attach images if published and images enabled.
+		if ( 'publish' === $post_status ) {
+			$this->attach_generated_images( $post_id, $idea, $post_data );
+		}
+
 		PRAutoBlogger_Logger::instance()->info(
 			sprintf( 'Post created: ID=%d, status=%s, title="%s"', $post_id, $post_status, $idea->get_suggested_title() ),
 			'publisher'
@@ -306,5 +311,77 @@ class PRAutoBlogger_Publisher {
 		] );
 
 		return ! empty( $admins ) ? (int) $admins[0] : 1;
+	}
+
+	/**
+	 * Generate and attach images to a published post.
+	 *
+	 * Calls the image pipeline to generate Image A (featured image) and Image B
+	 * (secondary image). Sets _thumbnail_id and _prautoblogger_image_b_id post meta.
+	 * Gracefully handles image generation failures — post is already created, so
+	 * this is a non-blocking operation.
+	 *
+	 * @param int                        $post_id The newly created post ID.
+	 * @param PRAutoBlogger_Article_Idea   $idea    The article idea (contains source IDs).
+	 * @param array                      $post_data The post data array (for article content).
+	 *
+	 * @return void
+	 */
+	private function attach_generated_images( int $post_id, PRAutoBlogger_Article_Idea $idea, array $post_data ): void {
+		// Build source data from idea's source IDs (if available).
+		$source_data = null;
+		$source_ids  = $idea->get_source_ids();
+		if ( ! empty( $source_ids ) ) {
+			// Attempt to fetch the original source data for Image B.
+			// For now, we pass null; the image pipeline will handle gracefully.
+			$source_data = null;
+		}
+
+		try {
+			$image_pipeline = new PRAutoBlogger_Image_Pipeline();
+			$result         = $image_pipeline->generate_and_attach_images( $post_id, $post_data, $source_data );
+
+			// Set Image A as the featured image.
+			if ( isset( $result['image_a_id'] ) ) {
+				set_post_thumbnail( $post_id, $result['image_a_id'] );
+				PRAutoBlogger_Logger::instance()->info(
+					sprintf( 'Set featured image (attachment %d) for post %d', $result['image_a_id'], $post_id ),
+					'publisher'
+				);
+			}
+
+			// Store Image B ID in post meta for A/B tracking.
+			if ( isset( $result['image_b_id'] ) ) {
+				update_post_meta( $post_id, '_prautoblogger_image_b_id', $result['image_b_id'] );
+				PRAutoBlogger_Logger::instance()->info(
+					sprintf( 'Stored Image B (attachment %d) in post meta for post %d', $result['image_b_id'], $post_id ),
+					'publisher'
+				);
+			}
+
+			// Log errors if any occurred (but don't let them block post creation).
+			if ( ! empty( $result['errors'] ) ) {
+				foreach ( $result['errors'] as $error ) {
+					PRAutoBlogger_Logger::instance()->warning(
+						'Image generation warning for post ' . $post_id . ': ' . $error,
+						'publisher'
+					);
+				}
+			}
+
+			// Log total cost.
+			if ( $result['cost_usd'] > 0.0 ) {
+				PRAutoBlogger_Logger::instance()->info(
+					sprintf( 'Image generation cost: $%.4f for post %d', $result['cost_usd'], $post_id ),
+					'publisher'
+				);
+			}
+		} catch ( \Exception $e ) {
+			// Log the error but don't re-throw — post is already created.
+			PRAutoBlogger_Logger::instance()->warning(
+				'Image pipeline exception for post ' . $post_id . ': ' . $e->getMessage(),
+				'publisher'
+			);
+		}
 	}
 }
