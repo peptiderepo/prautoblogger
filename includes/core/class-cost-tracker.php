@@ -2,8 +2,7 @@
 declare(strict_types=1);
 
 /**
- * Tracks all API costs, enforces monthly budget limits, and provides
- * cost reporting data for the admin dashboard.
+ * Tracks all API costs and enforces monthly budget limits.
  *
  * Every LLM API call in the plugin is logged through this class. The budget
  * enforcement is a hard stop — if the monthly budget is exceeded, no further
@@ -16,7 +15,8 @@ declare(strict_types=1);
  * @see core/class-content-analyzer.php  — Calls log_api_call() after analysis.
  * @see core/class-content-generator.php — Calls log_api_call() after each stage.
  * @see core/class-chief-editor.php      — Calls log_api_call() after review.
- * @see admin/class-metrics-page.php     — Displays cost data from this class.
+ * @see core/class-cost-reporter.php     — Extracted reporting methods (read-only queries).
+ * @see admin/class-metrics-page.php     — Displays cost data via Cost_Reporter.
  * @see ARCHITECTURE.md                  — prab_generation_log table schema.
  */
 class PRAutoBlogger_Cost_Tracker {
@@ -127,7 +127,8 @@ class PRAutoBlogger_Cost_Tracker {
 			return false;
 		}
 
-		$monthly_spend = $this->get_monthly_spend();
+		$reporter      = new PRAutoBlogger_Cost_Reporter();
+		$monthly_spend = $reporter->get_monthly_spend();
 
 		// Round to 4 decimal places (0.01 cent precision) to avoid
 		// floating-point representation artifacts triggering false positives.
@@ -189,30 +190,9 @@ class PRAutoBlogger_Cost_Tracker {
 			return false;
 		}
 
-		$projected = $this->get_monthly_spend() + $estimated_cost_usd;
+		$reporter  = new PRAutoBlogger_Cost_Reporter();
+		$projected = $reporter->get_monthly_spend() + $estimated_cost_usd;
 		return round( $projected, 4 ) >= round( $budget, 4 );
-	}
-
-	/**
-	 * Get total estimated spend for the current calendar month.
-	 *
-	 * @return float Total USD spend this month.
-	 */
-	public function get_monthly_spend(): float {
-		global $wpdb;
-		$table = $wpdb->prefix . 'prautoblogger_generation_log';
-
-		$first_of_month = gmdate( 'Y-m-01 00:00:00' );
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$result = $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT COALESCE(SUM(estimated_cost), 0) FROM {$table} WHERE created_at >= %s AND response_status = 'success'",
-				$first_of_month
-			)
-		);
-
-		return (float) $result;
 	}
 
 	/**
@@ -222,92 +202,5 @@ class PRAutoBlogger_Cost_Tracker {
 	 */
 	public function get_current_run_cost(): float {
 		return $this->current_run_cost;
-	}
-
-	/**
-	 * Get daily spend for the last N days (for the metrics dashboard chart).
-	 *
-	 * @param int $days Number of days to look back.
-	 *
-	 * @return array<string, float> Associative array of date => total_cost.
-	 */
-	public function get_daily_spend( int $days = 30 ): array {
-		global $wpdb;
-		$table = $wpdb->prefix . 'prautoblogger_generation_log';
-
-		$start_date = gmdate( 'Y-m-d', time() - ( $days * DAY_IN_SECONDS ) );
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$results = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT DATE(created_at) as day, SUM(estimated_cost) as total_cost
-				FROM {$table}
-				WHERE created_at >= %s AND response_status = 'success'
-				GROUP BY DATE(created_at)
-				ORDER BY day ASC",
-				$start_date . ' 00:00:00'
-			),
-			ARRAY_A
-		);
-
-		$daily = [];
-		foreach ( ( $results ?: [] ) as $row ) {
-			$daily[ $row['day'] ] = (float) $row['total_cost'];
-		}
-
-		return $daily;
-	}
-
-	/**
-	 * Get spend breakdown by pipeline stage for a given period.
-	 *
-	 * @param string $start_date Start date (Y-m-d).
-	 * @param string $end_date   End date (Y-m-d).
-	 *
-	 * @return array<string, array{cost: float, tokens: int, calls: int}> Breakdown by stage.
-	 */
-	public function get_spend_by_stage( string $start_date, string $end_date ): array {
-		global $wpdb;
-		$table = $wpdb->prefix . 'prautoblogger_generation_log';
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$results = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT stage,
-					SUM(estimated_cost) as total_cost,
-					SUM(prompt_tokens + completion_tokens) as total_tokens,
-					COUNT(*) as call_count
-				FROM {$table}
-				WHERE created_at BETWEEN %s AND %s AND response_status = 'success'
-				GROUP BY stage",
-				$start_date . ' 00:00:00',
-				$end_date . ' 23:59:59'
-			),
-			ARRAY_A
-		);
-
-		$breakdown = [];
-		foreach ( ( $results ?: [] ) as $row ) {
-			$breakdown[ $row['stage'] ] = [
-				'cost'   => (float) $row['total_cost'],
-				'tokens' => (int) $row['total_tokens'],
-				'calls'  => (int) $row['call_count'],
-			];
-		}
-
-		return $breakdown;
-	}
-
-	/**
-	 * Get budget utilization percentage for the current month.
-	 *
-	 * @return float Percentage (0-100+). Can exceed 100 if overspent.
-	 */
-	public function get_budget_utilization(): float {
-		$budget = (float) get_option( 'prautoblogger_monthly_budget_usd', 50.00 );
-		if ( $budget <= 0 ) {
-			return 0.0;
-		}
-		return ( $this->get_monthly_spend() / $budget ) * 100.0;
 	}
 }

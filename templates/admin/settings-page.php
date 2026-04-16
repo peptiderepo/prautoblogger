@@ -14,8 +14,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 $active_tab     = isset( $_GET['tab'] ) ? sanitize_key( $_GET['tab'] ) : 'prautoblogger_api';
-$cost_tracker   = new PRAutoBlogger_Cost_Tracker();
-$monthly_spend  = $cost_tracker->get_monthly_spend();
+$cost_reporter  = new PRAutoBlogger_Cost_Reporter();
+$monthly_spend  = $cost_reporter->get_monthly_spend();
 $budget         = (float) get_option( 'prautoblogger_monthly_budget_usd', 50.00 );
 $utilization    = $budget > 0 ? ( $monthly_spend / $budget ) * 100.0 : 0;
 $next_run       = wp_next_scheduled( 'prautoblogger_daily_generation' );

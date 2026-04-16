@@ -9,15 +9,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-$cost_tracker = new PRAutoBlogger_Cost_Tracker();
-$monthly_spend = $cost_tracker->get_monthly_spend();
+$cost_reporter = new PRAutoBlogger_Cost_Reporter();
+$monthly_spend = $cost_reporter->get_monthly_spend();
 $budget        = (float) get_option( 'prautoblogger_monthly_budget_usd', 50.00 );
-$utilization   = $cost_tracker->get_budget_utilization();
-$daily_spend   = $cost_tracker->get_daily_spend( 30 );
+$utilization   = $cost_reporter->get_budget_utilization();
+$daily_spend   = $cost_reporter->get_daily_spend( 30 );
 
 $first_of_month = gmdate( 'Y-m-01' );
 $today          = gmdate( 'Y-m-d' );
-$stage_breakdown = $cost_tracker->get_spend_by_stage( $first_of_month, $today );
+$stage_breakdown = $cost_reporter->get_spend_by_stage( $first_of_month, $today );
 ?>
 <div class="wrap prautoblogger-metrics">
 	<h1><?php esc_html_e( 'PRAutoBlogger — Metrics & Costs', 'prautoblogger' ); ?></h1>
