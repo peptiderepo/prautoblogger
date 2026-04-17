@@ -240,7 +240,7 @@ class PRAutoBlogger_Admin_Page {
 			$option_name = substr( $filter, strlen( 'sanitize_option_' ) );
 		}
 
-		$encrypted = [ 'prautoblogger_openrouter_api_key', 'prautoblogger_ga4_credentials_json', 'prautoblogger_cloudflare_ai_token' ];
+		$encrypted = [ 'prautoblogger_openrouter_api_key', 'prautoblogger_ga4_credentials_json' ];
 		if ( in_array( $option_name, $encrypted, true ) ) {
 			// Empty value means password field wasn't touched — keep existing.
 			if ( '' === $value ) {
@@ -262,12 +262,26 @@ class PRAutoBlogger_Admin_Page {
 
 		$json_fields = [ 'prautoblogger_target_subreddits', 'prautoblogger_topic_exclusions', 'prautoblogger_enabled_sources' ];
 		if ( in_array( $option_name, $json_fields, true ) ) {
-			if ( is_array( $value ) ) { return wp_json_encode( array_values( array_map( 'sanitize_text_field', $value ) ) ); }
-			if ( is_string( $value ) && '[' !== substr( trim( $value ), 0, 1 ) ) {
-				$items = array_filter( array_map( 'trim', explode( ',', $value ) ) );
-				return wp_json_encode( array_values( $items ) );
+			// PHP array from checkboxes — sanitize each item and re-encode.
+			if ( is_array( $value ) ) {
+				return wp_json_encode( array_values( array_map( 'sanitize_text_field', $value ) ) );
 			}
-			return sanitize_text_field( $value );
+
+			$trimmed = trim( (string) $value );
+
+			// Already JSON-encoded array — decode, sanitize each item, re-encode.
+			// This prevents sanitize_text_field() from mangling the JSON string,
+			// which caused json_decode() on read to return null → empty subreddits.
+			if ( '[' === substr( $trimmed, 0, 1 ) ) {
+				$decoded = json_decode( $trimmed, true );
+				if ( is_array( $decoded ) ) {
+					return wp_json_encode( array_values( array_map( 'sanitize_text_field', $decoded ) ) );
+				}
+			}
+
+			// Comma-separated plain text — split, sanitize, encode as JSON array.
+			$items = array_filter( array_map( 'trim', explode( ',', $trimmed ) ) );
+			return wp_json_encode( array_values( array_map( 'sanitize_text_field', $items ) ) );
 		}
 
 		$numeric = [ 'prautoblogger_daily_article_target', 'prautoblogger_monthly_budget_usd', 'prautoblogger_min_word_count', 'prautoblogger_max_word_count', 'prautoblogger_default_author', 'prautoblogger_default_category', 'prautoblogger_pullpush_cache_ttl', 'prautoblogger_reddit_posts_per_subreddit' ];
