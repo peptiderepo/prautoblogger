@@ -70,6 +70,7 @@ class PRAutoBlogger_Admin_Page {
 		wp_localize_script( 'prautoblogger-admin', 'prautobloggerAdmin', [
 			'ajaxUrl'        => admin_url( 'admin-ajax.php' ),
 			'generateNonce'  => wp_create_nonce( 'prautoblogger_generate_now' ),
+			'imageNonce'     => wp_create_nonce( 'prautoblogger_generate_image' ),
 			'testNonce'      => wp_create_nonce( 'prautoblogger_test_connection' ),
 			'reviewNonce'    => wp_create_nonce( 'prautoblogger_review_queue' ),
 			'generatingText' => __( 'Generating...', 'prautoblogger' ),

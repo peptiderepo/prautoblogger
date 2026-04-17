@@ -92,6 +92,7 @@ class PRAutoBlogger {
 	/** Register AJAX handlers for admin actions. */
 	private function register_ajax_hooks(): void {
 		add_action( 'wp_ajax_prautoblogger_generate_now', [ $this->executor, 'on_ajax_generate_now' ] );
+		add_action( 'wp_ajax_prautoblogger_generate_image', [ $this->executor, 'on_ajax_generate_image' ] );
 		add_action( 'wp_ajax_prautoblogger_test_connection', [ $this->executor, 'on_ajax_test_connection' ] );
 
 		$review_queue = new PRAutoBlogger_Review_Queue();

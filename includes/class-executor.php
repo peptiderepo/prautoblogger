@@ -95,6 +95,63 @@ class PRAutoBlogger_Executor {
 		}
 	}
 
+	/**
+	 * AJAX handler: generate images for existing posts that lack them.
+	 *
+	 * Accepts a `post_id` parameter. Generates Image A (article-driven) and
+	 * sets it as the featured image. Useful for retroactively adding images
+	 * to posts published before image generation was enabled/fixed.
+	 *
+	 * Side effects: Cloudflare API call, media library write, post meta update.
+	 */
+	public function on_ajax_generate_image(): void {
+		check_ajax_referer( 'prautoblogger_generate_image', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'prautoblogger' ) ], 403 );
+			return;
+		}
+
+		// Image generation can take 20-30s on Cloudflare Workers AI.
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		@set_time_limit( 120 );
+
+		$post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
+		if ( 0 === $post_id ) {
+			wp_send_json_error( [ 'message' => __( 'Missing post_id parameter.', 'prautoblogger' ) ] );
+			return;
+		}
+
+		$post = get_post( $post_id );
+		if ( ! $post ) {
+			wp_send_json_error( [ 'message' => sprintf( __( 'Post %d not found.', 'prautoblogger' ), $post_id ) ] );
+			return;
+		}
+
+		try {
+			$pipeline     = new PRAutoBlogger_Image_Pipeline();
+			$article_data = [
+				'post_title'   => $post->post_title,
+				'post_content' => $post->post_content,
+			];
+
+			$result = $pipeline->generate_and_attach_images( $post_id, $article_data, null );
+
+			// Set featured image if Image A was generated.
+			if ( ! empty( $result['image_a_id'] ) ) {
+				set_post_thumbnail( $post_id, $result['image_a_id'] );
+			}
+
+			wp_send_json_success( $result );
+		} catch ( \Exception $e ) {
+			PRAutoBlogger_Logger::instance()->error(
+				'Retroactive image gen failed for post ' . $post_id . ': ' . $e->getMessage(),
+				'image_pipeline'
+			);
+			wp_send_json_error( [ 'message' => $e->getMessage() ] );
+		}
+	}
+
 	/** AJAX handler: test API connections (OpenRouter, Reddit). */
 	public function on_ajax_test_connection(): void {
 		check_ajax_referer( 'prautoblogger_test_connection', 'nonce' );
