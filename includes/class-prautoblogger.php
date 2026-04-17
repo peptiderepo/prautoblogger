@@ -94,6 +94,7 @@ class PRAutoBlogger {
 		add_action( 'wp_ajax_prautoblogger_generate_now', [ $this->executor, 'on_ajax_generate_now' ] );
 		add_action( 'wp_ajax_prautoblogger_generate_image', [ $this->executor, 'on_ajax_generate_image' ] );
 		add_action( 'wp_ajax_prautoblogger_test_connection', [ $this->executor, 'on_ajax_test_connection' ] );
+		add_action( 'wp_ajax_prautoblogger_get_models', [ $this->executor, 'on_ajax_get_models' ] );
 
 		$review_queue = new PRAutoBlogger_Review_Queue();
 		add_action( 'wp_ajax_prautoblogger_approve_post', [ $review_queue, 'on_ajax_approve_post' ] );

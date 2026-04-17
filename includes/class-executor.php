@@ -152,6 +152,34 @@ class PRAutoBlogger_Executor {
 		}
 	}
 
+	/**
+	 * AJAX handler: return the model registry for the admin model picker.
+	 *
+	 * Returns the full cached model list. If the registry is empty, triggers
+	 * a refresh first. Called by the model-picker.js popup.
+	 *
+	 * Side effects: may trigger an OpenRouter API call if registry is empty.
+	 */
+	public function on_ajax_get_models(): void {
+		check_ajax_referer( 'prautoblogger_get_models', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'prautoblogger' ) ], 403 );
+			return;
+		}
+
+		$registry = $this->get_model_registry();
+		$models   = $registry->get_models();
+
+		// Auto-refresh if the registry has never been populated.
+		if ( empty( $models ) ) {
+			$registry->refresh( true );
+			$models = $registry->get_models();
+		}
+
+		wp_send_json_success( $models );
+	}
+
 	/** AJAX handler: test API connections (OpenRouter, Reddit). */
 	public function on_ajax_test_connection(): void {
 		check_ajax_referer( 'prautoblogger_test_connection', 'nonce' );

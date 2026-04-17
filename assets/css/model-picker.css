@@ -1,0 +1,206 @@
+/**
+ * Model picker popup styles for PRAutoBlogger admin.
+ *
+ * Renders a modal overlay with a searchable list of AI models.
+ * Uses the same design tokens as admin.css (--ab-* CSS variables).
+ *
+ * @see assets/js/model-picker.js — JS that builds and manages the popup DOM.
+ * @see assets/css/admin.css      — Parent design system variables.
+ */
+
+/* ── Overlay ────────────────────────────────────────────────────────── */
+.ab-mp-overlay {
+	position: fixed; inset: 0; z-index: 100100;
+	background: rgba(0, 0, 0, 0.45);
+	display: flex; align-items: center; justify-content: center;
+	animation: ab-mp-fade-in 0.15s ease;
+}
+
+@keyframes ab-mp-fade-in {
+	from { opacity: 0; }
+	to   { opacity: 1; }
+}
+
+/* ── Popup container ────────────────────────────────────────────────── */
+.ab-mp-popup {
+	background: var(--ab-card-bg, #fff);
+	border-radius: 12px;
+	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+	width: 640px; max-width: 90vw;
+	max-height: 80vh;
+	display: flex; flex-direction: column;
+	animation: ab-mp-slide-up 0.2s ease;
+}
+
+@keyframes ab-mp-slide-up {
+	from { opacity: 0; transform: translateY(12px); }
+	to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+.ab-mp-header {
+	display: flex; align-items: center; justify-content: space-between;
+	padding: 16px 20px; border-bottom: 1px solid var(--ab-border, #e2e8f0);
+}
+
+.ab-mp-title {
+	font-size: 16px; font-weight: 700;
+	color: var(--ab-text, #1e293b);
+}
+
+.ab-mp-close {
+	background: none; border: none; cursor: pointer;
+	font-size: 22px; line-height: 1; color: var(--ab-text-muted, #64748b);
+	padding: 4px 8px; border-radius: 4px;
+}
+.ab-mp-close:hover {
+	background: var(--ab-bg, #f8fafc);
+	color: var(--ab-text, #1e293b);
+}
+
+/* ── Search ─────────────────────────────────────────────────────────── */
+.ab-mp-search-wrap {
+	padding: 12px 20px;
+	border-bottom: 1px solid var(--ab-border, #e2e8f0);
+}
+
+.ab-mp-search {
+	width: 100%; box-sizing: border-box;
+	padding: 10px 14px; font-size: 14px;
+	border: 1px solid var(--ab-border, #e2e8f0);
+	border-radius: 8px; outline: none;
+	color: var(--ab-text, #1e293b);
+	background: var(--ab-bg, #f8fafc);
+}
+.ab-mp-search:focus {
+	border-color: var(--ab-primary, #4f46e5);
+	box-shadow: 0 0 0 3px var(--ab-primary-light, #eef2ff);
+	background: var(--ab-card-bg, #fff);
+}
+
+/* ── Model list ─────────────────────────────────────────────────────── */
+.ab-mp-list {
+	flex: 1; overflow-y: auto;
+	padding: 4px 0;
+	min-height: 200px; max-height: 50vh;
+}
+
+.ab-mp-loading, .ab-mp-empty {
+	padding: 40px 20px; text-align: center;
+	color: var(--ab-text-muted, #64748b); font-size: 14px;
+}
+
+/* ── Model row ──────────────────────────────────────────────────────── */
+.ab-mp-row {
+	display: flex; align-items: center; justify-content: space-between;
+	padding: 10px 20px; cursor: pointer;
+	transition: background 0.1s ease;
+	gap: 12px;
+}
+.ab-mp-row:hover {
+	background: var(--ab-primary-light, #eef2ff);
+}
+
+.ab-mp-row-main {
+	display: flex; align-items: center; gap: 8px;
+	flex: 1; min-width: 0;
+}
+
+.ab-mp-name {
+	font-size: 13px; font-weight: 600;
+	color: var(--ab-text, #1e293b);
+	white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.ab-mp-provider {
+	font-size: 11px; font-weight: 500;
+	color: var(--ab-primary, #4f46e5);
+	background: var(--ab-primary-light, #eef2ff);
+	padding: 1px 6px; border-radius: 4px;
+	white-space: nowrap; flex-shrink: 0;
+}
+
+.ab-mp-dep-badge {
+	font-size: 10px; font-weight: 600;
+	color: var(--ab-warning, #d97706);
+	background: #fffbeb;
+	padding: 1px 6px; border-radius: 4px;
+	white-space: nowrap; flex-shrink: 0;
+}
+
+.ab-mp-deprecated {
+	opacity: 0.55;
+}
+
+.ab-mp-row-meta {
+	display: flex; align-items: center; gap: 16px;
+	flex-shrink: 0;
+}
+
+.ab-mp-price {
+	font-size: 12px; font-weight: 500;
+	color: var(--ab-text-muted, #64748b);
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.ab-mp-ctx {
+	font-size: 11px; font-weight: 600;
+	color: var(--ab-text-muted, #64748b);
+	background: var(--ab-bg, #f8fafc);
+	padding: 2px 6px; border-radius: 4px;
+	white-space: nowrap; min-width: 36px; text-align: center;
+}
+
+/* ── Footer ─────────────────────────────────────────────────────────── */
+.ab-mp-footer {
+	display: flex; align-items: center; justify-content: space-between;
+	padding: 10px 20px;
+	border-top: 1px solid var(--ab-border, #e2e8f0);
+	font-size: 12px; color: var(--ab-text-muted, #64748b);
+}
+
+/* ── Trigger button (replaces text input) ───────────────────────────── */
+.ab-mp-trigger {
+	display: inline-flex; align-items: center; gap: 10px;
+	padding: 8px 14px;
+	background: var(--ab-card-bg, #fff);
+	border: 1px solid var(--ab-border, #e2e8f0);
+	border-radius: 6px; cursor: pointer;
+	transition: border-color 0.15s ease, box-shadow 0.15s ease;
+	max-width: 420px; width: 100%; box-sizing: border-box;
+	text-align: left;
+}
+.ab-mp-trigger:hover {
+	border-color: var(--ab-primary, #4f46e5);
+}
+.ab-mp-trigger:focus {
+	border-color: var(--ab-primary, #4f46e5);
+	box-shadow: 0 0 0 3px var(--ab-primary-light, #eef2ff);
+	outline: none;
+}
+
+.ab-mp-display-name {
+	font-size: 13px; font-weight: 600;
+	color: var(--ab-text, #1e293b);
+	flex: 1; min-width: 0;
+	overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.ab-mp-display-price {
+	font-size: 11px; font-weight: 500;
+	color: var(--ab-text-muted, #64748b);
+	white-space: nowrap; flex-shrink: 0;
+}
+
+.ab-mp-display-arrow {
+	color: var(--ab-text-muted, #64748b);
+	font-size: 14px; flex-shrink: 0;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────── */
+@media screen and (max-width: 680px) {
+	.ab-mp-popup { width: 95vw; max-height: 85vh; }
+	.ab-mp-row { padding: 10px 14px; }
+	.ab-mp-row-meta { gap: 8px; }
+}

@@ -22,6 +22,7 @@ class PRAutoBlogger_Autoloader {
 	private static array $directories = [
 		'',           // includes/ root
 		'admin/',
+		'admin/fields/',
 		'core/',
 		'providers/',
 		'models/',
