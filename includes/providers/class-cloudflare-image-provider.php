@@ -69,6 +69,10 @@ class PRAutoBlogger_Cloudflare_Image_Provider implements PRAutoBlogger_Image_Pro
 	 * @throws \RuntimeException         On auth failure, bad response shape, or retry exhaustion.
 	 */
 	public function generate_image( string $prompt, int $width, int $height, array $options = [] ): array {
+		// FLUX.1 requires dimensions divisible by 8; round to nearest valid value.
+		$width  = (int) ( round( $width / 8 ) * 8 );
+		$height = (int) ( round( $height / 8 ) * 8 );
+
 		$this->assert_valid_dimensions( $width, $height );
 		$prompt = trim( $prompt );
 		if ( '' === $prompt ) {

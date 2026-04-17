@@ -27,8 +27,10 @@ class PRAutoBlogger_Image_Pipeline {
 	/**
 	 * Default image dimensions (landscape).
 	 */
+	// FLUX.1 requires both dimensions to be divisible by 8.
+	// 1200×632 is the closest 8-aligned pair to the standard OG image size (1200×630).
 	private const DEFAULT_WIDTH  = 1200;
-	private const DEFAULT_HEIGHT = 630;
+	private const DEFAULT_HEIGHT = 632;
 
 	/**
 	 * The image provider (FLUX.1 via Cloudflare or another).
