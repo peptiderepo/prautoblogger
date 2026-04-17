@@ -4,23 +4,60 @@ declare(strict_types=1);
 /**
  * Builds image prompts from article content or source data.
  *
- * Generates concise visual concepts suitable for FLUX.1 image generation,
- * extracting key themes from article titles/content and Reddit source data.
+ * Uses a cheap LLM (via OpenRouter) to distill article content into concise
+ * visual scene descriptions optimised for FLUX.1. Falls back to rule-based
+ * synthesis if the LLM call fails, so image generation never blocks on a
+ * prompt-rewriting outage.
  *
  * Triggered by: PRAutoBlogger_Image_Pipeline during content generation run.
- * Dependencies: None — pure data transformation.
+ * Dependencies: PRAutoBlogger_OpenRouter_Provider (LLM call),
+ *               PRAutoBlogger_Cost_Tracker (logs prompt-rewrite cost),
+ *               PRAutoBlogger_Logger (diagnostics).
  *
  * @see core/class-image-pipeline.php — Consumes build_article_prompt() and build_source_prompt().
+ * @see providers/class-open-router-provider.php — LLM provider used for rewriting.
  * @see ARCHITECTURE.md              — Image generation data flow.
  */
 class PRAutoBlogger_Image_Prompt_Builder {
 
 	/**
+	 * System prompt that teaches the LLM how to write image-gen prompts.
+	 *
+	 * Why this lives here instead of in wp_options: it's engineering-level
+	 * instruction, not a user-facing setting. Changing it should require a
+	 * code review, not an admin-panel click.
+	 */
+	private const REWRITER_SYSTEM_PROMPT = <<<'PROMPT'
+You are an image-prompt specialist for FLUX.1, a text-to-image model.
+
+Given an article title and summary, output ONE short paragraph (2-4 sentences, under 60 words) describing a concrete visual scene that would make a compelling featured image for the article.
+
+Rules:
+- Describe OBJECTS, SETTING, LIGHTING, COMPOSITION, and MOOD — not abstract concepts.
+- Never include text, words, labels, logos, or watermarks in the scene.
+- Never describe people's faces in detail (FLUX.1 struggles with faces). Use silhouettes, hands, or over-the-shoulder framings instead.
+- Focus on the article's core SUBJECT as a physical thing: lab equipment, supplements, syringes, molecules, gym settings, packaging, etc.
+- Do NOT include any style direction — that is appended separately.
+- Output ONLY the scene description. No preamble, no explanation, no quotes.
+PROMPT;
+
+	/**
+	 * Max tokens for the rewriter response. Scene descriptions are short.
+	 */
+	private const REWRITER_MAX_TOKENS = 120;
+
+	/**
+	 * OpenRouter provider for LLM calls. Null until first use.
+	 *
+	 * @var PRAutoBlogger_OpenRouter_Provider|null
+	 */
+	private ?PRAutoBlogger_OpenRouter_Provider $llm = null;
+
+	/**
 	 * Build a visual prompt from finished article content.
 	 *
-	 * Extracts the title and first paragraph to synthesize a product-marketing
-	 * angle visual concept suitable for a featured image. Appends the style suffix
-	 * from plugin options.
+	 * Tries LLM rewriting first; falls back to rule-based synthesis on failure.
+	 * Appends the style suffix from plugin options.
 	 *
 	 * @param array{
 	 *     post_title?: string,
@@ -28,19 +65,15 @@ class PRAutoBlogger_Image_Prompt_Builder {
 	 *     suggested_title?: string,
 	 * } $article_data Article data with title and HTML content.
 	 *
-	 * @return string Concise prompt (under 200 words) with style suffix appended.
+	 * @return string Concise prompt with style suffix appended.
 	 */
 	public function build_article_prompt( array $article_data ): string {
-		$title   = $article_data['post_title'] ?? $article_data['suggested_title'] ?? 'Product';
-		$content = $article_data['post_content'] ?? '';
-
-		// Extract first paragraph from HTML content.
+		$title      = $article_data['post_title'] ?? $article_data['suggested_title'] ?? 'Product';
+		$content    = $article_data['post_content'] ?? '';
 		$first_para = $this->extract_first_paragraph( $content );
 
-		// Build visual concepts from title + first paragraph.
-		$concepts = $this->synthesize_visual_concepts( $title, $first_para );
+		$concepts = $this->rewrite_via_llm( $title, $first_para );
 
-		// Append style suffix.
 		$style_suffix = get_option( 'prautoblogger_image_style_suffix', PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX );
 
 		return trim( $concepts . ' ' . $style_suffix );
@@ -49,9 +82,8 @@ class PRAutoBlogger_Image_Prompt_Builder {
 	/**
 	 * Build a visual prompt from source Reddit thread data.
 	 *
-	 * Extracts the Reddit thread title and top comments to synthesize an
-	 * editorial-cartoonist angle visual concept. Appends the style suffix
-	 * from plugin options.
+	 * Tries LLM rewriting first; falls back to rule-based synthesis on failure.
+	 * Appends the style suffix from plugin options.
 	 *
 	 * @param array{
 	 *     title?: string,
@@ -59,22 +91,97 @@ class PRAutoBlogger_Image_Prompt_Builder {
 	 *     comments?: string[],
 	 * } $source_data Reddit source data with title and comments.
 	 *
-	 * @return string Concise prompt (under 200 words) with style suffix appended.
+	 * @return string Concise prompt with style suffix appended.
 	 */
 	public function build_source_prompt( array $source_data ): string {
 		$title    = $source_data['title'] ?? 'Reddit Discussion';
 		$comments = $source_data['comments'] ?? [];
+		$context  = is_array( $comments ) && ! empty( $comments ) ? $comments[0] : '';
 
-		// Build visual concepts from title + top comments.
-		$concepts = $this->synthesize_visual_concepts(
-			$title,
-			is_array( $comments ) && ! empty( $comments ) ? $comments[0] : ''
-		);
+		$concepts = $this->rewrite_via_llm( $title, $context );
 
-		// Append style suffix.
 		$style_suffix = get_option( 'prautoblogger_image_style_suffix', PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX );
 
 		return trim( $concepts . ' ' . $style_suffix );
+	}
+
+	/**
+	 * Use a cheap LLM to distill title + context into a visual scene.
+	 *
+	 * Falls back to rule-based synthesis if the LLM call fails for any
+	 * reason (network, auth, timeout, unexpected response shape).
+	 *
+	 * Side effects: one OpenRouter API call; one cost-tracker log entry.
+	 *
+	 * @param string $title   Article or thread title.
+	 * @param string $context First paragraph or top comment.
+	 * @return string Visual scene description (without style suffix).
+	 */
+	private function rewrite_via_llm( string $title, string $context ): string {
+		$title   = trim( sanitize_text_field( $title ) );
+		$context = trim( sanitize_text_field( $context ) );
+
+		// Truncate context to keep prompt tokens low.
+		if ( strlen( $context ) > 300 ) {
+			$context = substr( $context, 0, 300 ) . '...';
+		}
+
+		$user_message = "Article title: {$title}";
+		if ( '' !== $context ) {
+			$user_message .= "\n\nSummary: {$context}";
+		}
+
+		try {
+			$llm   = $this->get_llm_provider();
+			$model = get_option( 'prautoblogger_analysis_model', PRAUTOBLOGGER_DEFAULT_ANALYSIS_MODEL );
+
+			$result = $llm->send_chat_completion(
+				[
+					[ 'role' => 'system', 'content' => self::REWRITER_SYSTEM_PROMPT ],
+					[ 'role' => 'user', 'content' => $user_message ],
+				],
+				$model,
+				[
+					'temperature' => 0.7,
+					'max_tokens'  => self::REWRITER_MAX_TOKENS,
+				]
+			);
+
+			$scene = trim( $result['content'] ?? '' );
+
+			// Log the rewrite cost so it shows in the analytics dashboard.
+			( new PRAutoBlogger_Cost_Tracker() )->log_api_call(
+				null,
+				'image_prompt_rewrite',
+				'openrouter',
+				$model,
+				$result['prompt_tokens'] ?? 0,
+				$result['completion_tokens'] ?? 0
+			);
+
+			$cost = $llm->estimate_cost(
+				$model,
+				$result['prompt_tokens'] ?? 0,
+				$result['completion_tokens'] ?? 0
+			);
+
+			PRAutoBlogger_Logger::instance()->debug(
+				sprintf( 'Image prompt rewritten (%d→%d chars, $%.6f): %s', strlen( $user_message ), strlen( $scene ), $cost, substr( $scene, 0, 120 ) ),
+				'image_prompt_builder'
+			);
+
+			if ( '' !== $scene ) {
+				return $scene;
+			}
+		} catch ( \Exception $e ) {
+			// LLM failure is not fatal — fall back to rule-based synthesis.
+			PRAutoBlogger_Logger::instance()->warning(
+				'Image prompt LLM rewrite failed, using fallback: ' . $e->getMessage(),
+				'image_prompt_builder'
+			);
+		}
+
+		return $this->synthesize_visual_concepts_fallback( $title, $context );
 	}
 
 	/**
@@ -84,18 +191,13 @@ class PRAutoBlogger_Image_Prompt_Builder {
 	 * or 200 characters, whichever comes first.
 	 *
 	 * @param string $html HTML content.
-	 *
 	 * @return string Plain text of the first paragraph.
 	 */
 	private function extract_first_paragraph( string $html ): string {
-		// Remove HTML tags.
-		$text = wp_strip_all_tags( $html );
+		$text  = wp_strip_all_tags( $html );
+		$paras = preg_split( '/\n\n+/', $text );
+		$para  = isset( $paras[0] ) ? trim( $paras[0] ) : '';
 
-		// Split on double-newline and take the first paragraph.
-		$paras  = preg_split( '/\n\n+/', $text );
-		$para   = isset( $paras[0] ) ? trim( $paras[0] ) : '';
-
-		// Limit to first 200 chars to keep prompt concise.
 		if ( strlen( $para ) > 200 ) {
 			$para = substr( $para, 0, 200 ) . '...';
 		}
@@ -104,33 +206,37 @@ class PRAutoBlogger_Image_Prompt_Builder {
 	}
 
 	/**
-	 * Synthesize visual concepts from a title and supporting text.
+	 * Rule-based fallback when LLM rewriting is unavailable.
 	 *
-	 * Combines key words and themes into a short visual narrative that FLUX.1
-	 * can render. This is intentionally rule-based rather than LLM-driven to
-	 * avoid another API call per image generation.
+	 * Kept deliberately simple — this only runs if OpenRouter is down.
 	 *
-	 * @param string $title Main heading / topic.
-	 * @param string $supporting_text Additional context (first para or comment).
-	 *
+	 * @param string $title           Main heading / topic.
+	 * @param string $supporting_text Additional context.
 	 * @return string Synthesized visual prompt concept.
 	 */
-	private function synthesize_visual_concepts( string $title, string $supporting_text ): string {
-		$title = trim( sanitize_text_field( $title ) );
-		$text  = trim( sanitize_text_field( $supporting_text ) );
-
-		// Build a simple declarative concept from title and text snippets.
+	private function synthesize_visual_concepts_fallback( string $title, string $supporting_text ): string {
 		$prompt = "A visual representation of: {$title}";
 
-		if ( ! empty( $text ) ) {
-			// Take first 150 chars to avoid bloating the prompt.
-			$snippet = strlen( $text ) > 150
-				? substr( $text, 0, 150 ) . '...'
-				: $text;
+		if ( '' !== $supporting_text ) {
+			$snippet = strlen( $supporting_text ) > 150
+				? substr( $supporting_text, 0, 150 ) . '...'
+				: $supporting_text;
 
 			$prompt .= ". Context: {$snippet}";
 		}
 
 		return trim( $prompt );
+	}
+
+	/**
+	 * Lazy-load the OpenRouter provider.
+	 *
+	 * @return PRAutoBlogger_OpenRouter_Provider
+	 */
+	private function get_llm_provider(): PRAutoBlogger_OpenRouter_Provider {
+		if ( null === $this->llm ) {
+			$this->llm = new PRAutoBlogger_OpenRouter_Provider();
+		}
+		return $this->llm;
 	}
 }
