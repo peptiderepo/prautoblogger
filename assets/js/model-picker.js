@@ -22,6 +22,12 @@
 	 * @return {jQuery.Deferred} Resolves with model array.
 	 */
 	function fetchModels(capability) {
+		// Cloudflare image models are embedded in the page config — no AJAX needed.
+		if (capability === 'cloudflare_image') {
+			var cfModels = config.cloudflareModels || [];
+			return $.Deferred().resolve(cfModels);
+		}
+
 		if (cachedModels) {
 			return $.Deferred().resolve(filterModels(cachedModels, capability));
 		}
@@ -105,6 +111,19 @@
 	 */
 	function renderModelRow(model) {
 		var deprecated = model.deprecated ? ' ab-mp-deprecated' : '';
+		var isImageModel = model.cost_per_image !== undefined && model.cost_per_image > 0;
+		var priceHtml, priceTitle, metaRight;
+
+		if (isImageModel) {
+			priceHtml  = '$' + model.cost_per_image.toFixed(4) + '/image';
+			priceTitle = 'Cost per generated image';
+			metaRight  = model.description ? '<span class="ab-mp-ctx" title="Details">' + escHtml(model.description) + '</span>' : '';
+		} else {
+			priceHtml  = formatPrice(model.input_price_per_m) + ' / ' + formatPrice(model.output_price_per_m);
+			priceTitle = 'Input / Output per 1M tokens';
+			metaRight  = '<span class="ab-mp-ctx" title="Context window">' + formatContext(model.context_length) + '</span>';
+		}
+
 		return (
 			'<div class="ab-mp-row' + deprecated + '" data-model-id="' + escAttr(model.id) + '">' +
 				'<div class="ab-mp-row-main">' +
@@ -113,10 +132,8 @@
 					(model.deprecated ? '<span class="ab-mp-dep-badge">deprecated</span>' : '') +
 				'</div>' +
 				'<div class="ab-mp-row-meta">' +
-					'<span class="ab-mp-price" title="Input / Output per 1M tokens">' +
-						formatPrice(model.input_price_per_m) + ' / ' + formatPrice(model.output_price_per_m) +
-					'</span>' +
-					'<span class="ab-mp-ctx" title="Context window">' + formatContext(model.context_length) + '</span>' +
+					'<span class="ab-mp-price" title="' + priceTitle + '">' + priceHtml + '</span>' +
+					metaRight +
 				'</div>' +
 			'</div>'
 		);
@@ -143,6 +160,9 @@
 		var capability = $trigger.data('capability') || '';
 
 		// Build overlay + popup structure.
+		var isCloudflare = capability === 'cloudflare_image';
+		var priceLabel = isCloudflare ? 'Cost per generated image' : 'Prices per 1M tokens (in / out)';
+
 		var $overlay = $('<div class="ab-mp-overlay"></div>');
 		var $popup = $(
 			'<div class="ab-mp-popup">' +
@@ -156,7 +176,7 @@
 				'<div class="ab-mp-list"><div class="ab-mp-loading">Loading models…</div></div>' +
 				'<div class="ab-mp-footer">' +
 					'<span class="ab-mp-count"></span>' +
-					'<span class="ab-mp-price-label">Prices per 1M tokens (in / out)</span>' +
+					'<span class="ab-mp-price-label">' + priceLabel + '</span>' +
 				'</div>' +
 			'</div>'
 		);
@@ -230,9 +250,12 @@
 			// Update hidden input + display.
 			$('#' + fieldId).val(model.id);
 			$trigger.find('.ab-mp-display-name').text(model.name || model.id);
-			$trigger.find('.ab-mp-display-price').text(
-				formatPrice(model.input_price_per_m) + ' / ' + formatPrice(model.output_price_per_m)
-			);
+
+			var isImageModel = model.cost_per_image !== undefined && model.cost_per_image > 0;
+			var priceText = isImageModel
+				? '$' + model.cost_per_image.toFixed(4) + '/image'
+				: formatPrice(model.input_price_per_m) + ' / ' + formatPrice(model.output_price_per_m);
+			$trigger.find('.ab-mp-display-price').text(priceText);
 			closePicker();
 		});
 

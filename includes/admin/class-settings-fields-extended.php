@@ -134,13 +134,10 @@ class PRAutoBlogger_Settings_Fields_Extended {
 			[
 				'id'          => 'prautoblogger_image_model',
 				'label'       => __( 'Image Model', 'prautoblogger' ),
-				'type'        => 'select',
+				'type'        => 'model_select',
 				'section'     => 'prautoblogger_images',
 				'default'     => PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL,
-				'options'     => [
-					'flux-1-schnell' => __( 'FLUX.1 [schnell] — fast + cheap (default)', 'prautoblogger' ),
-					'flux-1-dev'     => __( 'FLUX.1 [dev] — higher quality, ~4× cost', 'prautoblogger' ),
-				],
+				'capability'  => 'cloudflare_image',
 				'description' => __( 'Schnell is the normal choice. Switch to [dev] for higher quality.', 'prautoblogger' ),
 				'badge'       => __( 'Low cost', 'prautoblogger' ),
 			],

@@ -80,6 +80,33 @@ class PRAutoBlogger_Admin_Page {
 			'generateText'   => __( 'Generate Now', 'prautoblogger' ),
 			'testingText'    => __( 'Testing...', 'prautoblogger' ),
 			'testText'       => __( 'Test Connections', 'prautoblogger' ),
+			// Static Cloudflare image models for the picker (no registry API for these).
+			'cloudflareModels' => [
+				[
+					'id'                => 'flux-1-schnell',
+					'name'              => 'FLUX.1 [schnell]',
+					'provider'          => 'cloudflare',
+					'context_length'    => 0,
+					'input_price_per_m' => 0,
+					'output_price_per_m' => 0,
+					'cost_per_image'    => 0.0007,
+					'capabilities'      => [ 'cloudflare_image' ],
+					'deprecated'        => false,
+					'description'       => __( 'Fast + cheap (4 steps). Default choice.', 'prautoblogger' ),
+				],
+				[
+					'id'                => 'flux-1-dev',
+					'name'              => 'FLUX.1 [dev]',
+					'provider'          => 'cloudflare',
+					'context_length'    => 0,
+					'input_price_per_m' => 0,
+					'output_price_per_m' => 0,
+					'cost_per_image'    => 0.0028,
+					'capabilities'      => [ 'cloudflare_image' ],
+					'deprecated'        => false,
+					'description'       => __( 'Higher quality (20 steps), ~4× cost.', 'prautoblogger' ),
+				],
+			],
 		] );
 	}
 

@@ -23,19 +23,51 @@ class PRAutoBlogger_OpenRouter_Model_Field {
 	 * @param string               $value Current model id (e.g. 'google/gemini-2.5-flash-lite').
 	 * @param array<string, mixed> $args  Field definition from settings fields.
 	 */
+	/**
+	 * Static Cloudflare Workers AI model definitions.
+	 *
+	 * These don't come from an API registry — Cloudflare has only two FLUX
+	 * models and pricing is stable. Costs are per-image at 1024×632 (default).
+	 *
+	 * @var array<string, array{name: string, cost_per_image: string}>
+	 */
+	private const CLOUDFLARE_MODELS = [
+		'flux-1-schnell' => [
+			'name'           => 'FLUX.1 [schnell]',
+			'provider'       => 'Cloudflare',
+			'cost_per_image' => '$0.0007',
+			'description'    => 'Fast + cheap, 4 inference steps',
+		],
+		'flux-1-dev' => [
+			'name'           => 'FLUX.1 [dev]',
+			'provider'       => 'Cloudflare',
+			'cost_per_image' => '$0.0028',
+			'description'    => 'Higher quality, ~4× cost, 20 steps',
+		],
+	];
+
 	public static function render( string $id, string $value, array $args ): void {
 		$capability    = $args['capability'] ?? 'text→text';
 		$display_name  = $value ?: __( '— Select a model —', 'prautoblogger' );
 		$display_price = '';
 
-		// Try to resolve display name + price from the cached registry.
-		$registry = prautoblogger()->get_executor()->get_model_registry();
-		$model    = $registry->find_model( $value );
-		if ( null !== $model ) {
-			$display_name  = $model['name'] ?? $value;
-			$in            = (float) ( $model['input_price_per_m'] ?? 0 );
-			$out           = (float) ( $model['output_price_per_m'] ?? 0 );
-			$display_price = self::format_price( $in ) . ' / ' . self::format_price( $out );
+		if ( 'cloudflare_image' === $capability ) {
+			// Resolve from static Cloudflare model list.
+			$cf_model = self::CLOUDFLARE_MODELS[ $value ] ?? null;
+			if ( null !== $cf_model ) {
+				$display_name  = $cf_model['name'];
+				$display_price = $cf_model['cost_per_image'] . '/image';
+			}
+		} else {
+			// Resolve from the OpenRouter model registry cache.
+			$registry = prautoblogger()->get_executor()->get_model_registry();
+			$model    = $registry->find_model( $value );
+			if ( null !== $model ) {
+				$display_name  = $model['name'] ?? $value;
+				$in            = (float) ( $model['input_price_per_m'] ?? 0 );
+				$out           = (float) ( $model['output_price_per_m'] ?? 0 );
+				$display_price = self::format_price( $in ) . ' / ' . self::format_price( $out );
+			}
 		}
 
 		// Hidden input carries the actual value for the form submission.
