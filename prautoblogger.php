@@ -8,7 +8,7 @@ declare(strict_types=1);
  * Plugin Name:       PRAutoBlogger
  * Plugin URI:        https://peptiderepo.com/prautoblogger
  * Description:       Monitors social media for trending topics, generates SEO-friendly blog posts using AI, and publishes them on a daily schedule with full cost tracking and self-improvement metrics.
- * Version:           0.2.8
+ * Version:           0.2.9
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            PeptideRepo
@@ -35,7 +35,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 | and limits without magic strings.
 */
 
-define( 'PRAUTOBLOGGER_VERSION', '0.2.8' );
+define( 'PRAUTOBLOGGER_VERSION', '0.2.9' );
 define( 'PRAUTOBLOGGER_DB_VERSION', '1.1.0' );
 define( 'PRAUTOBLOGGER_PLUGIN_FILE', __FILE__ );
 define( 'PRAUTOBLOGGER_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
@@ -59,14 +59,12 @@ define( 'PRAUTOBLOGGER_DEFAULT_EDITOR_MODEL', 'google/gemini-2.5-flash-lite' );
 define( 'PRAUTOBLOGGER_DEFAULT_IMAGE_PROVIDER', 'openrouter' );
 define( 'PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL', 'google/gemini-2.5-flash-image' );
 
-// Default style suffix appended to every image-gen prompt to create a
-// cohesive visual brand across all article images. Updated 2026-04-18
-// after switching from FLUX.1 to Gemini/GPT-5 Image models — the old
-// 90s infomercial pastiche rendered poorly on the new models. Users may
-// override via Settings → Images → Style Suffix.
+// Default style suffix appended to every image-gen prompt. Updated
+// 2026-04-18: single-panel newspaper comic style. Users may override
+// via Settings → Images → Style Suffix.
 define(
 	'PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX',
-	'Style: premium scientific lifestyle photography, professional laboratory setting with warm studio lighting, shallow depth of field, color-graded for wellness branding in rich golds and deep teals, high-end editorial quality.'
+	'Style: a single-panel newspaper comic in classic black ink on white paper, simple clean linework like The Far Side or B.C., slightly yellowed newsprint texture, hand-drawn crosshatching for shading, bold panel border, caption text in a clean sans-serif font below the panel, warm and humorous tone, visible in a newspaper comics section.'
 );
 
 /*

@@ -123,17 +123,26 @@ class PRAutoBlogger {
 			update_option( 'prautoblogger_migrated_gemini_flash_lite', '1' );
 		}
 
-		// One-time migration: replace 90s infomercial style suffix with premium
-		// science editorial style. The old pastiche rendered poorly on Gemini/GPT-5
-		// Image models. Only overwrite if the stored value IS the old default — if
-		// the user customized it, respect their choice.
-		if ( ! get_option( 'prautoblogger_migrated_style_suffix_v2' ) ) {
-			$old_infomercial = 'Style: a screengrab from a 1995 late-night cable TV infomercial';
-			$current         = get_option( 'prautoblogger_image_style_suffix', '' );
-			if ( '' === $current || false !== strpos( $current, $old_infomercial ) ) {
+		// One-time migration (v3): switch to single-panel newspaper comic style.
+		// Replaces both the old infomercial pastiche and the short-lived premium
+		// photography style. Force-update unless the user has a truly custom value.
+		if ( ! get_option( 'prautoblogger_migrated_style_suffix_v3' ) ) {
+			$known_old_prefixes = [
+				'Style: a screengrab from a 1995',       // v1: infomercial.
+				'Style: premium scientific lifestyle',    // v2: photography.
+			];
+			$current = get_option( 'prautoblogger_image_style_suffix', '' );
+			$is_old  = ( '' === $current );
+			foreach ( $known_old_prefixes as $prefix ) {
+				if ( false !== strpos( $current, $prefix ) ) {
+					$is_old = true;
+					break;
+				}
+			}
+			if ( $is_old ) {
 				update_option( 'prautoblogger_image_style_suffix', PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX );
 			}
-			update_option( 'prautoblogger_migrated_style_suffix_v2', '1' );
+			update_option( 'prautoblogger_migrated_style_suffix_v3', '1' );
 		}
 
 		// One-time migration: re-wrap existing encrypted values with "enc:" prefix.

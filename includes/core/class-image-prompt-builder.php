@@ -28,28 +28,33 @@ class PRAutoBlogger_Image_Prompt_Builder {
 	 * code review, not an admin-panel click.
 	 */
 	private const REWRITER_SYSTEM_PROMPT = <<<'PROMPT'
-You are an image-prompt specialist for premium AI image models (Gemini Flash Image, GPT-5 Image).
+You are a comedy writer and single-panel cartoon creator, like Gary Larson (The Far Side) meets science humor.
 
-Given an article title and summary about peptides, supplements, or biohacking, write ONE vivid scene description (2-3 sentences, under 80 words) for a compelling featured image. Emphasize:
-- OBJECTS and MATERIALS: lab glassware, peptide vials, molecular structures, syringes, supplement bottles, biometric devices, microscopes, fitness equipment, test tubes
-- LIGHTING and DEPTH: bright directional studio lighting, selective focus, rich warm/cool color contrasts
-- COMPOSITION: dynamic framing with clear focal point, professional product photography perspective, sense of scale and precision
-- MOOD: scientific credibility paired with aspirational wellness — premium feel, approachable, engaging
+Given an article title and summary about peptides, supplements, or biohacking, create a SINGLE-PANEL COMIC concept. Output TWO parts separated by a blank line:
 
-Avoid:
-- Abstract concepts; show concrete objects only
-- Text, logos, watermarks, or readable labels
-- Detailed human faces (use hands, torso, silhouettes, or exclude people)
-- Multiple competing visual elements; keep the subject dominant
-- Generic stock-photo composition
+SCENE: One sentence describing the visual gag — a funny, absurd, or ironic situation related to the article's topic. Use anthropomorphized molecules, lab-coat-wearing animals, befuddled scientists, gym bros encountering peptide science, supplement bottles with personality, or everyday situations with a peptide twist. Keep it simple — one clear visual joke, 1-3 characters max.
 
-Output ONLY the scene description — no preamble, explanation, or quotes. Do NOT include any style direction; that is appended separately.
+CAPTION: A short, punchy caption or speech bubble line (under 15 words) that delivers the punchline. The humor should be dry, nerdy, and accessible — the reader should chuckle even if they only half-understand the science.
+
+Rules:
+- The joke MUST relate to the article's actual subject matter, not generic science humor
+- Characters can have simple cartoon faces (round heads, dot eyes, expressive eyebrows)
+- Keep the scene physically simple — few objects, clear staging, easy to read at thumbnail size
+- The caption should work as a standalone joke even without the image
+- No logos, watermarks, or branding
+- Output ONLY the scene and caption. No preamble, no explanation.
+
+Example output format:
+A muscular gym bro stares in confusion at a tiny vial while a peptide molecule with arms and legs flexes next to him, clearly outperforming him.
+
+"I've been doing this wrong for three years."
 PROMPT;
 
 	/**
-	 * Max tokens for the rewriter response. Scene descriptions are short.
+	 * Max tokens for the rewriter response. Comic concepts need more room
+	 * for the scene description plus the caption punchline.
 	 */
-	private const REWRITER_MAX_TOKENS = 120;
+	private const REWRITER_MAX_TOKENS = 180;
 
 	/**
 	 * OpenRouter provider for LLM calls. Null until first use.
@@ -220,15 +225,11 @@ PROMPT;
 	 * @return string Synthesized visual prompt concept.
 	 */
 	private function synthesize_visual_concepts_fallback( string $title, string $supporting_text ): string {
-		$prompt = "A visual representation of: {$title}";
-
-		if ( '' !== $supporting_text ) {
-			$snippet = strlen( $supporting_text ) > 150
-				? substr( $supporting_text, 0, 150 ) . '...'
-				: $supporting_text;
-
-			$prompt .= ". Context: {$snippet}";
-		}
+		// Fallback produces a simple comic concept when the LLM is unavailable.
+		$prompt = sprintf(
+			'A cartoon scientist in a lab coat looking bewildered while examining something related to: %s. Caption below reads: "Science is full of surprises."',
+			$title
+		);
 
 		return trim( $prompt );
 	}
