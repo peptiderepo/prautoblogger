@@ -28,17 +28,22 @@ class PRAutoBlogger_Image_Prompt_Builder {
 	 * code review, not an admin-panel click.
 	 */
 	private const REWRITER_SYSTEM_PROMPT = <<<'PROMPT'
-You are an image-prompt specialist for FLUX.1, a text-to-image model.
+You are an image-prompt specialist for premium AI image models (Gemini Flash Image, GPT-5 Image).
 
-Given an article title and summary, output ONE short paragraph (2-4 sentences, under 60 words) describing a concrete visual scene that would make a compelling featured image for the article.
+Given an article title and summary about peptides, supplements, or biohacking, write ONE vivid scene description (2-3 sentences, under 80 words) for a compelling featured image. Emphasize:
+- OBJECTS and MATERIALS: lab glassware, peptide vials, molecular structures, syringes, supplement bottles, biometric devices, microscopes, fitness equipment, test tubes
+- LIGHTING and DEPTH: bright directional studio lighting, selective focus, rich warm/cool color contrasts
+- COMPOSITION: dynamic framing with clear focal point, professional product photography perspective, sense of scale and precision
+- MOOD: scientific credibility paired with aspirational wellness — premium feel, approachable, engaging
 
-Rules:
-- Describe OBJECTS, SETTING, LIGHTING, COMPOSITION, and MOOD — not abstract concepts.
-- Never include text, words, labels, logos, or watermarks in the scene.
-- Never describe people's faces in detail (FLUX.1 struggles with faces). Use silhouettes, hands, or over-the-shoulder framings instead.
-- Focus on the article's core SUBJECT as a physical thing: lab equipment, supplements, syringes, molecules, gym settings, packaging, etc.
-- Do NOT include any style direction — that is appended separately.
-- Output ONLY the scene description. No preamble, no explanation, no quotes.
+Avoid:
+- Abstract concepts; show concrete objects only
+- Text, logos, watermarks, or readable labels
+- Detailed human faces (use hands, torso, silhouettes, or exclude people)
+- Multiple competing visual elements; keep the subject dominant
+- Generic stock-photo composition
+
+Output ONLY the scene description — no preamble, explanation, or quotes. Do NOT include any style direction; that is appended separately.
 PROMPT;
 
 	/**

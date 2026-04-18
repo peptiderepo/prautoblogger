@@ -123,6 +123,19 @@ class PRAutoBlogger {
 			update_option( 'prautoblogger_migrated_gemini_flash_lite', '1' );
 		}
 
+		// One-time migration: replace 90s infomercial style suffix with premium
+		// science editorial style. The old pastiche rendered poorly on Gemini/GPT-5
+		// Image models. Only overwrite if the stored value IS the old default — if
+		// the user customized it, respect their choice.
+		if ( ! get_option( 'prautoblogger_migrated_style_suffix_v2' ) ) {
+			$old_infomercial = 'Style: a screengrab from a 1995 late-night cable TV infomercial';
+			$current         = get_option( 'prautoblogger_image_style_suffix', '' );
+			if ( '' === $current || false !== strpos( $current, $old_infomercial ) ) {
+				update_option( 'prautoblogger_image_style_suffix', PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX );
+			}
+			update_option( 'prautoblogger_migrated_style_suffix_v2', '1' );
+		}
+
 		// One-time migration: re-wrap existing encrypted values with "enc:" prefix.
 		if ( ! get_option( 'prautoblogger_migrated_enc_prefix' ) ) {
 			$enc_options = [ 'prautoblogger_openrouter_api_key', 'prautoblogger_ga4_credentials_json' ];

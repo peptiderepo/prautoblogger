@@ -138,23 +138,11 @@ class PRAutoBlogger_Post_Assembler {
 		$source_data = ( new PRAutoBlogger_Source_Collector() )->get_source_data_for_image( $idea->get_source_ids() );
 
 		try {
+			// The pipeline now sets featured image and Image B meta
+			// internally, immediately after each image generates. This
+			// ensures attachment persists even if the process times out
+			// before this method returns.
 			$result = ( new PRAutoBlogger_Image_Pipeline() )->generate_and_attach_images( $post_id, $post_data, $source_data );
-
-			if ( isset( $result['image_a_id'] ) ) {
-				set_post_thumbnail( $post_id, $result['image_a_id'] );
-				PRAutoBlogger_Logger::instance()->info(
-					sprintf( 'Set featured image (attachment %d) for post %d', $result['image_a_id'], $post_id ),
-					'publisher'
-				);
-			}
-
-			if ( isset( $result['image_b_id'] ) ) {
-				update_post_meta( $post_id, '_prautoblogger_image_b_id', $result['image_b_id'] );
-				PRAutoBlogger_Logger::instance()->info(
-					sprintf( 'Stored Image B (attachment %d) for post %d', $result['image_b_id'], $post_id ),
-					'publisher'
-				);
-			}
 
 			if ( ! empty( $result['errors'] ) ) {
 				foreach ( $result['errors'] as $error ) {

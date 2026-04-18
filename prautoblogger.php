@@ -8,7 +8,7 @@ declare(strict_types=1);
  * Plugin Name:       PRAutoBlogger
  * Plugin URI:        https://peptiderepo.com/prautoblogger
  * Description:       Monitors social media for trending topics, generates SEO-friendly blog posts using AI, and publishes them on a daily schedule with full cost tracking and self-improvement metrics.
- * Version:           0.2.7
+ * Version:           0.2.8
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            PeptideRepo
@@ -35,7 +35,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 | and limits without magic strings.
 */
 
-define( 'PRAUTOBLOGGER_VERSION', '0.2.7' );
+define( 'PRAUTOBLOGGER_VERSION', '0.2.8' );
 define( 'PRAUTOBLOGGER_DB_VERSION', '1.1.0' );
 define( 'PRAUTOBLOGGER_PLUGIN_FILE', __FILE__ );
 define( 'PRAUTOBLOGGER_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
@@ -59,12 +59,14 @@ define( 'PRAUTOBLOGGER_DEFAULT_EDITOR_MODEL', 'google/gemini-2.5-flash-lite' );
 define( 'PRAUTOBLOGGER_DEFAULT_IMAGE_PROVIDER', 'openrouter' );
 define( 'PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL', 'google/gemini-2.5-flash-image' );
 
-// CEO-approved image style suffix (decision locked 2026-04-15). Users may
-// override via Settings → Images → Style Suffix; this constant is the
-// fallback the setting reads on first install.
+// Default style suffix appended to every image-gen prompt to create a
+// cohesive visual brand across all article images. Updated 2026-04-18
+// after switching from FLUX.1 to Gemini/GPT-5 Image models — the old
+// 90s infomercial pastiche rendered poorly on the new models. Users may
+// override via Settings → Images → Style Suffix.
 define(
 	'PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX',
-	'Style: a screengrab from a 1995 late-night cable TV infomercial, oversaturated warm colors, VHS tape noise and scan lines, a bright yellow starburst graphic in the top right corner reading NEW, cheap studio lighting, dated 4:3 television framing, deadpan earnest expression, faint lens distortion, tacky low-budget commercial aesthetic.'
+	'Style: premium scientific lifestyle photography, professional laboratory setting with warm studio lighting, shallow depth of field, color-graded for wellness branding in rich golds and deep teals, high-end editorial quality.'
 );
 
 /*

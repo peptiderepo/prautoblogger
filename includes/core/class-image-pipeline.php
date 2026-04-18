@@ -138,6 +138,15 @@ class PRAutoBlogger_Image_Pipeline {
 		$image_a_result = $this->generate_image_a( $post_id, $article_data );
 		if ( ! is_wp_error( $image_a_result ) && isset( $image_a_result['attachment_id'] ) ) {
 			$result['image_a_id'] = $image_a_result['attachment_id'];
+
+			// Set featured image immediately so it persists even if the
+			// process times out before Image B finishes or before the
+			// caller gets to handle the return value.
+			set_post_thumbnail( $post_id, $image_a_result['attachment_id'] );
+			PRAutoBlogger_Logger::instance()->info(
+				sprintf( 'Set featured image (attachment %d) for post %d', $image_a_result['attachment_id'], $post_id ),
+				'image_pipeline'
+			);
 		} else {
 			$result['errors'][] = is_wp_error( $image_a_result )
 				? $image_a_result->get_error_message()
@@ -152,6 +161,14 @@ class PRAutoBlogger_Image_Pipeline {
 			$image_b_result = $this->generate_image_b( $post_id, $source_data );
 			if ( ! is_wp_error( $image_b_result ) && isset( $image_b_result['attachment_id'] ) ) {
 				$result['image_b_id'] = $image_b_result['attachment_id'];
+
+				// Store Image B reference immediately for the same
+				// timeout-resilience reason as Image A above.
+				update_post_meta( $post_id, '_prautoblogger_image_b_id', $image_b_result['attachment_id'] );
+				PRAutoBlogger_Logger::instance()->info(
+					sprintf( 'Stored Image B (attachment %d) for post %d', $image_b_result['attachment_id'], $post_id ),
+					'image_pipeline'
+				);
 			} else {
 				$result['errors'][] = is_wp_error( $image_b_result )
 					? $image_b_result->get_error_message()
@@ -160,6 +177,11 @@ class PRAutoBlogger_Image_Pipeline {
 			if ( ! is_wp_error( $image_b_result ) ) {
 				$result['cost_usd'] += $image_b_result['cost_usd'] ?? 0.0;
 			}
+		} else {
+			PRAutoBlogger_Logger::instance()->info(
+				sprintf( 'Image B skipped for post %d: no source data available.', $post_id ),
+				'image_pipeline'
+			);
 		}
 
 		return $result;

@@ -152,17 +152,9 @@ class PRAutoBlogger_Executor {
 				is_array( $source_ids ) ? array_map( 'absint', $source_ids ) : []
 			);
 
+			// The pipeline now sets featured image and Image B meta
+			// internally, immediately after each image generates.
 			$result = $pipeline->generate_and_attach_images( $post_id, $article_data, $source_data );
-
-			// Set featured image if Image A was generated.
-			if ( ! empty( $result['image_a_id'] ) ) {
-				set_post_thumbnail( $post_id, $result['image_a_id'] );
-			}
-
-			// Store Image B in post meta if generated.
-			if ( ! empty( $result['image_b_id'] ) ) {
-				update_post_meta( $post_id, '_prautoblogger_image_b_id', $result['image_b_id'] );
-			}
 
 			wp_send_json_success( $result );
 		} catch ( \Throwable $e ) {
