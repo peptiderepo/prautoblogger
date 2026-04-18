@@ -147,6 +147,11 @@ class PRAutoBlogger_Executor {
 	 *               transient updates.
 	 */
 	public function on_manual_generation(): void {
+		// Keep PHP running even after LiteSpeed closes the HTTP connection.
+		// On Hostinger shared hosting, the web server kills HTTP connections
+		// at 120 seconds, but ignore_user_abort lets the PHP process continue.
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		@ignore_user_abort( true );
 		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		@set_time_limit( 300 );
 
@@ -210,14 +215,55 @@ class PRAutoBlogger_Executor {
 			return;
 		}
 
-		// If still "running" but started more than 10 minutes ago, assume it died.
-		if ( 'running' === $status['status'] && isset( $status['started'] ) && ( time() - $status['started'] ) > self::STATUS_TTL ) {
-			delete_transient( self::STATUS_TRANSIENT );
-			wp_send_json_success( [
-				'status'  => 'error',
-				'message' => __( 'Generation timed out. Check the Activity Log for details.', 'prautoblogger' ),
-			] );
-			return;
+		// If still "running" but the generation lock is released, the pipeline
+		// finished but the transient update was lost (e.g., PHP process killed
+		// by Hostinger after LiteSpeed connection timeout). Detect this by
+		// checking if the lock is gone and a recent post exists.
+		if ( 'running' === $status['status'] ) {
+			$started = $status['started'] ?? 0;
+			$elapsed = time() - $started;
+
+			// After 10 minutes, give up unconditionally.
+			if ( $elapsed > self::STATUS_TTL ) {
+				delete_transient( self::STATUS_TRANSIENT );
+				wp_send_json_success( [
+					'status'  => 'error',
+					'message' => __( 'Generation timed out. Check the Activity Log for details.', 'prautoblogger' ),
+				] );
+				return;
+			}
+
+			// After 2 minutes, check if the lock was released (pipeline finished
+			// but transient never updated). Look for a post created since the run
+			// started to confirm success.
+			if ( $elapsed > 120 && ! $this->is_generation_locked() ) {
+				$recent = get_posts( [
+					'post_type'      => 'post',
+					'post_status'    => [ 'publish', 'draft' ],
+					'posts_per_page' => 1,
+					'date_query'     => [ [ 'after' => gmdate( 'Y-m-d H:i:s', $started ) ] ],
+					'meta_key'       => '_prautoblogger_run_id',
+					'orderby'        => 'date',
+					'order'          => 'DESC',
+				] );
+				delete_transient( self::STATUS_TRANSIENT );
+				if ( ! empty( $recent ) ) {
+					wp_send_json_success( [
+						'status'    => 'complete',
+						'generated' => 1,
+						'published' => 1,
+						'rejected'  => 0,
+						'cost'      => 0.0,
+						'note'      => __( 'Generation completed (status recovered).', 'prautoblogger' ),
+					] );
+					return;
+				}
+				wp_send_json_success( [
+					'status'  => 'error',
+					'message' => __( 'Generation process ended without producing content. Check Activity Log.', 'prautoblogger' ),
+				] );
+				return;
+			}
 		}
 
 		wp_send_json_success( $status );
@@ -400,6 +446,25 @@ class PRAutoBlogger_Executor {
 		);
 
 		return $result > 0;
+	}
+
+	/**
+	 * Check if the generation lock is currently held.
+	 *
+	 * @return bool True if the lock exists (generation in progress or stuck).
+	 */
+	public function is_generation_locked(): bool {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		$row = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
+				'prautoblogger_generation_lock'
+			)
+		);
+
+		return null !== $row;
 	}
 
 	/** Release the generation mutex. */
