@@ -4,12 +4,14 @@ declare(strict_types=1);
 /**
  * Ranks and deduplicates article ideas from analysis results.
  *
- * Compares against existing published posts to avoid topic overlap,
- * scores ideas by relevance, frequency, and freshness, then returns
- * the top N ideas matching the daily target.
+ * Two dedup scopes: (1) intra-batch — prevents proposing two articles on
+ * the same topic in one run; (2) recent posts — avoids back-to-back
+ * similar content within a configurable recency window (default 7 days).
+ * Older articles are intentionally NOT deduped against — revisiting a
+ * topic weeks later is fine.
  *
  * Triggered by: PRAutoBlogger::run_generation_pipeline() (step 3).
- * Dependencies: WordPress $wpdb, WP_Query.
+ * Dependencies: WordPress WP_Query.
  *
  * @see core/class-content-analyzer.php  — Produces the analysis results we consume.
  * @see core/class-content-generator.php — Consumes the ranked ideas we produce.
@@ -39,27 +41,44 @@ class PRAutoBlogger_Idea_Scorer {
 	 * @return PRAutoBlogger_Article_Idea[] Top-ranked ideas, sorted by score descending.
 	 */
 	public function score_and_rank( array $analysis_results, int $target_count ): array {
-		$exclusions    = json_decode( get_option( 'prautoblogger_topic_exclusions', '[]' ), true ) ?: [];
-		$ideas         = [];
+		$exclusions     = json_decode( get_option( 'prautoblogger_topic_exclusions', '[]' ), true ) ?: [];
+		$ideas          = [];
 		$excluded_count = 0;
 		$deduped_count  = 0;
 
+		// Track keywords of already-accepted ideas for intra-batch dedup.
+		$accepted_keyword_sets = [];
+
 		foreach ( $analysis_results as $result ) {
-			// Skip excluded topics.
 			if ( $this->is_excluded( $result->get_topic(), $exclusions ) ) {
 				$excluded_count++;
 				continue;
 			}
 
-			// Skip if we've already published something very similar
-			// (unless dedup is disabled for manual runs).
-			if ( ! $this->skip_dedup && $this->has_similar_post( $result->get_topic() ) ) {
-				$deduped_count++;
-				PRAutoBlogger_Logger::instance()->info(
-					sprintf( 'Dedup: skipping "%s" — ≥60%% keyword overlap with existing post.', substr( $result->get_topic(), 0, 80 ) ),
-					'scorer'
-				);
-				continue;
+			if ( ! $this->skip_dedup ) {
+				$topic_keywords = $this->extract_meaningful_keywords( $result->get_topic() );
+
+				// Intra-batch: skip if too similar to an already-accepted idea.
+				if ( $this->overlaps_any( $topic_keywords, $accepted_keyword_sets ) ) {
+					$deduped_count++;
+					PRAutoBlogger_Logger::instance()->info(
+						sprintf( 'Dedup(batch): skipping "%s" — overlaps accepted idea.', substr( $result->get_topic(), 0, 80 ) ),
+						'scorer'
+					);
+					continue;
+				}
+
+				// Recent posts: skip if ≥60% overlap with a post from the last 7 days.
+				if ( $this->has_recent_similar_post( $topic_keywords ) ) {
+					$deduped_count++;
+					PRAutoBlogger_Logger::instance()->info(
+						sprintf( 'Dedup(recent): skipping "%s" — similar post in last 7 days.', substr( $result->get_topic(), 0, 80 ) ),
+						'scorer'
+					);
+					continue;
+				}
+
+				$accepted_keyword_sets[] = $topic_keywords;
 			}
 
 			$metadata = $result->get_metadata() ?? [];
@@ -89,7 +108,6 @@ class PRAutoBlogger_Idea_Scorer {
 			'scorer'
 		);
 
-		// Sort by score descending.
 		usort( $ideas, static function ( PRAutoBlogger_Article_Idea $a, PRAutoBlogger_Article_Idea $b ): int {
 			return $b->get_score() <=> $a->get_score();
 		} );
@@ -136,41 +154,50 @@ class PRAutoBlogger_Idea_Scorer {
 	}
 
 	/**
-	 * Check if a substantially similar post already exists.
+	 * Check if a keyword set overlaps ≥60% with any set in the given list.
 	 *
-	 * Compares meaningful keywords from the proposed topic against existing
-	 * post titles. A match requires ≥60% of the topic's keywords to appear
-	 * in a single existing title — not just one shared niche word.
-	 *
-	 * The previous implementation used WP_Query 's' (WordPress search) which
-	 * matches ANY word. On a niche blog every topic shares common vocabulary
-	 * (e.g. "BPC-157", "peptide"), so all ideas were false-positive deduped.
-	 *
-	 * @param string $topic Topic to check.
-	 *
-	 * @return bool True if a similar post exists.
+	 * @param string[] $keywords     Keywords to check.
+	 * @param array    $keyword_sets List of previously accepted keyword arrays.
+	 * @return bool
 	 */
-	private function has_similar_post( string $topic ): bool {
-		$topic_keywords = $this->extract_meaningful_keywords( $topic );
+	private function overlaps_any( array $keywords, array $keyword_sets ): bool {
+		if ( count( $keywords ) < 2 ) {
+			return false;
+		}
+		foreach ( $keyword_sets as $existing ) {
+			$overlap = count( array_intersect( $keywords, $existing ) );
+			if ( $overlap / count( $keywords ) >= 0.6 ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Check if a recently published post (last 7 days) is too similar.
+	 *
+	 * Only deduplicates against recent content — revisiting a topic
+	 * weeks later is intentionally allowed. The recency window keeps
+	 * the dedup scope narrow so the blog can grow without increasingly
+	 * rejecting all topics.
+	 *
+	 * @param string[] $topic_keywords Pre-extracted keywords from the topic.
+	 * @return bool True if a recent post has ≥60% keyword overlap.
+	 */
+	private function has_recent_similar_post( array $topic_keywords ): bool {
 		if ( count( $topic_keywords ) < 2 ) {
-			// Topic too short to meaningfully deduplicate.
 			return false;
 		}
 
-		// Cache the post title list within a single pipeline run to avoid
-		// repeating the same query for every idea.
-		static $existing_titles = null;
-		if ( null === $existing_titles ) {
-			$existing_titles = $this->fetch_existing_titles();
+		static $recent_titles = null;
+		if ( null === $recent_titles ) {
+			$recent_titles = $this->fetch_recent_post_titles();
 		}
 
-		foreach ( $existing_titles as $existing_title ) {
-			$title_keywords = $this->extract_meaningful_keywords( $existing_title );
+		foreach ( $recent_titles as $title ) {
+			$title_keywords = $this->extract_meaningful_keywords( $title );
 			$overlap        = count( array_intersect( $topic_keywords, $title_keywords ) );
-			$overlap_ratio  = $overlap / count( $topic_keywords );
-
-			// 60% keyword overlap = too similar to publish again.
-			if ( $overlap_ratio >= 0.6 ) {
+			if ( $overlap / count( $topic_keywords ) >= 0.6 ) {
 				return true;
 			}
 		}
@@ -179,17 +206,20 @@ class PRAutoBlogger_Idea_Scorer {
 	}
 
 	/**
-	 * Fetch titles of all existing generated posts (cached per run).
+	 * Fetch titles of generated posts from the last 7 days only.
 	 *
 	 * @return string[]
 	 */
-	private function fetch_existing_titles(): array {
+	private function fetch_recent_post_titles(): array {
 		$query = new \WP_Query( [
 			'post_type'      => 'post',
 			'post_status'    => [ 'publish', 'draft', 'pending' ],
 			'meta_key'       => '_prautoblogger_generated',
 			'meta_value'     => '1',
-			'posts_per_page' => 200,
+			'date_query'     => [
+				[ 'after' => '7 days ago' ],
+			],
+			'posts_per_page' => 50,
 			'fields'         => 'ids',
 			'no_found_rows'  => true,
 		] );
