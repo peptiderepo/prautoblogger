@@ -60,11 +60,12 @@ define( 'PRAUTOBLOGGER_DEFAULT_IMAGE_PROVIDER', 'openrouter' );
 define( 'PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL', 'google/gemini-2.5-flash-image' );
 
 // Default style suffix appended to every image-gen prompt. Updated
-// 2026-04-18: single-panel newspaper comic style. Users may override
-// via Settings → Images → Style Suffix.
+// 2026-04-18 v4: single-panel newspaper comic style. Caption is now
+// inserted as HTML text below the image, NOT rendered inside it.
+// Users may override via Settings → Images → Style Suffix.
 define(
 	'PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX',
-	'Style: a single-panel newspaper comic in classic black ink on white paper, simple clean linework like The Far Side or B.C., slightly yellowed newsprint texture, hand-drawn crosshatching for shading, bold panel border, caption text in a clean sans-serif font below the panel, warm and humorous tone, visible in a newspaper comics section.'
+	'Style: a single-panel newspaper comic in classic black ink on white paper, simple clean linework like The Far Side or B.C., slightly yellowed newsprint texture, hand-drawn crosshatching for shading, bold panel border, warm and humorous tone, visible in a newspaper comics section. IMPORTANT: Do not render any text, captions, speech bubbles, or words inside the image.'
 );
 
 /*

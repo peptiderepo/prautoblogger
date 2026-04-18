@@ -4,23 +4,15 @@ declare(strict_types=1);
 /**
  * Orchestrates image generation for published articles.
  *
- * Generates two images per article (A/B experiment):
- *   - Image A: Article-driven prompt → featured image
- *   - Image B: Source-driven prompt → post meta (_prautoblogger_image_b_id)
- *
- * Each image is independently fallible — if A fails, still try B. If both fail,
- * the article is published without images (graceful degradation).
+ * Generates two images per article (A/B): Image A (article-driven) as featured
+ * image, Image B (source-driven) in post meta. Each is independently fallible.
  *
  * Triggered by: PRAutoBlogger_Pipeline_Runner after publisher creates the post.
- * Dependencies: PRAutoBlogger_Image_Provider_Interface (concrete provider),
- *               PRAutoBlogger_Image_Prompt_Builder, PRAutoBlogger_Image_Media_Sideloader,
- *               PRAutoBlogger_Cost_Tracker, PRAutoBlogger_Logger.
+ * Dependencies: Image provider, Prompt builder, Sideloader, Cost tracker, Logger.
  *
  * @see core/class-pipeline-runner.php       — Calls this after publisher.
- * @see core/class-publisher.php             — Sets featured image + post meta.
- * @see core/class-image-prompt-builder.php  — Prompt generation.
+ * @see core/class-image-prompt-builder.php  — Prompt generation (scene + caption).
  * @see core/class-image-media-sideloader.php — Media library integration.
- * @see ARCHITECTURE.md                      — Image pipeline data flow.
  */
 class PRAutoBlogger_Image_Pipeline {
 
@@ -32,32 +24,16 @@ class PRAutoBlogger_Image_Pipeline {
 	private const DEFAULT_WIDTH  = 1200;
 	private const DEFAULT_HEIGHT = 632;
 
-	/**
-	 * The image provider (FLUX.1 via Cloudflare or another).
-	 *
-	 * @var PRAutoBlogger_Image_Provider_Interface
-	 */
+	/** @var PRAutoBlogger_Image_Provider_Interface Image gen provider (FLUX.1 etc). */
 	private PRAutoBlogger_Image_Provider_Interface $provider;
 
-	/**
-	 * Prompt builder.
-	 *
-	 * @var PRAutoBlogger_Image_Prompt_Builder
-	 */
+	/** @var PRAutoBlogger_Image_Prompt_Builder Builds scene + caption from article data. */
 	private PRAutoBlogger_Image_Prompt_Builder $prompt_builder;
 
-	/**
-	 * Media library sideloader.
-	 *
-	 * @var PRAutoBlogger_Image_Media_Sideloader
-	 */
+	/** @var PRAutoBlogger_Image_Media_Sideloader Downloads images into WP media library. */
 	private PRAutoBlogger_Image_Media_Sideloader $sideloader;
 
-	/**
-	 * Cost tracker for logging spend.
-	 *
-	 * @var PRAutoBlogger_Cost_Tracker
-	 */
+	/** @var PRAutoBlogger_Cost_Tracker Logs image generation spend. */
 	private PRAutoBlogger_Cost_Tracker $cost_tracker;
 
 	/**
@@ -134,8 +110,11 @@ class PRAutoBlogger_Image_Pipeline {
 			return $result;
 		}
 
+		// Build the article-driven prompt (returns scene + caption).
+		$article_prompt = $this->prompt_builder->build_article_prompt( $article_data );
+
 		// Generate Image A (article-driven prompt).
-		$image_a_result = $this->generate_image_a( $post_id, $article_data );
+		$image_a_result = $this->generate_image_a( $post_id, $article_prompt['prompt'] );
 		if ( ! is_wp_error( $image_a_result ) && isset( $image_a_result['attachment_id'] ) ) {
 			$result['image_a_id'] = $image_a_result['attachment_id'];
 
@@ -143,6 +122,13 @@ class PRAutoBlogger_Image_Pipeline {
 			// process times out before Image B finishes or before the
 			// caller gets to handle the return value.
 			set_post_thumbnail( $post_id, $image_a_result['attachment_id'] );
+
+			// Store the caption as attachment meta for theme/display use.
+			if ( '' !== $article_prompt['caption'] ) {
+				update_post_meta( $image_a_result['attachment_id'], '_prautoblogger_image_caption', $article_prompt['caption'] );
+				$this->prepend_caption_to_post( $post_id, $image_a_result['attachment_id'], $article_prompt['caption'] );
+			}
+
 			PRAutoBlogger_Logger::instance()->info(
 				sprintf( 'Set featured image (attachment %d) for post %d', $image_a_result['attachment_id'], $post_id ),
 				'image_pipeline'
@@ -158,13 +144,20 @@ class PRAutoBlogger_Image_Pipeline {
 
 		// Generate Image B (source-driven prompt) if source data is available.
 		if ( null !== $source_data && ! empty( $source_data ) ) {
-			$image_b_result = $this->generate_image_b( $post_id, $source_data );
+			$source_prompt  = $this->prompt_builder->build_source_prompt( $source_data );
+			$image_b_result = $this->generate_image_b( $post_id, $source_prompt['prompt'] );
 			if ( ! is_wp_error( $image_b_result ) && isset( $image_b_result['attachment_id'] ) ) {
 				$result['image_b_id'] = $image_b_result['attachment_id'];
 
 				// Store Image B reference immediately for the same
 				// timeout-resilience reason as Image A above.
 				update_post_meta( $post_id, '_prautoblogger_image_b_id', $image_b_result['attachment_id'] );
+
+				// Store the caption as attachment meta.
+				if ( '' !== $source_prompt['caption'] ) {
+					update_post_meta( $image_b_result['attachment_id'], '_prautoblogger_image_caption', $source_prompt['caption'] );
+				}
+
 				PRAutoBlogger_Logger::instance()->info(
 					sprintf( 'Stored Image B (attachment %d) for post %d', $image_b_result['attachment_id'], $post_id ),
 					'image_pipeline'
@@ -187,55 +180,56 @@ class PRAutoBlogger_Image_Pipeline {
 		return $result;
 	}
 
-	/**
-	 * Generate Image A from article content.
-	 *
-	 * @param int   $post_id Post ID.
-	 * @param array $article_data Article data.
-	 *
-	 * @return array{
-	 *     attachment_id?: int,
-	 *     cost_usd: float,
-	 * }|\WP_Error
-	 */
-	private function generate_image_a( int $post_id, array $article_data ) {
-		try {
-			// Build the article-driven prompt.
-			$prompt = $this->prompt_builder->build_article_prompt( $article_data );
+	/** @see generate_single_image() — Image A wrapper. */
+	private function generate_image_a( int $post_id, string $prompt ) {
+		return $this->generate_single_image( $post_id, $prompt, 'image_a', 'Image A' );
+	}
 
-			// Estimate cost before generating.
+	/** @see generate_single_image() — Image B wrapper. */
+	private function generate_image_b( int $post_id, string $prompt ) {
+		return $this->generate_single_image( $post_id, $prompt, 'image_b', 'Image B' );
+	}
+
+	/**
+	 * Generate a single image: budget check → provider call → sideload → log.
+	 *
+	 * Shared implementation for Image A and Image B to avoid duplication.
+	 *
+	 * @param int    $post_id  Post ID.
+	 * @param string $prompt   Image generation prompt.
+	 * @param string $slot     Cost-tracking slot ('image_a' or 'image_b').
+	 * @param string $label    Human-readable label for log messages.
+	 *
+	 * @return array{attachment_id?: int, cost_usd: float}|\WP_Error
+	 */
+	private function generate_single_image( int $post_id, string $prompt, string $slot, string $label ) {
+		try {
 			$estimated_cost = $this->provider->estimate_cost( self::DEFAULT_WIDTH, self::DEFAULT_HEIGHT );
 			if ( $this->cost_tracker->would_exceed_budget( $estimated_cost ) ) {
-				return new \WP_Error(
-					'budget_exceeded',
-					'Image generation would exceed monthly budget.'
-				);
+				return new \WP_Error( 'budget_exceeded', 'Image generation would exceed monthly budget.' );
 			}
 
-			// Generate the image.
 			$image_data = $this->provider->generate_image( $prompt, self::DEFAULT_WIDTH, self::DEFAULT_HEIGHT );
 
-			// Sideload the image into media library.
 			$attachment_id = $this->sideloader->sideload_image(
 				$image_data,
 				$post_id,
-				substr( $prompt, 0, 100 ) // Use first 100 chars of prompt as alt text.
+				substr( $prompt, 0, 100 )
 			);
 
 			if ( is_wp_error( $attachment_id ) ) {
 				return $attachment_id;
 			}
 
-			// Log the cost.
 			$this->cost_tracker->log_image_generation(
 				$image_data['cost_usd'],
 				$image_data['model'] ?? 'unknown',
 				$post_id,
-				'image_a'
+				$slot
 			);
 
 			PRAutoBlogger_Logger::instance()->info(
-				sprintf( 'Image A generated for post %d (attachment %d, cost $%.4f)', $post_id, $attachment_id, $image_data['cost_usd'] ),
+				sprintf( '%s generated for post %d (attachment %d, cost $%.4f)', $label, $post_id, $attachment_id, $image_data['cost_usd'] ),
 				'image_pipeline'
 			);
 
@@ -245,7 +239,7 @@ class PRAutoBlogger_Image_Pipeline {
 			];
 		} catch ( \Throwable $e ) {
 			PRAutoBlogger_Logger::instance()->error(
-				sprintf( 'Image A %s: %s', get_class( $e ), $e->getMessage() ),
+				sprintf( '%s %s: %s', $label, get_class( $e ), $e->getMessage() ),
 				'image_pipeline'
 			);
 
@@ -254,68 +248,39 @@ class PRAutoBlogger_Image_Pipeline {
 	}
 
 	/**
-	 * Generate Image B from source data.
+	 * Prepend a comic caption as a styled figcaption block to post content.
 	 *
-	 * @param int   $post_id Post ID.
-	 * @param array $source_data Source Reddit data.
+	 * Inserts a <figure> block at the top of the post containing the featured
+	 * image and a <figcaption> with the comic punchline. Uses inline styles
+	 * for portability across themes.
 	 *
-	 * @return array{
-	 *     attachment_id?: int,
-	 *     cost_usd: float,
-	 * }|\WP_Error
+	 * @param int    $post_id       Post ID.
+	 * @param int    $attachment_id Featured image attachment ID.
+	 * @param string $caption       Caption text (the comic punchline).
 	 */
-	private function generate_image_b( int $post_id, array $source_data ) {
-		try {
-			// Build the source-driven prompt.
-			$prompt = $this->prompt_builder->build_source_prompt( $source_data );
-
-			// Estimate cost before generating.
-			$estimated_cost = $this->provider->estimate_cost( self::DEFAULT_WIDTH, self::DEFAULT_HEIGHT );
-			if ( $this->cost_tracker->would_exceed_budget( $estimated_cost ) ) {
-				return new \WP_Error(
-					'budget_exceeded',
-					'Image generation would exceed monthly budget.'
-				);
-			}
-
-			// Generate the image.
-			$image_data = $this->provider->generate_image( $prompt, self::DEFAULT_WIDTH, self::DEFAULT_HEIGHT );
-
-			// Sideload the image into media library.
-			$attachment_id = $this->sideloader->sideload_image(
-				$image_data,
-				$post_id,
-				substr( $prompt, 0, 100 ) // Use first 100 chars of prompt as alt text.
-			);
-
-			if ( is_wp_error( $attachment_id ) ) {
-				return $attachment_id;
-			}
-
-			// Log the cost.
-			$this->cost_tracker->log_image_generation(
-				$image_data['cost_usd'],
-				$image_data['model'] ?? 'unknown',
-				$post_id,
-				'image_b'
-			);
-
-			PRAutoBlogger_Logger::instance()->info(
-				sprintf( 'Image B generated for post %d (attachment %d, cost $%.4f)', $post_id, $attachment_id, $image_data['cost_usd'] ),
-				'image_pipeline'
-			);
-
-			return [
-				'attachment_id' => $attachment_id,
-				'cost_usd'      => $image_data['cost_usd'],
-			];
-		} catch ( \Throwable $e ) {
-			PRAutoBlogger_Logger::instance()->error(
-				sprintf( 'Image B %s: %s', get_class( $e ), $e->getMessage() ),
-				'image_pipeline'
-			);
-
-			return new \WP_Error( 'image_generation_failed', $e->getMessage() );
+	private function prepend_caption_to_post( int $post_id, int $attachment_id, string $caption ): void {
+		$post = get_post( $post_id );
+		if ( ! $post ) {
+			return;
 		}
+
+		$img_url = wp_get_attachment_url( $attachment_id );
+		$alt     = get_post_meta( $attachment_id, '_wp_attachment_image_alt', true );
+
+		// Build a self-contained figure block with the comic image and caption.
+		$figure = sprintf(
+			'<figure class="prautoblogger-comic" style="text-align:center;margin:0 0 2em 0;">'
+			. '<img src="%s" alt="%s" style="max-width:100%%;height:auto;border:2px solid #333;border-radius:4px;" />'
+			. '<figcaption style="font-style:italic;color:#555;margin-top:0.5em;font-size:1.1em;">— "%s"</figcaption>'
+			. '</figure>',
+			esc_url( $img_url ),
+			esc_attr( $alt ),
+			esc_html( $caption )
+		);
+
+		wp_update_post( [
+			'ID'           => $post_id,
+			'post_content' => $figure . "\n\n" . $post->post_content,
+		] );
 	}
 }

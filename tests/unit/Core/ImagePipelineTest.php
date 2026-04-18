@@ -35,8 +35,16 @@ class ImagePipelineTest extends BaseTestCase {
 			return trim( strip_tags( $str ) );
 		} );
 		Functions\when( 'update_post_meta' )->justReturn( true );
+		Functions\when( 'set_post_thumbnail' )->justReturn( true );
+		Functions\when( 'get_post_meta' )->justReturn( '' );
+		Functions\when( 'get_post' )->justReturn( (object) [ 'ID' => 1, 'post_content' => '<p>Test content</p>' ] );
+		Functions\when( 'wp_update_post' )->justReturn( 1 );
+		Functions\when( 'wp_get_attachment_url' )->justReturn( 'https://example.com/img.png' );
 		Functions\when( 'sanitize_title' )->returnArg();
 		Functions\when( 'esc_html__' )->returnArg();
+		Functions\when( 'esc_url' )->returnArg();
+		Functions\when( 'esc_attr' )->returnArg();
+		Functions\when( 'esc_html' )->returnArg();
 	}
 
 	/**

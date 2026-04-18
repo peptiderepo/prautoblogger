@@ -159,6 +159,17 @@ class PRAutoBlogger {
 			update_option( 'prautoblogger_migrated_style_suffix_v3', '1' );
 		}
 
+		// One-time migration (v4): remove caption-in-image instruction from style suffix.
+		// Captions are now inserted as HTML below the image, not baked into the image.
+		if ( ! get_option( 'prautoblogger_migrated_style_suffix_v4' ) ) {
+			$current = get_option( 'prautoblogger_image_style_suffix', '' );
+			// Detect v3 style suffix (contains "caption text" instruction).
+			if ( false !== strpos( $current, 'caption text in a clean sans-serif font below the panel' ) ) {
+				update_option( 'prautoblogger_image_style_suffix', PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX );
+			}
+			update_option( 'prautoblogger_migrated_style_suffix_v4', '1' );
+		}
+
 		// One-time migration: re-wrap existing encrypted values with "enc:" prefix.
 		if ( ! get_option( 'prautoblogger_migrated_enc_prefix' ) ) {
 			$enc_options = [ 'prautoblogger_openrouter_api_key', 'prautoblogger_ga4_credentials_json' ];

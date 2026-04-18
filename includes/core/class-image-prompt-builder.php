@@ -67,7 +67,9 @@ PROMPT;
 	 * Build a visual prompt from finished article content.
 	 *
 	 * Tries LLM rewriting first; falls back to rule-based synthesis on failure.
-	 * Appends the style suffix from plugin options.
+	 * Separates the scene description (for image gen) from the caption text
+	 * (for insertion below the image as HTML). Appends style suffix to the
+	 * scene-only prompt so no text is rendered inside the image.
 	 *
 	 * @param array{
 	 *     post_title?: string,
@@ -75,18 +77,21 @@ PROMPT;
 	 *     suggested_title?: string,
 	 * } $article_data Article data with title and HTML content.
 	 *
-	 * @return string Concise prompt with style suffix appended.
+	 * @return array{prompt: string, caption: string} Image prompt (scene + style) and caption text.
 	 */
-	public function build_article_prompt( array $article_data ): string {
+	public function build_article_prompt( array $article_data ): array {
 		$title      = $article_data['post_title'] ?? $article_data['suggested_title'] ?? 'Product';
 		$content    = $article_data['post_content'] ?? '';
 		$first_para = $this->extract_first_paragraph( $content );
 
-		$concepts = $this->rewrite_via_llm( $title, $first_para );
+		$parsed = $this->rewrite_via_llm( $title, $first_para );
 
 		$style_suffix = get_option( 'prautoblogger_image_style_suffix', PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX );
 
-		return trim( $concepts . ' ' . $style_suffix );
+		return [
+			'prompt'  => trim( $parsed['scene'] . ' ' . $style_suffix ),
+			'caption' => $parsed['caption'],
+		];
 	}
 
 	/**
@@ -101,22 +106,29 @@ PROMPT;
 	 *     comments?: string[],
 	 * } $source_data Reddit source data with title and comments.
 	 *
-	 * @return string Concise prompt with style suffix appended.
+	 * @return array{prompt: string, caption: string} Image prompt (scene + style) and caption text.
 	 */
-	public function build_source_prompt( array $source_data ): string {
+	public function build_source_prompt( array $source_data ): array {
 		$title    = $source_data['title'] ?? 'Reddit Discussion';
 		$comments = $source_data['comments'] ?? [];
 		$context  = is_array( $comments ) && ! empty( $comments ) ? $comments[0] : '';
 
-		$concepts = $this->rewrite_via_llm( $title, $context );
+		$parsed = $this->rewrite_via_llm( $title, $context );
 
 		$style_suffix = get_option( 'prautoblogger_image_style_suffix', PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX );
 
-		return trim( $concepts . ' ' . $style_suffix );
+		return [
+			'prompt'  => trim( $parsed['scene'] . ' ' . $style_suffix ),
+			'caption' => $parsed['caption'],
+		];
 	}
 
 	/**
-	 * Use a cheap LLM to distill title + context into a visual scene.
+	 * Use a cheap LLM to distill title + context into a visual scene + caption.
+	 *
+	 * The LLM response contains a SCENE line and a CAPTION line separated by a
+	 * blank line. This method parses them apart so the scene drives image gen
+	 * (no text baked in) and the caption is inserted as HTML below the image.
 	 *
 	 * Falls back to rule-based synthesis if the LLM call fails for any
 	 * reason (network, auth, timeout, unexpected response shape).
@@ -125,9 +137,9 @@ PROMPT;
 	 *
 	 * @param string $title   Article or thread title.
 	 * @param string $context First paragraph or top comment.
-	 * @return string Visual scene description (without style suffix).
+	 * @return array{scene: string, caption: string} Scene for image gen, caption for HTML.
 	 */
-	private function rewrite_via_llm( string $title, string $context ): string {
+	private function rewrite_via_llm( string $title, string $context ): array {
 		$title   = trim( sanitize_text_field( $title ) );
 		$context = trim( sanitize_text_field( $context ) );
 
@@ -157,7 +169,7 @@ PROMPT;
 				]
 			);
 
-			$scene = trim( $result['content'] ?? '' );
+			$raw = trim( $result['content'] ?? '' );
 
 			// Log the rewrite cost so it shows in the analytics dashboard.
 			( new PRAutoBlogger_Cost_Tracker() )->log_api_call(
@@ -176,12 +188,12 @@ PROMPT;
 			);
 
 			PRAutoBlogger_Logger::instance()->debug(
-				sprintf( 'Image prompt rewritten (%d→%d chars, $%.6f): %s', strlen( $user_message ), strlen( $scene ), $cost, substr( $scene, 0, 120 ) ),
+				sprintf( 'Image prompt rewritten (%d→%d chars, $%.6f): %s', strlen( $user_message ), strlen( $raw ), $cost, substr( $raw, 0, 120 ) ),
 				'image_prompt_builder'
 			);
 
-			if ( '' !== $scene ) {
-				return $scene;
+			if ( '' !== $raw ) {
+				return $this->parse_scene_and_caption( $raw );
 			}
 		} catch ( \Throwable $e ) {
 			// LLM failure is not fatal — fall back to rule-based synthesis.
@@ -192,6 +204,36 @@ PROMPT;
 		}
 
 		return $this->synthesize_visual_concepts_fallback( $title, $context );
+	}
+
+	/**
+	 * Parse the LLM response into separate scene and caption parts.
+	 *
+	 * Expected format from the LLM:
+	 *   Scene description text here.
+	 *
+	 *   "Caption punchline here."
+	 *
+	 * Falls back gracefully: if no blank-line separator is found, the entire
+	 * response becomes the scene with an empty caption.
+	 *
+	 * @param string $raw Raw LLM response text.
+	 * @return array{scene: string, caption: string}
+	 */
+	private function parse_scene_and_caption( string $raw ): array {
+		// Split on blank line (the format the system prompt requests).
+		$parts = preg_split( '/\n\s*\n/', $raw, 2 );
+
+		if ( count( $parts ) >= 2 ) {
+			$scene   = trim( $parts[0] );
+			$caption = trim( $parts[1] );
+			// Strip surrounding quotes from caption — the LLM wraps it in quotes.
+			$caption = trim( $caption, '"\'' );
+			return [ 'scene' => $scene, 'caption' => $caption ];
+		}
+
+		// No blank-line separator found — treat entire response as scene.
+		return [ 'scene' => trim( $raw ), 'caption' => '' ];
 	}
 
 	/**
@@ -222,16 +264,19 @@ PROMPT;
 	 *
 	 * @param string $title           Main heading / topic.
 	 * @param string $supporting_text Additional context.
-	 * @return string Synthesized visual prompt concept.
+	 * @return array{scene: string, caption: string} Scene for image gen, caption for HTML.
 	 */
-	private function synthesize_visual_concepts_fallback( string $title, string $supporting_text ): string {
+	private function synthesize_visual_concepts_fallback( string $title, string $supporting_text ): array {
 		// Fallback produces a simple comic concept when the LLM is unavailable.
-		$prompt = sprintf(
-			'A cartoon scientist in a lab coat looking bewildered while examining something related to: %s. Caption below reads: "Science is full of surprises."',
+		$scene = sprintf(
+			'A cartoon scientist in a lab coat looking bewildered while examining something related to: %s.',
 			$title
 		);
 
-		return trim( $prompt );
+		return [
+			'scene'   => trim( $scene ),
+			'caption' => 'Science is full of surprises.',
+		];
 	}
 
 	/**
