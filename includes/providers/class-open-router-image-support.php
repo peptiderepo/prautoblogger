@@ -59,6 +59,16 @@ class PRAutoBlogger_OpenRouter_Image_Support {
 			);
 		}
 
+		// OpenRouter routers may wrap upstream errors in an HTTP 200 body.
+		if ( isset( $decoded['error']['message'] ) ) {
+			throw new \RuntimeException(
+				sprintf(
+					esc_html__( 'OpenRouter upstream image error: %s', 'prautoblogger' ),
+					esc_html( $decoded['error']['message'] )
+				)
+			);
+		}
+
 		$images = $decoded['choices'][0]['message']['images'] ?? [];
 		if ( empty( $images ) ) {
 			throw new \RuntimeException(

@@ -57,7 +57,7 @@ define( 'PRAUTOBLOGGER_DEFAULT_EDITOR_MODEL', 'google/gemini-2.5-flash-lite' );
 // Default provider is OpenRouter (higher quality); Cloudflare is the fallback.
 // Default model is FLUX.2 Pro via OpenRouter (~$0.03/image, good quality).
 define( 'PRAUTOBLOGGER_DEFAULT_IMAGE_PROVIDER', 'openrouter' );
-define( 'PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL', 'black-forest-labs/flux-2-pro' );
+define( 'PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL', 'google/gemini-2.5-flash-image' );
 
 // CEO-approved image style suffix (decision locked 2026-04-15). Users may
 // override via Settings → Images → Style Suffix; this constant is the

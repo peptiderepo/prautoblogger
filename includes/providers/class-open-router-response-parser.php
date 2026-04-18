@@ -50,6 +50,21 @@ class PRAutoBlogger_OpenRouter_Response_Parser {
 	 * @throws \RuntimeException If response structure is invalid.
 	 */
 	public function parse_success( array $data, string $model ): array {
+		// OpenRouter routers (e.g. openrouter/free) may wrap upstream provider
+		// errors inside an HTTP 200 body with an `error` object. Surface them
+		// as RuntimeExceptions so the retry loop or caller can handle them.
+		if ( isset( $data['error']['message'] ) ) {
+			$upstream_code = (int) ( $data['error']['code'] ?? 0 );
+			throw new \RuntimeException(
+				sprintf(
+					/* translators: %1$d: upstream HTTP code, %2$s: error message */
+					__( 'OpenRouter upstream error (code %1$d): %2$s', 'prautoblogger' ),
+					$upstream_code,
+					$data['error']['message']
+				)
+			);
+		}
+
 		// Validate we have a choices array with at least one message.
 		if ( ! isset( $data['choices'][0]['message'] ) ) {
 			// Log the raw shape so we can diagnose what the model actually returned.

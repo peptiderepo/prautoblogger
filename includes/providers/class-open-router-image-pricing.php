@@ -23,16 +23,15 @@ class PRAutoBlogger_OpenRouter_Image_Pricing {
 	 * @var array<string, float>
 	 */
 	private const COST_PER_IMAGE = [
-		'black-forest-labs/flux-2-pro'          => 0.03,
-		'black-forest-labs/flux-1.1-pro'        => 0.04,
-		'black-forest-labs/flux-1.1-pro-ultra'  => 0.06,
-		'bytedance/seedream-3.0'                => 0.003,
-		'google/gemini-2.5-flash-preview:image' => 0.01,
-		'openai/gpt-image-1'                    => 0.04,
+		'google/gemini-2.5-flash-image'          => 0.005,
+		'google/gemini-3.1-flash-image-preview'  => 0.008,
+		'google/gemini-3-pro-image-preview'      => 0.03,
+		'openai/gpt-5-image-mini'                => 0.02,
+		'openai/gpt-5-image'                     => 0.08,
 	];
 
 	/** @var string Default model when none is configured. */
-	public const DEFAULT_MODEL = 'black-forest-labs/flux-2-pro';
+	public const DEFAULT_MODEL = 'google/gemini-2.5-flash-image';
 
 	/**
 	 * Resolve the model identifier from a hint, falling back to site option,

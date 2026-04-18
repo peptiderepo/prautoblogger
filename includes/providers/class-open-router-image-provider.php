@@ -233,10 +233,12 @@ class PRAutoBlogger_OpenRouter_Image_Provider implements PRAutoBlogger_Image_Pro
 			'messages'   => [
 				[
 					'role'    => 'user',
-					'content' => $prompt,
+					'content' => 'Generate an image: ' . $prompt,
 				],
 			],
-			'modalities'   => [ 'image' ],
+			// Use ["image", "text"] — some providers (Gemini) require both
+			// modalities even when we only want the image output.
+			'modalities'   => [ 'image', 'text' ],
 			'image_config' => [
 				'aspect_ratio' => $aspect,
 			],
