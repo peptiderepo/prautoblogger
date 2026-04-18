@@ -19,19 +19,22 @@ class PRAutoBlogger_Cloudflare_Image_Pricing {
 
 	/**
 	 * Cloudflare Workers AI FLUX pricing (USD per megapixel), April 2026.
-	 * Single source of truth — update here if Cloudflare repricies.
+	 * Single source of truth — update here if Cloudflare reprices.
 	 */
 	private const COST_PER_MP_SCHNELL_USD = 0.0011;
-	private const COST_MULTIPLIER_DEV     = 4.0;
 
 	/**
 	 * Short-alias → fully-qualified Workers AI model id.
+	 *
+	 * FLUX.1 [dev] was removed from Cloudflare Workers AI in April 2026
+	 * (returns HTTP 400 "No route for that URI"). Only schnell remains.
+	 * Any saved setting referencing flux-1-dev falls through to schnell
+	 * via the null-coalesce in resolve_model().
 	 *
 	 * @var array<string, string>
 	 */
 	private const MODEL_ALIAS_MAP = [
 		'flux-1-schnell' => '@cf/black-forest-labs/flux-1-schnell',
-		'flux-1-dev'     => '@cf/black-forest-labs/flux-1-dev',
 	];
 
 	/**
@@ -58,9 +61,9 @@ class PRAutoBlogger_Cloudflare_Image_Pricing {
 	/**
 	 * Estimate USD cost for a single image at the given dimensions.
 	 *
-	 * FLUX is priced per megapixel of output. Schnell is the baseline;
-	 * [dev] is a ~4x multiplier. We clamp the MP floor at 0.01 so a
-	 * tiny thumbnail doesn't round to zero and bypass the budget check.
+	 * FLUX is priced per megapixel of output. We clamp the MP floor at
+	 * 0.01 so a tiny thumbnail doesn't round to zero and bypass the
+	 * budget check.
 	 *
 	 * @param int    $width  Width in pixels.
 	 * @param int    $height Height in pixels.
@@ -70,9 +73,6 @@ class PRAutoBlogger_Cloudflare_Image_Pricing {
 	public function estimate_cost( int $width, int $height, string $model ): float {
 		$mp   = max( 0.01, ( $width * $height ) / 1_000_000 );
 		$rate = self::COST_PER_MP_SCHNELL_USD;
-		if ( false !== strpos( $model, 'flux-1-dev' ) ) {
-			$rate *= self::COST_MULTIPLIER_DEV;
-		}
 		return round( $mp * $rate, 6 );
 	}
 }
