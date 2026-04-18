@@ -50,16 +50,37 @@ class PRAutoBlogger_OpenRouter_Response_Parser {
 	 * @throws \RuntimeException If response structure is invalid.
 	 */
 	public function parse_success( array $data, string $model ): array {
-		if ( ! isset( $data['choices'][0]['message']['content'] ) ) {
-			throw new \RuntimeException(
-				__( 'OpenRouter returned unexpected response format.', 'prautoblogger' )
+		// Validate we have a choices array with at least one message.
+		if ( ! isset( $data['choices'][0]['message'] ) ) {
+			// Log the raw shape so we can diagnose what the model actually returned.
+			PRAutoBlogger_Logger::instance()->error(
+				sprintf(
+					'Unexpected response shape from %s: %s',
+					$data['model'] ?? $model,
+					substr( (string) wp_json_encode( $data ), 0, 500 )
+				),
+				'openrouter'
 			);
+			throw new \RuntimeException(
+				sprintf(
+					/* translators: %s: model name */
+					__( 'OpenRouter model %s returned unexpected response format.', 'prautoblogger' ),
+					$data['model'] ?? $model
+				)
+			);
+		}
+
+		// Content can be null (some models use tool_calls or refusal instead).
+		// Treat null as empty string — downstream callers handle empty content.
+		$content = $data['choices'][0]['message']['content'] ?? '';
+		if ( null === $content ) {
+			$content = '';
 		}
 
 		$usage = $data['usage'] ?? [];
 
 		return [
-			'content'           => $data['choices'][0]['message']['content'],
+			'content'           => (string) $content,
 			'model'             => $data['model'] ?? $model,
 			'prompt_tokens'     => (int) ( $usage['prompt_tokens'] ?? 0 ),
 			'completion_tokens' => (int) ( $usage['completion_tokens'] ?? 0 ),
