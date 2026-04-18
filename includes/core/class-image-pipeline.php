@@ -221,9 +221,9 @@ class PRAutoBlogger_Image_Pipeline {
 				'attachment_id' => $attachment_id,
 				'cost_usd'      => $image_data['cost_usd'],
 			];
-		} catch ( \Exception $e ) {
+		} catch ( \Throwable $e ) {
 			PRAutoBlogger_Logger::instance()->error(
-				'Image A generation failed: ' . $e->getMessage(),
+				sprintf( 'Image A %s: %s', get_class( $e ), $e->getMessage() ),
 				'image_pipeline'
 			);
 
@@ -287,9 +287,9 @@ class PRAutoBlogger_Image_Pipeline {
 				'attachment_id' => $attachment_id,
 				'cost_usd'      => $image_data['cost_usd'],
 			];
-		} catch ( \Exception $e ) {
+		} catch ( \Throwable $e ) {
 			PRAutoBlogger_Logger::instance()->error(
-				'Image B generation failed: ' . $e->getMessage(),
+				sprintf( 'Image B %s: %s', get_class( $e ), $e->getMessage() ),
 				'image_pipeline'
 			);
 

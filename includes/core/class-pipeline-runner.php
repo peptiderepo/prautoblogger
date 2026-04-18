@@ -124,8 +124,8 @@ class PRAutoBlogger_Pipeline_Runner {
 					$rejected++;
 					PRAutoBlogger_Logger::instance()->info( 'Article rejected by editor: ' . $idea->get_topic(), 'pipeline' );
 				}
-			} catch ( \Exception $e ) {
-				PRAutoBlogger_Logger::instance()->error( 'Failed to generate article for topic "' . $idea->get_topic() . '": ' . $e->getMessage(), 'pipeline' );
+			} catch ( \Throwable $e ) {
+				PRAutoBlogger_Logger::instance()->error( sprintf( 'Article generation %s for "%s": %s', get_class( $e ), $idea->get_topic(), $e->getMessage() ), 'pipeline' );
 				// Continue with next idea — don't let one failure stop the batch.
 			}
 		}

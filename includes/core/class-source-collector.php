@@ -48,8 +48,8 @@ class PRAutoBlogger_Source_Collector {
 					sprintf( 'Collected %d items from %s (%d new).', count( $data ), $source_type, $inserted ),
 					'collector'
 				);
-			} catch ( \Exception $e ) {
-				PRAutoBlogger_Logger::instance()->error( "Collection from {$source_type} FAILED: " . $e->getMessage(), 'collector' );
+			} catch ( \Throwable $e ) {
+				PRAutoBlogger_Logger::instance()->error( sprintf( 'Collection %s from %s: %s', get_class( $e ), $source_type, $e->getMessage() ), 'collector' );
 				// Continue with other sources — one failure shouldn't stop everything.
 			}
 		}

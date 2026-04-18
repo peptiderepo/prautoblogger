@@ -168,8 +168,13 @@ class PRAutoBlogger_Post_Assembler {
 					'publisher'
 				);
 			}
-		} catch ( \Exception $e ) {
-			PRAutoBlogger_Logger::instance()->warning( 'Image pipeline exception for post ' . $post_id . ': ' . $e->getMessage(), 'publisher' );
+		} catch ( \Throwable $e ) {
+			// Catch \Throwable (not just \Exception) so PHP 8 TypeError/Error
+			// doesn't kill the process silently without any log entry.
+			PRAutoBlogger_Logger::instance()->error(
+				sprintf( 'Image pipeline %s for post %d: %s', get_class( $e ), $post_id, $e->getMessage() ),
+				'publisher'
+			);
 		}
 	}
 }

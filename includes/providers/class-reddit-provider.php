@@ -128,10 +128,11 @@ class PRAutoBlogger_Reddit_Provider implements PRAutoBlogger_Source_Provider_Int
 					sprintf( 'Reddit r/%s: fetched %d items', $subreddit, $added ),
 					'reddit'
 				);
-			} catch ( \Exception $e ) {
+			} catch ( \Throwable $e ) {
 				PRAutoBlogger_Logger::instance()->error(
 					sprintf(
-						'Reddit: Failed to collect from r/%s: %s',
+						'Reddit: %s collecting from r/%s: %s',
+						get_class( $e ),
 						$subreddit,
 						$e->getMessage()
 					),

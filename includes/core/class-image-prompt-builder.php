@@ -173,10 +173,10 @@ PROMPT;
 			if ( '' !== $scene ) {
 				return $scene;
 			}
-		} catch ( \Exception $e ) {
+		} catch ( \Throwable $e ) {
 			// LLM failure is not fatal — fall back to rule-based synthesis.
 			PRAutoBlogger_Logger::instance()->warning(
-				'Image prompt LLM rewrite failed, using fallback: ' . $e->getMessage(),
+				sprintf( 'Image prompt LLM rewrite %s, using fallback: %s', get_class( $e ), $e->getMessage() ),
 				'image_prompt_builder'
 			);
 		}

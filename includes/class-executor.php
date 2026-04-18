@@ -34,8 +34,11 @@ class PRAutoBlogger_Executor {
 
 		try {
 			( new PRAutoBlogger_Pipeline_Runner() )->run();
-		} catch ( \Exception $e ) {
-			PRAutoBlogger_Logger::instance()->error( 'Daily generation FAILED: ' . $e->getMessage(), 'scheduler' );
+		} catch ( \Throwable $e ) {
+			PRAutoBlogger_Logger::instance()->error(
+				sprintf( 'Daily generation %s: %s', get_class( $e ), $e->getMessage() ),
+				'scheduler'
+			);
 		} finally {
 			$this->release_generation_lock();
 		}
@@ -48,8 +51,11 @@ class PRAutoBlogger_Executor {
 	public function on_collect_metrics(): void {
 		try {
 			( new PRAutoBlogger_Metrics_Collector() )->collect_all();
-		} catch ( \Exception $e ) {
-			PRAutoBlogger_Logger::instance()->error( 'Metrics collection FAILED: ' . $e->getMessage(), 'metrics' );
+		} catch ( \Throwable $e ) {
+			PRAutoBlogger_Logger::instance()->error(
+				sprintf( 'Metrics collection %s: %s', get_class( $e ), $e->getMessage() ),
+				'metrics'
+			);
 		}
 	}
 
@@ -87,8 +93,11 @@ class PRAutoBlogger_Executor {
 				->set_skip_dedup( true )
 				->run();
 			wp_send_json_success( $results );
-		} catch ( \Exception $e ) {
-			PRAutoBlogger_Logger::instance()->error( 'Manual generation FAILED: ' . $e->getMessage(), 'pipeline' );
+		} catch ( \Throwable $e ) {
+			PRAutoBlogger_Logger::instance()->error(
+				sprintf( 'Manual generation %s: %s', get_class( $e ), $e->getMessage() ),
+				'pipeline'
+			);
 			wp_send_json_error( [ 'message' => $e->getMessage() ] );
 		} finally {
 			$this->release_generation_lock();
@@ -156,9 +165,9 @@ class PRAutoBlogger_Executor {
 			}
 
 			wp_send_json_success( $result );
-		} catch ( \Exception $e ) {
+		} catch ( \Throwable $e ) {
 			PRAutoBlogger_Logger::instance()->error(
-				'Retroactive image gen failed for post ' . $post_id . ': ' . $e->getMessage(),
+				sprintf( 'Retroactive image gen %s for post %d: %s', get_class( $e ), $post_id, $e->getMessage() ),
 				'image_pipeline'
 			);
 			wp_send_json_error( [ 'message' => $e->getMessage() ] );
