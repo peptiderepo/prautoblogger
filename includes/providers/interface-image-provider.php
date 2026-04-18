@@ -84,6 +84,37 @@ interface PRAutoBlogger_Image_Provider_Interface {
 	public function get_provider_name(): string;
 
 	/**
+	 * Generate multiple images in parallel (or sequentially as fallback).
+	 *
+	 * Each entry in $requests describes one image to generate. The return array
+	 * is indexed identically — callers can zip input and output by key.
+	 *
+	 * Implementations that support concurrent HTTP (e.g. curl_multi) SHOULD
+	 * override the default sequential behaviour for a wall-clock speedup.
+	 *
+	 * Side effects: HTTP requests (possibly concurrent), Logger lines per image.
+	 *
+	 * @param array<string, array{
+	 *     prompt: string,
+	 *     width: int,
+	 *     height: int,
+	 *     options?: array{seed?: int, steps?: int, model?: string},
+	 * }> $requests Keyed image generation requests.
+	 *
+	 * @return array<string, array{
+	 *     bytes: string,
+	 *     mime_type: string,
+	 *     width: int,
+	 *     height: int,
+	 *     model: string,
+	 *     seed: ?int,
+	 *     cost_usd: float,
+	 *     latency_ms: int,
+	 * }|array{error: string}> Each key maps to either image data or an error.
+	 */
+	public function generate_image_batch( array $requests ): array;
+
+	/**
 	 * Verify the provider credentials are present and the API is reachable.
 	 *
 	 * Used by the admin "Test Connections" action. Implementations should make

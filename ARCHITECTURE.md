@@ -133,7 +133,7 @@ prautoblogger/
 │   │   ├── class-chief-editor.php     # Editor agent — LLM-powered editorial review
 │   │   ├── class-publisher.php        # Creates WordPress posts from approved content
 │   │   ├── class-post-assembler.php   # Post-creation helpers: taxonomy, log linking, images, sanitization
-│   │   ├── class-image-pipeline.php   # Orchestrates A/B image generation (commit 1b)
+│   │   ├── class-image-pipeline.php   # Orchestrates A/B image generation (parallel via batch)
 │   │   ├── class-image-prompt-builder.php # Generates visual prompts from article/source data
 │   │   ├── class-image-media-sideloader.php # Imports images into WordPress media library
 │   │   ├── class-cost-tracker.php     # Logs all API costs, enforces budget limits
@@ -149,11 +149,17 @@ prautoblogger/
 │   │   ├── interface-source-provider.php # Contract for any social media source
 │   │   ├── class-reddit-json-client.php  # Reddit HTTP client — RSS (primary) + .json (fallback)
 │   │   ├── class-reddit-provider.php     # Reddit data collection orchestrator (RSS primary)
-│   │   ├── interface-image-provider.php  # Contract for any image generation provider
-│   │   ├── class-cloudflare-image-provider.php  # FLUX.1 via Cloudflare Workers AI
-│   │   ├── class-cloudflare-image-pricing.php   # Model alias + per-MP cost estimation
-│   │   ├── class-cloudflare-image-validator.php # Non-destructive credential + connectivity check
-│   │   ├── class-cloudflare-image-support.php   # Token, account, URL, and log helpers for the CF provider
+│   │   ├── interface-image-provider.php  # Contract for any image generation provider (incl. batch)
+│   │   ├── class-open-router-image-provider.php  # OpenRouter image gen (single + batch dispatch)
+│   │   ├── class-open-router-image-batch.php     # Parallel curl_multi execution for batch image gen
+│   │   ├── class-open-router-image-support.php   # API key, response parsing, retry/backoff helpers
+│   │   ├── class-open-router-image-pricing.php   # Model resolution + per-image cost estimation
+│   │   ├── class-open-router-config.php          # API base URL (direct vs AI Gateway)
+│   │   ├── class-open-router-request-builder.php # Header building + Hostinger cURL auth workaround
+│   │   ├── class-cloudflare-image-provider.php   # Cloudflare Workers AI (sequential batch fallback)
+│   │   ├── class-cloudflare-image-pricing.php    # Model alias + per-MP cost estimation
+│   │   ├── class-cloudflare-image-validator.php  # Non-destructive credential + connectivity check
+│   │   ├── class-cloudflare-image-support.php    # Token, account, URL, and log helpers for CF provider
 │   │   └── (new providers go here — see CONVENTIONS.md)
 │   │
 │   ├── services/

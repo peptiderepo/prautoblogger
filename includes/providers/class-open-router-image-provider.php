@@ -4,26 +4,14 @@ declare(strict_types=1);
 /**
  * OpenRouter image provider — model-agnostic, works with any image model.
  *
- * Calls the standard OpenRouter chat/completions endpoint with
- * `modalities: ["image"]`. Reuses the same API key and optional
- * Cloudflare AI Gateway as the LLM provider.
+ * Triggered by: PRAutoBlogger_Image_Pipeline during content generation.
+ * Dependencies: Image_Support (key/parsing), Config (URL), Request_Builder (headers),
+ *               Image_Pricing (model/cost), Image_Batch (parallel curl_multi), Logger.
  *
- * Triggered by: PRAutoBlogger_Image_Pipeline during the content generation
- *               run, after editorial review, before publish. Also triggered
- *               by the admin "Test Connection" action.
- * Dependencies: PRAutoBlogger_OpenRouter_Image_Support (key, parsing, retry),
- *               PRAutoBlogger_OpenRouter_Config (base URL + gateway),
- *               PRAutoBlogger_OpenRouter_Request_Builder (headers + cURL fix),
- *               PRAutoBlogger_OpenRouter_Image_Pricing (model + cost),
- *               PRAutoBlogger_Logger.
- *
- * @see interface-image-provider.php              Interface this class implements.
- * @see class-openrouter-image-support.php        Key lookup, response parsing, retry.
- * @see class-openrouter-image-pricing.php        Cost + model helpers.
- * @see class-open-router-config.php              Base URL / gateway resolution.
- * @see class-open-router-request-builder.php     Header building + cURL auth filter.
- * @see class-cloudflare-image-provider.php       Sibling provider; same retry pattern.
- * @see ARCHITECTURE.md                           External API Integrations table.
+ * @see interface-image-provider.php           — Contract.
+ * @see class-open-router-image-batch.php      — Parallel generation via curl_multi.
+ * @see class-open-router-image-support.php    — Key, response parsing, retry.
+ * @see ARCHITECTURE.md                        — External API Integrations table.
  */
 class PRAutoBlogger_OpenRouter_Image_Provider implements PRAutoBlogger_Image_Provider_Interface {
 
@@ -53,14 +41,7 @@ class PRAutoBlogger_OpenRouter_Image_Provider implements PRAutoBlogger_Image_Pro
 	/**
 	 * {@inheritDoc}
 	 *
-	 * Sends a chat/completions request with modalities=["image"] and parses
-	 * the base64 image from the response. Retries 5xx/429 with exponential
-	 * backoff. 4xx (except 429) fail immediately.
-	 *
-	 * Side effects: HTTP request per attempt, Logger line per attempt.
-	 *
-	 * @throws \InvalidArgumentException If dimensions out of range or prompt empty.
-	 * @throws \RuntimeException         On auth failure, bad response, or retry exhaustion.
+	 * Retries 5xx/429 with exponential backoff; 4xx (except 429) fail immediately.
 	 */
 	public function generate_image( string $prompt, int $width, int $height, array $options = [] ): array {
 		$this->assert_valid_dimensions( $width, $height );
@@ -159,6 +140,41 @@ class PRAutoBlogger_OpenRouter_Image_Provider implements PRAutoBlogger_Image_Pro
 		);
 	}
 
+	/**
+	 * Generate multiple images concurrently via curl_multi.
+	 *
+	 * Fires all requests in parallel — total wall-clock time equals the
+	 * slowest single request, not the sum. Solves the Image B timeout
+	 * problem where sequential calls exceed Hostinger's max_execution_time.
+	 *
+	 * {@inheritDoc}
+	 */
+	public function generate_image_batch( array $requests ): array {
+		// Validate all requests upfront before starting any HTTP calls.
+		foreach ( $requests as $key => $req ) {
+			$this->assert_valid_dimensions( $req['width'], $req['height'] );
+			if ( '' === trim( $req['prompt'] ) ) {
+				throw new \InvalidArgumentException(
+					sprintf( 'Image prompt for key "%s" cannot be empty.', esc_html( $key ) )
+				);
+			}
+		}
+
+		$batch = new PRAutoBlogger_OpenRouter_Image_Batch(
+			$this->pricing,
+			$this->support,
+			$this->config,
+			$this->request_builder
+		);
+
+		PRAutoBlogger_Logger::instance()->info(
+			sprintf( 'Starting parallel image batch (%d images)', count( $requests ) ),
+			'openrouter-image'
+		);
+
+		return $batch->execute( $requests );
+	}
+
 	/** {@inheritDoc} */
 	public function estimate_cost( int $width, int $height, array $options = [] ): float {
 		$model = $this->pricing->resolve_model( (string) ( $options['model'] ?? '' ) );
@@ -170,19 +186,12 @@ class PRAutoBlogger_OpenRouter_Image_Provider implements PRAutoBlogger_Image_Pro
 		return self::PROVIDER_ID;
 	}
 
-	/**
-	 * Verify credentials by calling OpenRouter's /auth/key endpoint.
-	 *
-	 * {@inheritDoc}
-	 */
+	/** {@inheritDoc} — Calls OpenRouter's /auth/key endpoint. */
 	public function validate_credentials_detailed(): array {
 		try {
 			$api_key = $this->support->get_api_key();
 		} catch ( \RuntimeException $e ) {
-			return [
-				'status'  => 'error',
-				'message' => $e->getMessage(),
-			];
+			return [ 'status' => 'error', 'message' => $e->getMessage() ];
 		}
 
 		$response = wp_remote_get( 'https://openrouter.ai/api/v1/auth/key', [
@@ -200,10 +209,7 @@ class PRAutoBlogger_OpenRouter_Image_Provider implements PRAutoBlogger_Image_Pro
 
 		$status = (int) wp_remote_retrieve_response_code( $response );
 		if ( 200 === $status ) {
-			return [
-				'status'  => 'ok',
-				'message' => __( 'OpenRouter API key valid. Image generation ready.', 'prautoblogger' ),
-			];
+			return [ 'status' => 'ok', 'message' => __( 'OpenRouter API key valid.', 'prautoblogger' ) ];
 		}
 
 		return [
@@ -214,17 +220,7 @@ class PRAutoBlogger_OpenRouter_Image_Provider implements PRAutoBlogger_Image_Pro
 	}
 
 	/**
-	 * Build the chat/completions request body for image generation.
-	 *
-	 * @param string $prompt Image generation prompt.
-	 * @param int    $width  Target width.
-	 * @param int    $height Target height.
-	 * @param string $model  Resolved model id.
-	 * @return array<string, mixed>
-	 */
-	/**
-	 * Supported aspect ratios for OpenRouter image models (Gemini, GPT-5).
-	 * Arbitrary ratios like 150:79 are rejected — must snap to one of these.
+	 * Supported aspect ratios for OpenRouter image models.
 	 *
 	 * @var array<int, array{w: int, h: int, ratio: float}>
 	 */
@@ -260,7 +256,6 @@ class PRAutoBlogger_OpenRouter_Image_Provider implements PRAutoBlogger_Image_Pro
 
 	/**
 	 * Snap pixel dimensions to the nearest supported aspect ratio string.
-	 * 1200×632 → ratio 1.8987 → nearest is 16:9 (1.7778).
 	 *
 	 * @param int $width  Width in pixels.
 	 * @param int $height Height in pixels.

@@ -175,6 +175,28 @@ class PRAutoBlogger_Cloudflare_Image_Provider implements PRAutoBlogger_Image_Pro
 	}
 
 	/**
+	 * Sequential fallback — Cloudflare Workers AI does not support batching.
+	 *
+	 * {@inheritDoc}
+	 */
+	public function generate_image_batch( array $requests ): array {
+		$results = [];
+		foreach ( $requests as $key => $req ) {
+			try {
+				$results[ $key ] = $this->generate_image(
+					$req['prompt'],
+					$req['width'],
+					$req['height'],
+					$req['options'] ?? []
+				);
+			} catch ( \Throwable $e ) {
+				$results[ $key ] = [ 'error' => $e->getMessage() ];
+			}
+		}
+		return $results;
+	}
+
+	/**
 	 * Estimate the USD cost of a single generation call.
 	 *
 	 * {@inheritDoc}

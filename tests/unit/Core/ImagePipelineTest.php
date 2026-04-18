@@ -71,19 +71,25 @@ class ImagePipelineTest extends BaseTestCase {
 
 	/**
 	 * Test generate_and_attach_images() returns cost and error array structure.
+	 *
+	 * Pipeline now calls generate_image_batch() with keyed requests.
 	 */
 	public function test_generate_and_attach_images_returns_correct_structure(): void {
-		$provider = $this->createMock( \PRAutoBlogger_Image_Provider_Interface::class );
-		$provider->method( 'estimate_cost' )->willReturn( 0.05 );
-		$provider->method( 'generate_image' )->willReturn( [
+		$image_result = [
 			'bytes'      => 'fake_image_data',
 			'mime_type'  => 'image/png',
 			'width'      => 1200,
 			'height'     => 630,
-			'model'      => 'flux-1-schnell',
+			'model'      => 'test-model',
 			'seed'       => 123,
 			'cost_usd'   => 0.05,
 			'latency_ms' => 2000,
+		];
+
+		$provider = $this->createMock( \PRAutoBlogger_Image_Provider_Interface::class );
+		$provider->method( 'estimate_cost' )->willReturn( 0.05 );
+		$provider->method( 'generate_image_batch' )->willReturn( [
+			'image_a' => $image_result,
 		] );
 
 		$cost_tracker = $this->createMock( \PRAutoBlogger_Cost_Tracker::class );
@@ -91,7 +97,6 @@ class ImagePipelineTest extends BaseTestCase {
 
 		$pipeline = new \PRAutoBlogger_Image_Pipeline( $provider, $cost_tracker );
 
-		// Mock file writing for sideload.
 		Functions\when( 'get_temp_dir' )->justReturn( '/tmp/' );
 		Functions\when( 'media_handle_sideload' )->justReturn( 42 );
 
@@ -104,19 +109,24 @@ class ImagePipelineTest extends BaseTestCase {
 	}
 
 	/**
-	 * Test that cost is accumulated when both images are generated.
+	 * Test that cost is accumulated when both images are generated via batch.
 	 */
 	public function test_cost_is_accumulated_for_both_images(): void {
-		$provider = $this->createMock( \PRAutoBlogger_Image_Provider_Interface::class );
-		$provider->method( 'estimate_cost' )->willReturn( 0.05 );
-		$provider->method( 'generate_image' )->willReturn( [
+		$image_result = [
 			'bytes'      => 'fake_image_data',
 			'mime_type'  => 'image/png',
 			'width'      => 1200,
 			'height'     => 630,
-			'model'      => 'flux-1-schnell',
+			'model'      => 'test-model',
 			'cost_usd'   => 0.05,
 			'latency_ms' => 2000,
+		];
+
+		$provider = $this->createMock( \PRAutoBlogger_Image_Provider_Interface::class );
+		$provider->method( 'estimate_cost' )->willReturn( 0.05 );
+		$provider->method( 'generate_image_batch' )->willReturn( [
+			'image_a' => $image_result,
+			'image_b' => $image_result,
 		] );
 
 		$cost_tracker = $this->createMock( \PRAutoBlogger_Cost_Tracker::class );
@@ -134,35 +144,40 @@ class ImagePipelineTest extends BaseTestCase {
 			[ 'title' => 'Source' ]
 		);
 
-		// Cost should be accumulated from both images.
-		$this->assertGreaterThan( 0.05, $result['cost_usd'] );
+		// Cost should be accumulated from both images ($0.05 × 2 = $0.10).
+		$this->assertEqualsWithDelta( 0.10, $result['cost_usd'], 0.001 );
 	}
 
 	/**
-	 * Test that Image B is NOT generated when source_data is null.
+	 * Test that Image B is NOT included in the batch when source_data is null.
 	 *
-	 * This is the regression test for the Image B data-handoff gap:
-	 * post_assembler.php and executor.php both passed null as source_data,
-	 * so the pipeline silently skipped Image B. If this test ever fails
-	 * with `$this->exactly(2)`, it means someone re-broke the handoff.
+	 * Regression test: the pipeline must only send 'image_a' in the batch
+	 * request when no source data is provided.
 	 */
 	public function test_image_b_skipped_when_source_data_is_null(): void {
-		$provider = $this->createMock( \PRAutoBlogger_Image_Provider_Interface::class );
-		$provider->method( 'estimate_cost' )->willReturn( 0.05 );
-		$provider->method( 'generate_image' )->willReturn( [
+		$image_result = [
 			'bytes'      => 'fake_image_data',
 			'mime_type'  => 'image/png',
 			'width'      => 1200,
 			'height'     => 630,
-			'model'      => 'flux-1-schnell',
+			'model'      => 'test-model',
 			'cost_usd'   => 0.05,
 			'latency_ms' => 2000,
-		] );
+		];
+
+		$provider = $this->createMock( \PRAutoBlogger_Image_Provider_Interface::class );
+		$provider->method( 'estimate_cost' )->willReturn( 0.05 );
+		// Verify batch only contains 'image_a'.
+		$provider->expects( $this->once() )
+			->method( 'generate_image_batch' )
+			->with( $this->callback( function ( $requests ) {
+				return array_key_exists( 'image_a', $requests )
+					&& ! array_key_exists( 'image_b', $requests );
+			} ) )
+			->willReturn( [ 'image_a' => $image_result ] );
 
 		$cost_tracker = $this->createMock( \PRAutoBlogger_Cost_Tracker::class );
 		$cost_tracker->method( 'would_exceed_budget' )->willReturn( false );
-
-		// Only ONE call to log_image_generation — Image A only.
 		$cost_tracker->expects( $this->exactly( 1 ) )->method( 'log_image_generation' );
 
 		$pipeline = new \PRAutoBlogger_Image_Pipeline( $provider, $cost_tracker );
@@ -170,7 +185,6 @@ class ImagePipelineTest extends BaseTestCase {
 		Functions\when( 'get_temp_dir' )->justReturn( '/tmp/' );
 		Functions\when( 'media_handle_sideload' )->justReturn( 42 );
 
-		// Pass null source_data — Image B must NOT fire.
 		$result = $pipeline->generate_and_attach_images( 1, [ 'post_title' => 'Test' ], null );
 
 		$this->assertArrayHasKey( 'image_a_id', $result );
@@ -178,12 +192,12 @@ class ImagePipelineTest extends BaseTestCase {
 	}
 
 	/**
-	 * Test graceful handling when image generation fails.
+	 * Test graceful handling when batch generation throws.
 	 */
-	public function test_graceful_failure_when_image_generation_fails(): void {
+	public function test_graceful_failure_when_batch_generation_throws(): void {
 		$provider = $this->createMock( \PRAutoBlogger_Image_Provider_Interface::class );
 		$provider->method( 'estimate_cost' )->willReturn( 0.05 );
-		$provider->method( 'generate_image' )->willThrowException( new \Exception( 'API timeout' ) );
+		$provider->method( 'generate_image_batch' )->willThrowException( new \Exception( 'API timeout' ) );
 
 		$cost_tracker = $this->createMock( \PRAutoBlogger_Cost_Tracker::class );
 		$cost_tracker->method( 'would_exceed_budget' )->willReturn( false );
@@ -192,9 +206,50 @@ class ImagePipelineTest extends BaseTestCase {
 
 		$result = $pipeline->generate_and_attach_images( 1, [ 'post_title' => 'Test' ] );
 
-		// Should record error but return valid structure.
 		$this->assertIsArray( $result );
 		$this->assertNotEmpty( $result['errors'] );
 		$this->assertStringContainsString( 'API timeout', implode( ' ', $result['errors'] ) );
+	}
+
+	/**
+	 * Test graceful handling when one image in the batch returns an error.
+	 */
+	public function test_partial_batch_failure_handled_gracefully(): void {
+		$provider = $this->createMock( \PRAutoBlogger_Image_Provider_Interface::class );
+		$provider->method( 'estimate_cost' )->willReturn( 0.05 );
+		$provider->method( 'generate_image_batch' )->willReturn( [
+			'image_a' => [
+				'bytes'      => 'fake_image_data',
+				'mime_type'  => 'image/png',
+				'width'      => 1200,
+				'height'     => 630,
+				'model'      => 'test-model',
+				'cost_usd'   => 0.05,
+				'latency_ms' => 2000,
+			],
+			'image_b' => [ 'error' => 'HTTP 429: rate limited' ],
+		] );
+
+		$cost_tracker = $this->createMock( \PRAutoBlogger_Cost_Tracker::class );
+		$cost_tracker->method( 'would_exceed_budget' )->willReturn( false );
+		// Only Image A gets logged — Image B failed.
+		$cost_tracker->expects( $this->exactly( 1 ) )->method( 'log_image_generation' );
+
+		$pipeline = new \PRAutoBlogger_Image_Pipeline( $provider, $cost_tracker );
+
+		Functions\when( 'get_temp_dir' )->justReturn( '/tmp/' );
+		Functions\when( 'media_handle_sideload' )->justReturn( 42 );
+
+		$result = $pipeline->generate_and_attach_images(
+			1,
+			[ 'post_title' => 'Test' ],
+			[ 'title' => 'Source' ]
+		);
+
+		// Image A succeeds, Image B records an error.
+		$this->assertArrayHasKey( 'image_a_id', $result );
+		$this->assertArrayNotHasKey( 'image_b_id', $result );
+		$this->assertNotEmpty( $result['errors'] );
+		$this->assertStringContainsString( '429', implode( ' ', $result['errors'] ) );
 	}
 }

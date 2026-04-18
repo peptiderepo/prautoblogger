@@ -72,107 +72,76 @@ class PRAutoBlogger_Image_Pipeline {
 	/**
 	 * Generate and attach images to a published post.
 	 *
-	 * Generates Image A (article-driven) and Image B (source-driven). If enabled
-	 * in settings. Each image is independently fallible.
+	 * Builds all prompts upfront, fires a single batch call (parallel via
+	 * curl_multi on OpenRouter), then processes results. Wall-clock time
+	 * equals the slowest image, not the sum — solving the Image B timeout.
 	 *
-	 * @param int                    $post_id Post ID to attach images to.
-	 * @param array{
-	 *     post_title?: string,
-	 *     post_content?: string,
-	 *     suggested_title?: string,
-	 * }                           $article_data Article title + content.
-	 * @param array{
-	 *     title?: string,
-	 *     selftext?: string,
-	 *     comments?: string[],
-	 * }|null                      $source_data Optional Reddit source data for Image B.
+	 * @param int        $post_id      Post ID to attach images to.
+	 * @param array      $article_data Article title + content.
+	 * @param array|null $source_data  Optional source data for Image B.
 	 *
-	 * @return array{
-	 *     image_a_id?: int,
-	 *     image_b_id?: int,
-	 *     cost_usd: float,
-	 *     errors: string[],
-	 * } Attachment IDs (if successful) and cost/errors.
+	 * @return array{image_a_id?: int, image_b_id?: int, cost_usd: float, errors: string[]}
 	 */
 	public function generate_and_attach_images(
 		int $post_id,
 		array $article_data,
 		?array $source_data = null
 	): array {
-		$result = [
-			'cost_usd' => 0.0,
-			'errors'   => [],
-		];
+		$result = [ 'cost_usd' => 0.0, 'errors' => [] ];
 
-		// Early exit if image generation is disabled.
 		if ( ! get_option( 'prautoblogger_image_enabled' ) ) {
 			PRAutoBlogger_Logger::instance()->info( 'Image generation disabled in settings.', 'image_pipeline' );
 			return $result;
 		}
 
-		// Build the article-driven prompt (returns scene + caption).
+		// Budget pre-check: estimate cost for all images before any HTTP calls.
+		$image_count    = ( null !== $source_data && ! empty( $source_data ) ) ? 2 : 1;
+		$estimated_cost = $this->provider->estimate_cost( self::DEFAULT_WIDTH, self::DEFAULT_HEIGHT ) * $image_count;
+		if ( $this->cost_tracker->would_exceed_budget( $estimated_cost ) ) {
+			$result['errors'][] = 'Image generation would exceed monthly budget.';
+			return $result;
+		}
+
+		// Build all prompts upfront (LLM calls happen here, sequentially).
 		$article_prompt = $this->prompt_builder->build_article_prompt( $article_data );
+		$batch_requests = [
+			'image_a' => [
+				'prompt' => $article_prompt['prompt'],
+				'width'  => self::DEFAULT_WIDTH,
+				'height' => self::DEFAULT_HEIGHT,
+			],
+		];
+		$captions = [ 'image_a' => $article_prompt['caption'] ];
 
-		// Generate Image A (article-driven prompt).
-		$image_a_result = $this->generate_image_a( $post_id, $article_prompt['prompt'] );
-		if ( ! is_wp_error( $image_a_result ) && isset( $image_a_result['attachment_id'] ) ) {
-			$result['image_a_id'] = $image_a_result['attachment_id'];
-
-			// Set featured image immediately so it persists even if the
-			// process times out before Image B finishes or before the
-			// caller gets to handle the return value.
-			set_post_thumbnail( $post_id, $image_a_result['attachment_id'] );
-
-			// Store the caption as attachment meta for theme/display use.
-			if ( '' !== $article_prompt['caption'] ) {
-				update_post_meta( $image_a_result['attachment_id'], '_prautoblogger_image_caption', $article_prompt['caption'] );
-				$this->prepend_caption_to_post( $post_id, $image_a_result['attachment_id'], $article_prompt['caption'] );
-			}
-
-			PRAutoBlogger_Logger::instance()->info(
-				sprintf( 'Set featured image (attachment %d) for post %d', $image_a_result['attachment_id'], $post_id ),
-				'image_pipeline'
-			);
-		} else {
-			$result['errors'][] = is_wp_error( $image_a_result )
-				? $image_a_result->get_error_message()
-				: 'Image A generation produced no attachment ID.';
-		}
-		if ( ! is_wp_error( $image_a_result ) ) {
-			$result['cost_usd'] += $image_a_result['cost_usd'] ?? 0.0;
-		}
-
-		// Generate Image B (source-driven prompt) if source data is available.
+		$source_prompt = null;
 		if ( null !== $source_data && ! empty( $source_data ) ) {
-			$source_prompt  = $this->prompt_builder->build_source_prompt( $source_data );
-			$image_b_result = $this->generate_image_b( $post_id, $source_prompt['prompt'] );
-			if ( ! is_wp_error( $image_b_result ) && isset( $image_b_result['attachment_id'] ) ) {
-				$result['image_b_id'] = $image_b_result['attachment_id'];
+			$source_prompt = $this->prompt_builder->build_source_prompt( $source_data );
+			$batch_requests['image_b'] = [
+				'prompt' => $source_prompt['prompt'],
+				'width'  => self::DEFAULT_WIDTH,
+				'height' => self::DEFAULT_HEIGHT,
+			];
+			$captions['image_b'] = $source_prompt['caption'];
+		}
 
-				// Store Image B reference immediately for the same
-				// timeout-resilience reason as Image A above.
-				update_post_meta( $post_id, '_prautoblogger_image_b_id', $image_b_result['attachment_id'] );
+		// Fire all image generation requests in parallel.
+		try {
+			$batch_results = $this->provider->generate_image_batch( $batch_requests );
+		} catch ( \Throwable $e ) {
+			PRAutoBlogger_Logger::instance()->error( 'Batch generation failed: ' . $e->getMessage(), 'image_pipeline' );
+			$result['errors'][] = $e->getMessage();
+			return $result;
+		}
 
-				// Store the caption as attachment meta.
-				if ( '' !== $source_prompt['caption'] ) {
-					update_post_meta( $image_b_result['attachment_id'], '_prautoblogger_image_caption', $source_prompt['caption'] );
-				}
+		// Process Image A result.
+		$this->process_image_a( $post_id, $batch_results, $captions, $result );
 
-				PRAutoBlogger_Logger::instance()->info(
-					sprintf( 'Stored Image B (attachment %d) for post %d', $image_b_result['attachment_id'], $post_id ),
-					'image_pipeline'
-				);
-			} else {
-				$result['errors'][] = is_wp_error( $image_b_result )
-					? $image_b_result->get_error_message()
-					: 'Image B generation produced no attachment ID.';
-			}
-			if ( ! is_wp_error( $image_b_result ) ) {
-				$result['cost_usd'] += $image_b_result['cost_usd'] ?? 0.0;
-			}
-		} else {
+		// Process Image B result (if requested).
+		if ( isset( $batch_results['image_b'] ) ) {
+			$this->process_image_b( $post_id, $batch_results, $captions, $result );
+		} elseif ( null === $source_data || empty( $source_data ) ) {
 			PRAutoBlogger_Logger::instance()->info(
-				sprintf( 'Image B skipped for post %d: no source data available.', $post_id ),
+				sprintf( 'Image B skipped for post %d: no source data.', $post_id ),
 				'image_pipeline'
 			);
 		}
@@ -180,71 +149,100 @@ class PRAutoBlogger_Image_Pipeline {
 		return $result;
 	}
 
-	/** @see generate_single_image() — Image A wrapper. */
-	private function generate_image_a( int $post_id, string $prompt ) {
-		return $this->generate_single_image( $post_id, $prompt, 'image_a', 'Image A' );
-	}
+	/**
+	 * Process Image A batch result: sideload, set featured image, insert caption.
+	 *
+	 * @param int   $post_id       Post ID.
+	 * @param array $batch_results Keyed results from generate_image_batch().
+	 * @param array $captions      Keyed captions from prompt builder.
+	 * @param array $result        Pipeline result array (modified by reference).
+	 */
+	private function process_image_a( int $post_id, array $batch_results, array $captions, array &$result ): void {
+		$image_data = $batch_results['image_a'] ?? null;
+		if ( ! $image_data || isset( $image_data['error'] ) ) {
+			$result['errors'][] = $image_data['error'] ?? 'Image A missing from batch results.';
+			return;
+		}
 
-	/** @see generate_single_image() — Image B wrapper. */
-	private function generate_image_b( int $post_id, string $prompt ) {
-		return $this->generate_single_image( $post_id, $prompt, 'image_b', 'Image B' );
+		$attachment_id = $this->sideload_and_log( $image_data, $post_id, 'image_a', 'Image A' );
+		if ( is_wp_error( $attachment_id ) ) {
+			$result['errors'][] = $attachment_id->get_error_message();
+			return;
+		}
+
+		$result['image_a_id'] = $attachment_id;
+		$result['cost_usd']  += $image_data['cost_usd'];
+		set_post_thumbnail( $post_id, $attachment_id );
+
+		if ( '' !== ( $captions['image_a'] ?? '' ) ) {
+			update_post_meta( $attachment_id, '_prautoblogger_image_caption', $captions['image_a'] );
+			$this->prepend_caption_to_post( $post_id, $attachment_id, $captions['image_a'] );
+		}
 	}
 
 	/**
-	 * Generate a single image: budget check → provider call → sideload → log.
+	 * Process Image B batch result: sideload, store meta.
 	 *
-	 * Shared implementation for Image A and Image B to avoid duplication.
-	 *
-	 * @param int    $post_id  Post ID.
-	 * @param string $prompt   Image generation prompt.
-	 * @param string $slot     Cost-tracking slot ('image_a' or 'image_b').
-	 * @param string $label    Human-readable label for log messages.
-	 *
-	 * @return array{attachment_id?: int, cost_usd: float}|\WP_Error
+	 * @param int   $post_id       Post ID.
+	 * @param array $batch_results Keyed results from generate_image_batch().
+	 * @param array $captions      Keyed captions from prompt builder.
+	 * @param array $result        Pipeline result array (modified by reference).
 	 */
-	private function generate_single_image( int $post_id, string $prompt, string $slot, string $label ) {
-		try {
-			$estimated_cost = $this->provider->estimate_cost( self::DEFAULT_WIDTH, self::DEFAULT_HEIGHT );
-			if ( $this->cost_tracker->would_exceed_budget( $estimated_cost ) ) {
-				return new \WP_Error( 'budget_exceeded', 'Image generation would exceed monthly budget.' );
-			}
-
-			$image_data = $this->provider->generate_image( $prompt, self::DEFAULT_WIDTH, self::DEFAULT_HEIGHT );
-
-			$attachment_id = $this->sideloader->sideload_image(
-				$image_data,
-				$post_id,
-				substr( $prompt, 0, 100 )
-			);
-
-			if ( is_wp_error( $attachment_id ) ) {
-				return $attachment_id;
-			}
-
-			$this->cost_tracker->log_image_generation(
-				$image_data['cost_usd'],
-				$image_data['model'] ?? 'unknown',
-				$post_id,
-				$slot
-			);
-
-			PRAutoBlogger_Logger::instance()->info(
-				sprintf( '%s generated for post %d (attachment %d, cost $%.4f)', $label, $post_id, $attachment_id, $image_data['cost_usd'] ),
-				'image_pipeline'
-			);
-
-			return [
-				'attachment_id' => $attachment_id,
-				'cost_usd'      => $image_data['cost_usd'],
-			];
-		} catch ( \Throwable $e ) {
-			PRAutoBlogger_Logger::instance()->error(
-				sprintf( '%s %s: %s', $label, get_class( $e ), $e->getMessage() ),
-				'image_pipeline'
-			);
-
-			return new \WP_Error( 'image_generation_failed', $e->getMessage() );
+	private function process_image_b( int $post_id, array $batch_results, array $captions, array &$result ): void {
+		$image_data = $batch_results['image_b'] ?? null;
+		if ( ! $image_data || isset( $image_data['error'] ) ) {
+			$result['errors'][] = $image_data['error'] ?? 'Image B missing from batch results.';
+			return;
 		}
+
+		$attachment_id = $this->sideload_and_log( $image_data, $post_id, 'image_b', 'Image B' );
+		if ( is_wp_error( $attachment_id ) ) {
+			$result['errors'][] = $attachment_id->get_error_message();
+			return;
+		}
+
+		$result['image_b_id'] = $attachment_id;
+		$result['cost_usd']  += $image_data['cost_usd'];
+		update_post_meta( $post_id, '_prautoblogger_image_b_id', $attachment_id );
+
+		if ( '' !== ( $captions['image_b'] ?? '' ) ) {
+			update_post_meta( $attachment_id, '_prautoblogger_image_caption', $captions['image_b'] );
+		}
+	}
+
+	/**
+	 * Sideload image bytes into the media library and log the cost.
+	 *
+	 * @param array  $image_data Provider result with bytes, model, cost_usd.
+	 * @param int    $post_id    Post ID.
+	 * @param string $slot       Cost-tracking slot ('image_a' or 'image_b').
+	 * @param string $label      Human-readable label for logs.
+	 * @return int|\WP_Error Attachment ID on success.
+	 */
+	private function sideload_and_log( array $image_data, int $post_id, string $slot, string $label ) {
+		$attachment_id = $this->sideloader->sideload_image(
+			$image_data,
+			$post_id,
+			substr( $image_data['model'] ?? 'image', 0, 100 )
+		);
+
+		if ( is_wp_error( $attachment_id ) ) {
+			return $attachment_id;
+		}
+
+		$this->cost_tracker->log_image_generation(
+			$image_data['cost_usd'],
+			$image_data['model'] ?? 'unknown',
+			$post_id,
+			$slot
+		);
+
+		PRAutoBlogger_Logger::instance()->info(
+			sprintf( '%s for post %d (att %d, $%.4f)', $label, $post_id, $attachment_id, $image_data['cost_usd'] ),
+			'image_pipeline'
+		);
+
+		return $attachment_id;
 	}
 
 	/**
