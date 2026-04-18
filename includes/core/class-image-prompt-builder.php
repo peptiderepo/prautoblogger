@@ -5,7 +5,7 @@ declare(strict_types=1);
  * Builds image prompts from article content or source data.
  *
  * Uses a cheap LLM (via OpenRouter) to distill article content into concise
- * visual scene descriptions optimised for FLUX.1. Falls back to rule-based
+ * visual scene descriptions optimised for image generation. Falls back to rule-based
  * synthesis if the LLM call fails, so image generation never blocks on a
  * prompt-rewriting outage.
  *

@@ -19,12 +19,12 @@ class PRAutoBlogger_Image_Pipeline {
 	/**
 	 * Default image dimensions (landscape).
 	 */
-	// FLUX.1 requires both dimensions to be divisible by 8.
+	// Dimensions must be divisible by 8 (required by some providers).
 	// 1200×632 is the closest 8-aligned pair to the standard OG image size (1200×630).
 	private const DEFAULT_WIDTH  = 1200;
 	private const DEFAULT_HEIGHT = 632;
 
-	/** @var PRAutoBlogger_Image_Provider_Interface Image gen provider (FLUX.1 etc). */
+	/** @var PRAutoBlogger_Image_Provider_Interface Image gen provider. */
 	private PRAutoBlogger_Image_Provider_Interface $provider;
 
 	/** @var PRAutoBlogger_Image_Prompt_Builder Builds scene + caption from article data. */
@@ -248,15 +248,14 @@ class PRAutoBlogger_Image_Pipeline {
 	}
 
 	/**
-	 * Prepend a comic caption as a styled figcaption block to post content.
+	 * Prepend the comic caption as styled text at the top of the post content.
 	 *
-	 * Inserts a <figure> block at the top of the post containing the featured
-	 * image and a <figcaption> with the comic punchline. Uses inline styles
-	 * for portability across themes.
+	 * Only inserts the caption — NOT the image. The theme already displays the
+	 * featured image, so embedding it again would cause a duplicate.
 	 *
-	 * @param int    $post_id       Post ID.
-	 * @param int    $attachment_id Featured image attachment ID.
-	 * @param string $caption       Caption text (the comic punchline).
+	 * @param int    $post_id Post ID.
+	 * @param int    $attachment_id Featured image attachment ID (for meta storage only).
+	 * @param string $caption Caption text (the comic punchline).
 	 */
 	private function prepend_caption_to_post( int $post_id, int $attachment_id, string $caption ): void {
 		$post = get_post( $post_id );
@@ -264,23 +263,15 @@ class PRAutoBlogger_Image_Pipeline {
 			return;
 		}
 
-		$img_url = wp_get_attachment_url( $attachment_id );
-		$alt     = get_post_meta( $attachment_id, '_wp_attachment_image_alt', true );
-
-		// Build a self-contained figure block with the comic image and caption.
-		$figure = sprintf(
-			'<figure class="prautoblogger-comic" style="text-align:center;margin:0 0 2em 0;">'
-			. '<img src="%s" alt="%s" style="max-width:100%%;height:auto;border:2px solid #333;border-radius:4px;" />'
-			. '<figcaption style="font-style:italic;color:#555;margin-top:0.5em;font-size:1.1em;">— "%s"</figcaption>'
-			. '</figure>',
-			esc_url( $img_url ),
-			esc_attr( $alt ),
+		// Caption-only block — the theme handles the featured image display.
+		$caption_html = sprintf(
+			'<p class="prautoblogger-comic-caption" style="text-align:center;font-style:italic;color:#555;font-size:1.1em;margin:0 0 2em 0;">— "%s"</p>',
 			esc_html( $caption )
 		);
 
 		wp_update_post( [
 			'ID'           => $post_id,
-			'post_content' => $figure . "\n\n" . $post->post_content,
+			'post_content' => $caption_html . "\n\n" . $post->post_content,
 		] );
 	}
 }

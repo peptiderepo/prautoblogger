@@ -54,8 +54,9 @@ define( 'PRAUTOBLOGGER_DEFAULT_WRITING_MODEL', 'google/gemini-2.5-flash-lite' );
 define( 'PRAUTOBLOGGER_DEFAULT_EDITOR_MODEL', 'google/gemini-2.5-flash-lite' );
 
 // Image generation defaults.
-// Default provider is OpenRouter (higher quality); Cloudflare is the fallback.
-// Default model is FLUX.2 Pro via OpenRouter (~$0.03/image, good quality).
+// Default provider is OpenRouter; Cloudflare is the fallback.
+// Default model is Gemini 2.5 Flash Image ($0.005/image, good for comics).
+// User can override via Settings → Images → Image Model.
 define( 'PRAUTOBLOGGER_DEFAULT_IMAGE_PROVIDER', 'openrouter' );
 define( 'PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL', 'google/gemini-2.5-flash-image' );
 

@@ -145,7 +145,7 @@ class PRAutoBlogger_Image_Media_Sideloader {
 			gmdate( 'Y-m-d_H-i-s' )
 		);
 
-		return $base . '.png'; // Default to PNG since FLUX.1 outputs PNG.
+		return $base . '.png'; // Default to PNG — most image models output PNG.
 	}
 
 	/**

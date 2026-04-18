@@ -22,61 +22,47 @@ class OpenRouterImagePricingTest extends BaseTestCase {
 		} );
 	}
 
-	/** Default model constant is FLUX.2 Pro. */
-	public function test_default_model_constant(): void {
-		$this->assertSame(
-			'black-forest-labs/flux-2-pro',
-			\PRAutoBlogger_OpenRouter_Image_Pricing::DEFAULT_MODEL
-		);
-	}
-
-	/** Empty hint resolves to default model. */
+	/** Empty hint resolves to the PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL constant. */
 	public function test_resolve_model_empty_hint_uses_default(): void {
 		$pricing = new \PRAutoBlogger_OpenRouter_Image_Pricing();
 		$model   = $pricing->resolve_model( '' );
-		$this->assertSame( 'black-forest-labs/flux-2-pro', $model );
+		$this->assertSame( PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL, $model );
 	}
 
-	/** Valid hint resolves to itself. */
+	/** Explicit hint resolves to itself, regardless of what default is set. */
 	public function test_resolve_model_valid_hint(): void {
 		$pricing = new \PRAutoBlogger_OpenRouter_Image_Pricing();
-		$model   = $pricing->resolve_model( 'bytedance/seedream-3.0' );
-		$this->assertSame( 'bytedance/seedream-3.0', $model );
+		$model   = $pricing->resolve_model( 'openai/gpt-5-image' );
+		$this->assertSame( 'openai/gpt-5-image', $model );
 	}
 
-	/** Unknown model falls back to default. */
-	public function test_resolve_model_unknown_falls_back_to_default(): void {
+	/** Gemini Flash Image costs $0.005/image. */
+	public function test_estimate_cost_gemini_flash(): void {
 		$pricing = new \PRAutoBlogger_OpenRouter_Image_Pricing();
-		$model   = $pricing->resolve_model( 'nonexistent/model-999' );
-		$this->assertSame( 'black-forest-labs/flux-2-pro', $model );
+		$cost    = $pricing->estimate_cost( 1200, 632, 'google/gemini-2.5-flash-image' );
+		$this->assertEqualsWithDelta( 0.005, $cost, 0.000001 );
 	}
 
-	/** FLUX.2 Pro costs $0.03/image. */
-	public function test_estimate_cost_flux2_pro(): void {
+	/** GPT-5 Image costs $0.08/image. */
+	public function test_estimate_cost_gpt5_image(): void {
 		$pricing = new \PRAutoBlogger_OpenRouter_Image_Pricing();
-		$cost    = $pricing->estimate_cost( 1200, 632, 'black-forest-labs/flux-2-pro' );
-		$this->assertEqualsWithDelta( 0.03, $cost, 0.000001 );
+		$cost    = $pricing->estimate_cost( 1200, 632, 'openai/gpt-5-image' );
+		$this->assertEqualsWithDelta( 0.08, $cost, 0.000001 );
 	}
 
-	/** Seedream costs $0.003/image. */
-	public function test_estimate_cost_seedream(): void {
-		$pricing = new \PRAutoBlogger_OpenRouter_Image_Pricing();
-		$cost    = $pricing->estimate_cost( 1200, 632, 'bytedance/seedream-3.0' );
-		$this->assertEqualsWithDelta( 0.003, $cost, 0.000001 );
-	}
-
-	/** Unknown model in estimate_cost falls back to default pricing. */
+	/** Unknown model falls back to conservative $0.05 estimate. */
 	public function test_estimate_cost_unknown_model(): void {
 		$pricing = new \PRAutoBlogger_OpenRouter_Image_Pricing();
 		$cost    = $pricing->estimate_cost( 1200, 632, 'unknown/model' );
-		$this->assertEqualsWithDelta( 0.03, $cost, 0.000001 );
+		$this->assertEqualsWithDelta( 0.05, $cost, 0.000001 );
 	}
 
-	/** get_model_costs returns a non-empty map. */
+	/** get_model_costs returns a non-empty map with known models. */
 	public function test_get_model_costs(): void {
 		$costs = \PRAutoBlogger_OpenRouter_Image_Pricing::get_model_costs();
 		$this->assertIsArray( $costs );
-		$this->assertArrayHasKey( 'black-forest-labs/flux-2-pro', $costs );
+		$this->assertArrayHasKey( 'google/gemini-2.5-flash-image', $costs );
+		$this->assertArrayHasKey( 'openai/gpt-5-image', $costs );
 		$this->assertGreaterThan( 0, count( $costs ) );
 	}
 }

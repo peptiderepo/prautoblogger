@@ -181,8 +181,8 @@ class PRAutoBlogger_Settings_Fields_Extended {
 				'section' => 'prautoblogger_images',
 				'default' => 'openrouter',
 				'options' => [
-					'openrouter' => __( 'OpenRouter (FLUX.2 Pro, Seedream, GPT-Image)', 'prautoblogger' ),
-					'cloudflare' => __( 'Cloudflare Workers AI (FLUX.1 schnell)', 'prautoblogger' ),
+					'openrouter' => __( 'OpenRouter (multiple models available)', 'prautoblogger' ),
+					'cloudflare' => __( 'Cloudflare Workers AI', 'prautoblogger' ),
 				],
 				'description' => __( 'OpenRouter reuses your existing API key and offers higher-quality models. Cloudflare is cheaper but lower quality.', 'prautoblogger' ),
 			],
@@ -193,7 +193,7 @@ class PRAutoBlogger_Settings_Fields_Extended {
 				'section'     => 'prautoblogger_images',
 				'default'     => PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL,
 				'capability'  => 'image_generation',
-				'description' => __( 'Pick a model from your selected provider. FLUX.2 Pro recommended for quality.', 'prautoblogger' ),
+				'description' => __( 'Pick a model from your selected provider.', 'prautoblogger' ),
 				'badge'       => __( 'Quality', 'prautoblogger' ),
 			],
 			[

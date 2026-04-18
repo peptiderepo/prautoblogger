@@ -13,7 +13,7 @@ declare(strict_types=1);
  *               content generation run, after editorial review, before publish.
  * Dependencies: None at interface level — implementations wrap a specific HTTP API.
  *
- * @see class-cloudflare-image-provider.php — Default implementation (FLUX.1 via Workers AI).
+ * @see class-cloudflare-image-provider.php — Cloudflare Workers AI implementation.
  * @see interface-llm-provider.php          — Parallel pattern for LLM providers.
  * @see ARCHITECTURE.md                     — External API Integrations table.
  */

@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * OpenRouter image provider — FLUX.2, Seedream, GPT-Image, Gemini Flash.
+ * OpenRouter image provider — model-agnostic, works with any image model.
  *
  * Calls the standard OpenRouter chat/completions endpoint with
  * `modalities: ["image"]`. Reuses the same API key and optional
