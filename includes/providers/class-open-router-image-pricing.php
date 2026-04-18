@@ -30,26 +30,33 @@ class PRAutoBlogger_OpenRouter_Image_Pricing {
 		'openai/gpt-5-image'                     => 0.08,
 	];
 
-	/** @var string Default model when none is configured. */
-	public const DEFAULT_MODEL = 'google/gemini-2.5-flash-image';
-
 	/**
 	 * Resolve the model identifier from a hint, falling back to site option,
-	 * then to the hardcoded default.
+	 * then to the PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL constant.
+	 *
+	 * Never silently swaps to a different model — if the user picked something,
+	 * we send it to OpenRouter and let the API error if it's invalid. That way
+	 * the user sees a clear log message instead of getting billed for a model
+	 * they didn't choose.
 	 *
 	 * @param string $hint Caller-supplied model identifier (may be empty).
 	 * @return string OpenRouter model id.
 	 */
 	public function resolve_model( string $hint ): string {
 		$hint = trim( $hint );
-		if ( '' === $hint ) {
-			$hint = (string) get_option( 'prautoblogger_image_model', self::DEFAULT_MODEL );
+		if ( '' !== $hint ) {
+			return $hint;
 		}
-		// Validate the model exists in our cost table; fall back to default.
-		if ( ! isset( self::COST_PER_IMAGE[ $hint ] ) ) {
-			return self::DEFAULT_MODEL;
+
+		$saved = trim( (string) get_option( 'prautoblogger_image_model', '' ) );
+		if ( '' !== $saved ) {
+			return $saved;
 		}
-		return $hint;
+
+		// Last resort: use the constant from prautoblogger.php (admin can change it).
+		return defined( 'PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL' )
+			? PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL
+			: 'google/gemini-2.5-flash-image';
 	}
 
 	/**
@@ -64,7 +71,16 @@ class PRAutoBlogger_OpenRouter_Image_Pricing {
 	 * @return float USD cost rounded to 6 decimals.
 	 */
 	public function estimate_cost( int $width, int $height, string $model ): float {
-		return round( self::COST_PER_IMAGE[ $model ] ?? self::COST_PER_IMAGE[ self::DEFAULT_MODEL ], 6 );
+		if ( isset( self::COST_PER_IMAGE[ $model ] ) ) {
+			return round( self::COST_PER_IMAGE[ $model ], 6 );
+		}
+
+		// Unknown model — log it and use a conservative $0.05 estimate.
+		PRAutoBlogger_Logger::instance()->warning(
+			sprintf( 'No pricing data for image model "%s". Using $0.05 estimate.', $model ),
+			'openrouter-image'
+		);
+		return 0.05;
 	}
 
 	/**
