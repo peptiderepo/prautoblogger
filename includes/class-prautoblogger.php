@@ -12,7 +12,9 @@ declare(strict_types=1);
  * Dependencies: All other plugin classes (loaded via autoloader), PRAutoBlogger_Executor.
  *
  * @see prautoblogger.php                     — Plugin bootstrap that instantiates this class.
- * @see class-prautoblogger-executor.php       — Cron/AJAX handlers, generation lock, model registry.
+ * @see class-executor.php                    — Cron/AJAX handlers for generation, model registry.
+ * @see class-ajax-handlers.php               — Non-generation AJAX endpoints (images, models, test).
+ * @see class-generation-lock.php             — DB mutex for single-writer generation.
  * @see core/class-pipeline-runner.php         — Executes the generation pipeline.
  * @see ARCHITECTURE.md                        — Data flow diagram showing how classes interact.
  * @see CONVENTIONS.md                         — Hook naming conventions.
@@ -21,8 +23,11 @@ class PRAutoBlogger {
 
 	private bool $initialized = false;
 
-	/** @var PRAutoBlogger_Executor Handles execution: cron, AJAX, locking, model registry. */
+	/** @var PRAutoBlogger_Executor Handles generation cron/AJAX, model registry. */
 	private PRAutoBlogger_Executor $executor;
+
+	/** @var PRAutoBlogger_Ajax_Handlers Handles non-generation AJAX (images, models, test). */
+	private PRAutoBlogger_Ajax_Handlers $ajax_handlers;
 
 	/**
 	 * Register all hooks and initialize the plugin.
@@ -34,8 +39,9 @@ class PRAutoBlogger {
 		if ( $this->initialized ) {
 			return;
 		}
-		$this->initialized = true;
-		$this->executor    = new PRAutoBlogger_Executor();
+		$this->initialized  = true;
+		$this->executor     = new PRAutoBlogger_Executor();
+		$this->ajax_handlers = new PRAutoBlogger_Ajax_Handlers( $this->executor->get_model_registry() );
 
 		add_action( 'admin_init', [ $this, 'on_check_db_version' ] );
 		add_filter( 'cron_schedules', [ $this, 'filter_add_cron_schedules' ] );
@@ -95,11 +101,14 @@ class PRAutoBlogger {
 
 	/** Register AJAX handlers for admin actions. */
 	private function register_ajax_hooks(): void {
+		// Generation AJAX (start + status polling) stays on executor.
 		add_action( 'wp_ajax_prautoblogger_generate_now', [ $this->executor, 'on_ajax_generate_now' ] );
 		add_action( 'wp_ajax_prautoblogger_generation_status', [ $this->executor, 'on_ajax_generation_status' ] );
-		add_action( 'wp_ajax_prautoblogger_generate_image', [ $this->executor, 'on_ajax_generate_image' ] );
-		add_action( 'wp_ajax_prautoblogger_test_connection', [ $this->executor, 'on_ajax_test_connection' ] );
-		add_action( 'wp_ajax_prautoblogger_get_models', [ $this->executor, 'on_ajax_get_models' ] );
+
+		// Non-generation AJAX (images, models, test) on dedicated handler.
+		add_action( 'wp_ajax_prautoblogger_generate_image', [ $this->ajax_handlers, 'on_ajax_generate_image' ] );
+		add_action( 'wp_ajax_prautoblogger_test_connection', [ $this->ajax_handlers, 'on_ajax_test_connection' ] );
+		add_action( 'wp_ajax_prautoblogger_get_models', [ $this->ajax_handlers, 'on_ajax_get_models' ] );
 
 		$review_queue = new PRAutoBlogger_Review_Queue();
 		add_action( 'wp_ajax_prautoblogger_approve_post', [ $review_queue, 'on_ajax_approve_post' ] );
@@ -196,7 +205,7 @@ class PRAutoBlogger {
 		return $this->executor;
 	}
 
-	// ── Backward-compatible proxies (execution moved to PRAutoBlogger_Executor) ──
+	// ── Backward-compatible proxies ──
 
 	/** @see PRAutoBlogger_Executor::on_daily_generation() */
 	public function on_daily_generation(): void { $this->executor->on_daily_generation(); }
@@ -207,8 +216,8 @@ class PRAutoBlogger {
 	/** @see PRAutoBlogger_Executor::on_ajax_generate_now() */
 	public function on_ajax_generate_now(): void { $this->executor->on_ajax_generate_now(); }
 
-	/** @see PRAutoBlogger_Executor::on_ajax_test_connection() */
-	public function on_ajax_test_connection(): void { $this->executor->on_ajax_test_connection(); }
+	/** @see PRAutoBlogger_Ajax_Handlers::on_ajax_test_connection() */
+	public function on_ajax_test_connection(): void { $this->ajax_handlers->on_ajax_test_connection(); }
 
 	/** @see PRAutoBlogger_Executor::get_model_registry() */
 	public function get_model_registry(): PRAutoBlogger_OpenRouter_Model_Registry { return $this->executor->get_model_registry(); }

@@ -105,7 +105,9 @@ prautoblogger/
 │
 ├── includes/
 │   ├── class-prautoblogger.php        # Main orchestrator — registers all hooks, delegates execution
-│   ├── class-executor.php             # Cron/AJAX handlers, generation lock, model registry access
+│   ├── class-executor.php             # Cron handlers, generation AJAX (start + status), model registry
+│   ├── class-ajax-handlers.php        # Non-generation AJAX: images, models, test connections
+│   ├── class-generation-lock.php      # DB-level atomic mutex for single-writer generation
 │   ├── class-activator.php            # Activation: create DB tables, set defaults, schedule cron
 │   ├── class-deactivator.php          # Deactivation: clear cron, cleanup transients
 │   ├── class-autoloader.php           # PSR-4-style autoloader for plugin classes
@@ -233,6 +235,53 @@ The widget CSS (`posts-widget.css`) uses the Peptide Starter theme's CSS custom 
 
 - **On sites using Peptide Starter:** widget automatically adapts to light/dark mode via `data-theme`.
 - **On other themes:** fallback values render a sensible dark-themed design.
+
+---
+
+## Background Generation Flow (v0.3.0)
+
+The "Generate Now" button runs the pipeline in a background WP-Cron process to avoid
+Hostinger's 120-second LiteSpeed connection timeout. The frontend polls for status.
+
+```
+┌──────────────────────────────┐
+│  Admin clicks "Generate Now" │  admin.js sends AJAX to on_ajax_generate_now()
+└────────────┬─────────────────┘
+             │  Handler returns immediately (< 1 second):
+             │  1. Writes "running" transient with started timestamp
+             │  2. Schedules one-shot cron: prautoblogger_manual_generation
+             │  3. Fires non-blocking loopback to wp-cron.php
+             │  4. Returns JSON success to browser
+             ▼
+┌──────────────────────────────┐
+│  admin.js starts polling     │  setInterval every 5 seconds
+│  on_ajax_generation_status() │  Shows stage text + spinner
+└────────────┬─────────────────┘
+             │
+             ▼ (separate PHP process)
+┌──────────────────────────────┐
+│  on_manual_generation()      │  WP-Cron fires this in a new request
+│  (class-executor.php)        │  1. ignore_user_abort(true) — survives HTTP kill
+│                              │  2. set_time_limit(300)
+│                              │  3. Acquires PRAutoBlogger_Generation_Lock
+│                              │  4. Runs PRAutoBlogger_Pipeline_Runner::run()
+│                              │     (pipeline broadcasts stage updates to transient)
+│                              │  5. Writes final result to transient
+│                              │  6. Releases lock
+└────────────┬─────────────────┘
+             │
+             ▼
+┌──────────────────────────────┐
+│  Poller detects completion   │  Reads transient: status = 'complete' or 'error'
+│  Shows result message        │  Resets button to idle state
+└──────────────────────────────┘
+```
+
+**Fallback detection:** If Hostinger kills the PHP process before it updates the
+transient (despite `ignore_user_abort`), the status endpoint detects the orphan after
+180 seconds by checking for recently-created posts with `_prautoblogger_run_id` meta.
+It also releases any stale generation lock. After 600 seconds (STATUS_TTL), it gives
+up unconditionally and reports a timeout.
 
 ---
 

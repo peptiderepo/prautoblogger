@@ -2,20 +2,27 @@
 declare(strict_types=1);
 
 /**
- * Execution handlers for generation, metrics collection, and AJAX actions.
+ * Execution handlers for content generation and metrics collection.
  *
- * What: Cron event handlers, AJAX endpoints, atomic generation lock, model registry access.
- * Who calls it: PRAutoBlogger registers hooks that delegate to methods on this class.
- * Dependencies: PRAutoBlogger_Pipeline_Runner, PRAutoBlogger_Metrics_Collector,
- *               PRAutoBlogger_Logger, PRAutoBlogger_OpenRouter_Provider, PRAutoBlogger_Reddit_Provider.
+ * What: Cron handlers, generation AJAX (start + status polling), model registry.
+ * Who calls it: PRAutoBlogger registers hooks that delegate here.
+ * Dependencies: Pipeline_Runner, Metrics_Collector, Generation_Lock, Logger, Model_Registry.
  *
- * @see class-prautoblogger.php       — Hook registration that wires these handlers.
- * @see core/class-pipeline-runner.php — Actual generation pipeline.
+ * @see class-prautoblogger.php          — Hook registration that wires these handlers.
+ * @see core/class-pipeline-runner.php    — Actual generation pipeline.
+ * @see class-generation-lock.php         — DB mutex extracted from this class.
+ * @see class-ajax-handlers.php           — Non-generation AJAX endpoints (images, models, test).
  */
 class PRAutoBlogger_Executor {
 
 	/** @var PRAutoBlogger_OpenRouter_Model_Registry|null Lazy-loaded singleton. */
 	private ?PRAutoBlogger_OpenRouter_Model_Registry $model_registry = null;
+
+	/** Transient key for background generation status. */
+	private const STATUS_TRANSIENT = 'prautoblogger_generation_status';
+
+	/** How long to keep the result available for polling (seconds). */
+	private const STATUS_TTL = 600;
 
 	/**
 	 * Handle the daily generation cron event.
@@ -27,7 +34,7 @@ class PRAutoBlogger_Executor {
 		// Refresh model registry before lock — stuck lock shouldn't block refresh.
 		do_action( 'prautoblogger_refresh_model_registry', false );
 
-		if ( ! $this->acquire_generation_lock() ) {
+		if ( ! PRAutoBlogger_Generation_Lock::acquire() ) {
 			PRAutoBlogger_Logger::instance()->info( 'Daily generation skipped: already running (lock held).', 'scheduler' );
 			return;
 		}
@@ -40,7 +47,7 @@ class PRAutoBlogger_Executor {
 				'scheduler'
 			);
 		} finally {
-			$this->release_generation_lock();
+			PRAutoBlogger_Generation_Lock::release();
 		}
 	}
 
@@ -58,12 +65,6 @@ class PRAutoBlogger_Executor {
 			);
 		}
 	}
-
-	/** Transient key for background generation status. */
-	private const STATUS_TRANSIENT = 'prautoblogger_generation_status';
-
-	/** How long to keep the result available for polling (seconds). */
-	private const STATUS_TTL = 600;
 
 	/**
 	 * AJAX handler: kick off manual generation as a background cron job.
@@ -84,7 +85,7 @@ class PRAutoBlogger_Executor {
 
 		$force = isset( $_POST['force'] ) && '1' === $_POST['force'];
 		if ( $force ) {
-			$this->release_generation_lock();
+			PRAutoBlogger_Generation_Lock::release();
 			delete_transient( self::STATUS_TRANSIENT );
 		}
 
@@ -114,9 +115,6 @@ class PRAutoBlogger_Executor {
 
 		// Spawn the cron immediately via a non-blocking loopback request
 		// so we don't depend on the next visitor to trigger it.
-		// Some hosts (including Hostinger) set DISABLE_WP_CRON = true and
-		// rely on an external cron runner. spawn_cron() respects that flag
-		// and may no-op, so we also fire a direct loopback as a fallback.
 		spawn_cron();
 
 		// Direct non-blocking loopback to wp-cron.php — ensures the event
@@ -155,7 +153,7 @@ class PRAutoBlogger_Executor {
 		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		@set_time_limit( 300 );
 
-		if ( ! $this->acquire_generation_lock() ) {
+		if ( ! PRAutoBlogger_Generation_Lock::acquire() ) {
 			set_transient( self::STATUS_TRANSIENT, [
 				'status'  => 'error',
 				'message' => __( 'Could not acquire generation lock. Another run may be in progress.', 'prautoblogger' ),
@@ -164,7 +162,6 @@ class PRAutoBlogger_Executor {
 		}
 
 		try {
-			// Update stage for frontend polling.
 			$this->update_generation_stage( __( 'Collecting sources from Reddit...', 'prautoblogger' ) );
 
 			$results = ( new PRAutoBlogger_Pipeline_Runner() )
@@ -188,7 +185,7 @@ class PRAutoBlogger_Executor {
 				'message' => $e->getMessage(),
 			], self::STATUS_TTL );
 		} finally {
-			$this->release_generation_lock();
+			PRAutoBlogger_Generation_Lock::release();
 		}
 	}
 
@@ -198,7 +195,12 @@ class PRAutoBlogger_Executor {
 	 * Lightweight endpoint — reads a transient and returns it. Called every
 	 * few seconds by admin.js while generation is in progress.
 	 *
-	 * Side effects: none.
+	 * Includes fallback detection: if the pipeline produced a post but the
+	 * PHP process was killed before updating the transient (Hostinger's
+	 * 120-second timeout), this endpoint detects the orphaned state and
+	 * recovers gracefully after 180 seconds.
+	 *
+	 * Side effects: may delete stale transient and lock on recovery.
 	 */
 	public function on_ajax_generation_status(): void {
 		check_ajax_referer( 'prautoblogger_generate_now', 'nonce' );
@@ -215,10 +217,7 @@ class PRAutoBlogger_Executor {
 			return;
 		}
 
-		// If still "running" but the generation lock is released, the pipeline
-		// finished but the transient update was lost (e.g., PHP process killed
-		// by Hostinger after LiteSpeed connection timeout). Detect this by
-		// checking if the lock is gone and a recent post exists.
+		// Fallback: detect orphaned "running" state when PHP process was killed.
 		if ( 'running' === $status['status'] ) {
 			$started = $status['started'] ?? 0;
 			$elapsed = time() - $started;
@@ -233,10 +232,8 @@ class PRAutoBlogger_Executor {
 				return;
 			}
 
-			// After 2 minutes, check if the lock was released (pipeline finished
-			// but transient never updated). Look for a post created since the run
-			// started to confirm success.
-			if ( $elapsed > 120 && ! $this->is_generation_locked() ) {
+			// After 3 minutes, check if pipeline produced output despite the kill.
+			if ( $elapsed > 180 ) {
 				$recent = get_posts( [
 					'post_type'      => 'post',
 					'post_status'    => [ 'publish', 'draft' ],
@@ -247,6 +244,8 @@ class PRAutoBlogger_Executor {
 					'order'          => 'DESC',
 				] );
 				delete_transient( self::STATUS_TRANSIENT );
+				PRAutoBlogger_Generation_Lock::release();
+
 				if ( ! empty( $recent ) ) {
 					wp_send_json_success( [
 						'status'    => 'complete',
@@ -283,120 +282,6 @@ class PRAutoBlogger_Executor {
 	}
 
 	/**
-	 * AJAX handler: generate images for existing posts that lack them.
-	 *
-	 * Accepts a `post_id` parameter. Generates Image A (article-driven) and
-	 * sets it as the featured image. Useful for retroactively adding images
-	 * to posts published before image generation was enabled/fixed.
-	 *
-	 * Side effects: Cloudflare API call, media library write, post meta update.
-	 */
-	public function on_ajax_generate_image(): void {
-		check_ajax_referer( 'prautoblogger_generate_image', 'nonce' );
-
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'prautoblogger' ) ], 403 );
-			return;
-		}
-
-		// Image generation can take 20-30s on Cloudflare Workers AI.
-		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-		@set_time_limit( 120 );
-
-		$post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
-		if ( 0 === $post_id ) {
-			wp_send_json_error( [ 'message' => __( 'Missing post_id parameter.', 'prautoblogger' ) ] );
-			return;
-		}
-
-		$post = get_post( $post_id );
-		if ( ! $post ) {
-			wp_send_json_error( [ 'message' => sprintf( __( 'Post %d not found.', 'prautoblogger' ), $post_id ) ] );
-			return;
-		}
-
-		try {
-			$pipeline     = new PRAutoBlogger_Image_Pipeline();
-			$article_data = [
-				'post_title'   => $post->post_title,
-				'post_content' => $post->post_content,
-			];
-
-			// Retrieve original source IDs from post meta so Image B can generate
-			// a source-driven prompt even on retroactive regeneration.
-			$source_ids_json = get_post_meta( $post_id, '_prautoblogger_source_ids', true );
-			$source_ids      = is_string( $source_ids_json ) ? json_decode( $source_ids_json, true ) : [];
-			$source_data     = ( new PRAutoBlogger_Source_Collector() )->get_source_data_for_image(
-				is_array( $source_ids ) ? array_map( 'absint', $source_ids ) : []
-			);
-
-			// The pipeline now sets featured image and Image B meta
-			// internally, immediately after each image generates.
-			$result = $pipeline->generate_and_attach_images( $post_id, $article_data, $source_data );
-
-			wp_send_json_success( $result );
-		} catch ( \Throwable $e ) {
-			PRAutoBlogger_Logger::instance()->error(
-				sprintf( 'Retroactive image gen %s for post %d: %s', get_class( $e ), $post_id, $e->getMessage() ),
-				'image_pipeline'
-			);
-			wp_send_json_error( [ 'message' => $e->getMessage() ] );
-		}
-	}
-
-	/**
-	 * AJAX handler: return the model registry for the admin model picker.
-	 *
-	 * Returns the full cached model list. If the registry is empty, triggers
-	 * a refresh first. Called by the model-picker.js popup.
-	 *
-	 * Side effects: may trigger an OpenRouter API call if registry is empty.
-	 */
-	public function on_ajax_get_models(): void {
-		check_ajax_referer( 'prautoblogger_get_models', 'nonce' );
-
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'prautoblogger' ) ], 403 );
-			return;
-		}
-
-		$registry = $this->get_model_registry();
-		$models   = $registry->get_models();
-
-		// Auto-refresh if the registry has never been populated.
-		if ( empty( $models ) ) {
-			$registry->refresh( true );
-			$models = $registry->get_models();
-		}
-
-		wp_send_json_success( $models );
-	}
-
-	/** AJAX handler: test API connections (OpenRouter, Reddit). */
-	public function on_ajax_test_connection(): void {
-		check_ajax_referer( 'prautoblogger_test_connection', 'nonce' );
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'prautoblogger' ) ], 403 );
-			return;
-		}
-
-		$service = isset( $_POST['service'] ) ? sanitize_text_field( wp_unslash( $_POST['service'] ) ) : '';
-		$results = [];
-
-		if ( 'openrouter' === $service || 'all' === $service ) {
-			$results['openrouter'] = ( new PRAutoBlogger_OpenRouter_Provider() )->validate_credentials_detailed();
-		}
-		if ( 'reddit' === $service || 'all' === $service ) {
-			$reddit  = new PRAutoBlogger_Reddit_Provider();
-			$is_ok   = $reddit->validate_credentials();
-			$results['reddit'] = $is_ok
-				? [ 'status' => 'ok', 'message' => __( 'Reddit source available (RSS primary, .json fallback).', 'prautoblogger' ) ]
-				: [ 'status' => 'error', 'message' => __( 'Reddit sources unreachable (both RSS and .json failed).', 'prautoblogger' ) ];
-		}
-		wp_send_json_success( $results );
-	}
-
-	/**
 	 * Lazy-load the OpenRouter model registry singleton.
 	 * Config injected here — registry class has no knowledge of PRAUTOBLOGGER_* constants.
 	 *
@@ -410,73 +295,5 @@ class PRAutoBlogger_Executor {
 			);
 		}
 		return $this->model_registry;
-	}
-
-	/**
-	 * Acquire a database-level atomic mutex for generation.
-	 * Uses INSERT IGNORE — option_name UNIQUE index guarantees single-writer.
-	 * Expired locks (>1 hour) are cleaned up first.
-	 *
-	 * @return bool True if lock acquired.
-	 */
-	public function acquire_generation_lock(): bool {
-		global $wpdb;
-
-		$lock_name = 'prautoblogger_generation_lock';
-
-		// Clean up expired locks to prevent permanent deadlock.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		$wpdb->query(
-			$wpdb->prepare(
-				"DELETE FROM {$wpdb->options} WHERE option_name = %s AND CAST(option_value AS UNSIGNED) < %d",
-				$lock_name,
-				time() - HOUR_IN_SECONDS
-			)
-		);
-
-		// Atomic insert — UNIQUE constraint guarantees only one process succeeds.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$result = $wpdb->query(
-			$wpdb->prepare(
-				"INSERT IGNORE INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, %s, %s)",
-				$lock_name,
-				(string) time(),
-				'no'
-			)
-		);
-
-		return $result > 0;
-	}
-
-	/**
-	 * Check if the generation lock is currently held.
-	 *
-	 * @return bool True if the lock exists (generation in progress or stuck).
-	 */
-	public function is_generation_locked(): bool {
-		global $wpdb;
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		$row = $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
-				'prautoblogger_generation_lock'
-			)
-		);
-
-		return null !== $row;
-	}
-
-	/** Release the generation mutex. */
-	public function release_generation_lock(): void {
-		global $wpdb;
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		$wpdb->query(
-			$wpdb->prepare(
-				"DELETE FROM {$wpdb->options} WHERE option_name = %s",
-				'prautoblogger_generation_lock'
-			)
-		);
 	}
 }
