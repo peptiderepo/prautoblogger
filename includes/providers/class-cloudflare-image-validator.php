@@ -40,8 +40,14 @@ class PRAutoBlogger_Cloudflare_Image_Validator {
 			);
 		}
 
-		$encrypted = (string) get_option( 'prautoblogger_cloudflare_ai_token', '' );
-		$api_token = '' === $encrypted ? '' : (string) PRAutoBlogger_Encryption::decrypt( $encrypted );
+		$stored    = (string) get_option( 'prautoblogger_cloudflare_ai_token', '' );
+		$api_token = '';
+		if ( '' !== $stored ) {
+			// Handle legacy plaintext tokens (saved before the field was in the encrypted list).
+			$api_token = PRAutoBlogger_Encryption::is_encrypted( $stored )
+				? (string) PRAutoBlogger_Encryption::decrypt( $stored )
+				: $stored;
+		}
 		if ( '' === $api_token ) {
 			return $this->err(
 				'token_empty',

@@ -23,11 +23,24 @@ class PRAutoBlogger_Cloudflare_Image_Support {
 	 * @return string Plaintext token, or empty string if not set / decrypt fails.
 	 */
 	public function get_api_token(): string {
-		$encrypted = (string) get_option( 'prautoblogger_cloudflare_ai_token', '' );
-		if ( '' === $encrypted ) {
+		$stored = (string) get_option( 'prautoblogger_cloudflare_ai_token', '' );
+		if ( '' === $stored ) {
 			return '';
 		}
-		return (string) PRAutoBlogger_Encryption::decrypt( $encrypted );
+
+		// If the token is already encrypted (has "enc:" prefix), decrypt it.
+		if ( PRAutoBlogger_Encryption::is_encrypted( $stored ) ) {
+			return (string) PRAutoBlogger_Encryption::decrypt( $stored );
+		}
+
+		// Legacy: token was saved as plaintext before the field was added to
+		// the encrypted list in sanitize_field(). Encrypt it now so future
+		// reads go through the normal path, then return the plaintext value.
+		$cipher = PRAutoBlogger_Encryption::encrypt( $stored );
+		if ( '' !== $cipher ) {
+			update_option( 'prautoblogger_cloudflare_ai_token', $cipher );
+		}
+		return $stored;
 	}
 
 	/**
