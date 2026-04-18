@@ -23,40 +23,20 @@ class PRAutoBlogger_OpenRouter_Model_Field {
 	 * @param string               $value Current model id (e.g. 'google/gemini-2.5-flash-lite').
 	 * @param array<string, mixed> $args  Field definition from settings fields.
 	 */
-	/**
-	 * Static Cloudflare Workers AI model definitions.
-	 *
-	 * These don't come from an API registry — Cloudflare has only two FLUX
-	 * models and pricing is stable. Costs are per-image at 1024×632 (default).
-	 *
-	 * @var array<string, array{name: string, cost_per_image: string}>
-	 */
-	private const CLOUDFLARE_MODELS = [
-		'flux-1-schnell' => [
-			'name'           => 'FLUX.1 [schnell]',
-			'provider'       => 'Cloudflare',
-			'cost_per_image' => '$0.0007',
-			'description'    => 'Fast + cheap, 4 inference steps',
-		],
-		'flux-1-dev' => [
-			'name'           => 'FLUX.1 [dev]',
-			'provider'       => 'Cloudflare',
-			'cost_per_image' => '$0.0028',
-			'description'    => 'Higher quality, ~4× cost, 20 steps',
-		],
-	];
-
 	public static function render( string $id, string $value, array $args ): void {
 		$capability    = $args['capability'] ?? 'text→text';
 		$display_name  = $value ?: __( '— Select a model —', 'prautoblogger' );
 		$display_price = '';
 
-		if ( 'cloudflare_image' === $capability ) {
-			// Resolve from static Cloudflare model list.
-			$cf_model = self::CLOUDFLARE_MODELS[ $value ] ?? null;
-			if ( null !== $cf_model ) {
-				$display_name  = $cf_model['name'];
-				$display_price = $cf_model['cost_per_image'] . '/image';
+		if ( 'image_generation' === $capability ) {
+			// Resolve from the static image model list defined in settings.
+			$image_models = PRAutoBlogger_Settings_Fields_Extended::get_image_models();
+			foreach ( $image_models as $im ) {
+				if ( ( $im['id'] ?? '' ) === $value ) {
+					$display_name  = $im['name'] ?? $value;
+					$display_price = '$' . number_format( (float) ( $im['cost_per_image'] ?? 0 ), 4 ) . '/image';
+					break;
+				}
 			}
 		} else {
 			// Resolve from the OpenRouter model registry cache.
