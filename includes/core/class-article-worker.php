@@ -137,7 +137,8 @@ class PRAutoBlogger_Article_Worker {
 		$transient_key = 'prautoblogger_generation_status';
 		$current       = get_transient( $transient_key );
 		if ( is_array( $current ) && 'running' === ( $current['status'] ?? '' ) ) {
-			$current['stage'] = $stage;
+			$current['stage']        = $stage;
+			$current['last_updated'] = time();
 			set_transient( $transient_key, $current, 600 );
 		}
 	}

@@ -213,9 +213,10 @@ class PRAutoBlogger_Pipeline_Runner {
 
 		$current = get_transient( 'prautoblogger_generation_status' );
 		set_transient( 'prautoblogger_generation_status', [
-			'status'  => 'running',
-			'stage'   => sprintf( __( 'Generating article %1$d of %2$d…', 'prautoblogger' ), $done + 1, $total ),
-			'started' => is_array( $current ) ? ( $current['started'] ?? time() ) : time(),
+			'status'       => 'running',
+			'stage'        => sprintf( __( 'Generating article %1$d of %2$d…', 'prautoblogger' ), $done + 1, $total ),
+			'started'      => is_array( $current ) ? ( $current['started'] ?? time() ) : time(),
+			'last_updated' => time(),
 		], 600 );
 	}
 
@@ -256,7 +257,8 @@ class PRAutoBlogger_Pipeline_Runner {
 		$key     = 'prautoblogger_generation_status';
 		$current = get_transient( $key );
 		if ( is_array( $current ) && 'running' === ( $current['status'] ?? '' ) ) {
-			$current['stage'] = $stage;
+			$current['stage']        = $stage;
+			$current['last_updated'] = time();
 			set_transient( $key, $current, 600 );
 		}
 	}

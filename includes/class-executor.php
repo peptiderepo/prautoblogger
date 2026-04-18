@@ -105,9 +105,10 @@ class PRAutoBlogger_Executor {
 
 		// Write initial "running" status for the frontend to poll.
 		set_transient( self::STATUS_TRANSIENT, [
-			'status'  => 'running',
-			'stage'   => __( 'Starting generation...', 'prautoblogger' ),
-			'started' => time(),
+			'status'       => 'running',
+			'stage'        => __( 'Starting generation...', 'prautoblogger' ),
+			'started'      => time(),
+			'last_updated' => time(),
 		], self::STATUS_TTL );
 
 		// Schedule immediate one-shot cron event. WordPress will fire this
@@ -190,11 +191,7 @@ class PRAutoBlogger_Executor {
 		}
 	}
 
-	/**
-	 * Cron handler: process the next queued article in its own PHP process.
-	 *
-	 * Chained by Pipeline_Runner — each article gets its own execution time.
-	 */
+	/** Cron handler: process next queued article. Chained by Pipeline_Runner. */
 	public function on_process_article_queue(): void {
 		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		@ignore_user_abort( true );
@@ -249,8 +246,10 @@ class PRAutoBlogger_Executor {
 				}
 			}
 
-			// After 5 min with no progress, declare failure.
-			if ( $elapsed > 300 ) {
+			// Stall = 5 min since last stage update (not since start).
+			$last_activity = $status['last_updated'] ?? $status['started'] ?? 0;
+			$idle_seconds  = time() - $last_activity;
+			if ( $idle_seconds > 300 ) {
 				$this->abort_orphaned_run( __( 'Generation stalled. Check Activity Log.', 'prautoblogger' ) );
 				return;
 			}
@@ -275,7 +274,8 @@ class PRAutoBlogger_Executor {
 	private function update_generation_stage( string $stage ): void {
 		$current = get_transient( self::STATUS_TRANSIENT );
 		if ( is_array( $current ) ) {
-			$current['stage'] = $stage;
+			$current['stage']        = $stage;
+			$current['last_updated'] = time();
 			set_transient( self::STATUS_TRANSIENT, $current, self::STATUS_TTL );
 		}
 	}
