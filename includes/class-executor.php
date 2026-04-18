@@ -233,8 +233,7 @@ class PRAutoBlogger_Executor {
 			}
 
 			// After 5 minutes, check if pipeline produced output despite the kill.
-			// Pipeline with 3 articles + images legitimately takes 3–4 minutes,
-			// so we wait 5 minutes before declaring it orphaned.
+			// Pipeline with 3 articles + images takes 3–4 min; wait before declaring orphaned.
 			if ( $elapsed > 300 ) {
 				$recent = get_posts( [
 					'post_type'      => 'post',
