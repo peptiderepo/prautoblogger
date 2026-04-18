@@ -131,6 +131,45 @@ class ImagePipelineTest extends BaseTestCase {
 	}
 
 	/**
+	 * Test that Image B is NOT generated when source_data is null.
+	 *
+	 * This is the regression test for the Image B data-handoff gap:
+	 * post_assembler.php and executor.php both passed null as source_data,
+	 * so the pipeline silently skipped Image B. If this test ever fails
+	 * with `$this->exactly(2)`, it means someone re-broke the handoff.
+	 */
+	public function test_image_b_skipped_when_source_data_is_null(): void {
+		$provider = $this->createMock( \PRAutoBlogger_Image_Provider_Interface::class );
+		$provider->method( 'estimate_cost' )->willReturn( 0.05 );
+		$provider->method( 'generate_image' )->willReturn( [
+			'bytes'      => 'fake_image_data',
+			'mime_type'  => 'image/png',
+			'width'      => 1200,
+			'height'     => 630,
+			'model'      => 'flux-1-schnell',
+			'cost_usd'   => 0.05,
+			'latency_ms' => 2000,
+		] );
+
+		$cost_tracker = $this->createMock( \PRAutoBlogger_Cost_Tracker::class );
+		$cost_tracker->method( 'would_exceed_budget' )->willReturn( false );
+
+		// Only ONE call to log_image_generation — Image A only.
+		$cost_tracker->expects( $this->exactly( 1 ) )->method( 'log_image_generation' );
+
+		$pipeline = new \PRAutoBlogger_Image_Pipeline( $provider, $cost_tracker );
+
+		Functions\when( 'get_temp_dir' )->justReturn( '/tmp/' );
+		Functions\when( 'media_handle_sideload' )->justReturn( 42 );
+
+		// Pass null source_data — Image B must NOT fire.
+		$result = $pipeline->generate_and_attach_images( 1, [ 'post_title' => 'Test' ], null );
+
+		$this->assertArrayHasKey( 'image_a_id', $result );
+		$this->assertArrayNotHasKey( 'image_b_id', $result );
+	}
+
+	/**
 	 * Test graceful handling when image generation fails.
 	 */
 	public function test_graceful_failure_when_image_generation_fails(): void {

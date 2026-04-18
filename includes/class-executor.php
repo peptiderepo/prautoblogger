@@ -135,11 +135,24 @@ class PRAutoBlogger_Executor {
 				'post_content' => $post->post_content,
 			];
 
-			$result = $pipeline->generate_and_attach_images( $post_id, $article_data, null );
+			// Retrieve original source IDs from post meta so Image B can generate
+			// a source-driven prompt even on retroactive regeneration.
+			$source_ids_json = get_post_meta( $post_id, '_prautoblogger_source_ids', true );
+			$source_ids      = is_string( $source_ids_json ) ? json_decode( $source_ids_json, true ) : [];
+			$source_data     = ( new PRAutoBlogger_Source_Collector() )->get_source_data_for_image(
+				is_array( $source_ids ) ? array_map( 'absint', $source_ids ) : []
+			);
+
+			$result = $pipeline->generate_and_attach_images( $post_id, $article_data, $source_data );
 
 			// Set featured image if Image A was generated.
 			if ( ! empty( $result['image_a_id'] ) ) {
 				set_post_thumbnail( $post_id, $result['image_a_id'] );
+			}
+
+			// Store Image B in post meta if generated.
+			if ( ! empty( $result['image_b_id'] ) ) {
+				update_post_meta( $post_id, '_prautoblogger_image_b_id', $result['image_b_id'] );
 			}
 
 			wp_send_json_success( $result );

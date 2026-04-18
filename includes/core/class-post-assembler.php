@@ -132,7 +132,10 @@ class PRAutoBlogger_Post_Assembler {
 	 * @param array                      $post_data Post data array (for article content).
 	 */
 	public static function attach_generated_images( int $post_id, PRAutoBlogger_Article_Idea $idea, array $post_data ): void {
-		$source_data = null;
+		// Fetch the original Reddit source data for Image B's source-driven prompt.
+		// The idea's source_ids point to rows in the source_data table collected
+		// during the pipeline's collection step.
+		$source_data = ( new PRAutoBlogger_Source_Collector() )->get_source_data_for_image( $idea->get_source_ids() );
 
 		try {
 			$result = ( new PRAutoBlogger_Image_Pipeline() )->generate_and_attach_images( $post_id, $post_data, $source_data );

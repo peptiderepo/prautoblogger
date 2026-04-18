@@ -58,6 +58,47 @@ class PRAutoBlogger_Source_Collector {
 	}
 
 	/**
+	 * Retrieve source data rows by their database IDs.
+	 *
+	 * Used by the image pipeline to build Image B's source-driven prompt from
+	 * the source_ids stored on the Article_Idea. Returns the first matching
+	 * row's title and content; these map directly to what
+	 * Image_Prompt_Builder::build_source_prompt() expects.
+	 *
+	 * Side effects: one SELECT query.
+	 *
+	 * @param int[] $ids Database row IDs from the source_data table.
+	 * @return array{title: string, selftext: string}|null First source row, or null if none found.
+	 */
+	public function get_source_data_for_image( array $ids ): ?array {
+		if ( empty( $ids ) ) {
+			return null;
+		}
+
+		global $wpdb;
+		$table        = $wpdb->prefix . 'prautoblogger_source_data';
+		$placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+		$row = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT title, content, subreddit FROM {$table} WHERE id IN ({$placeholders}) ORDER BY score DESC LIMIT 1",
+				...$ids
+			),
+			ARRAY_A
+		);
+
+		if ( null === $row ) {
+			return null;
+		}
+
+		return [
+			'title'    => $row['title'] ?? 'Reddit Discussion',
+			'selftext' => $row['content'] ?? '',
+		];
+	}
+
+	/**
 	 * Store collected source data in the database.
 	 *
 	 * Uses INSERT IGNORE to handle duplicates gracefully (UNIQUE index).
