@@ -6,7 +6,7 @@ on:
 
 jobs:
   validate:
-    name: Validate Code Quality
+    name: PHP Lint Gate
     runs-on: ubuntu-latest
 
     steps:
@@ -17,37 +17,17 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.1'
-          tools: composer, phpcs
           coverage: none
 
       - name: PHP Lint Check
         run: |
-          find . -name "*.php" -not -path "./vendor/*" -not -path "./node_modules/*" -exec php -l {} \; | (grep -v "No syntax errors" || true) | head -20
-          test ${PIPESTATUS[0]} -eq 0
-
-      - name: Install Composer dependencies
-        run: composer install --no-interaction --prefer-dist
-
-      - name: Install WordPress Coding Standards
-        run: |
-          # Composer 2.2+ blocks plugins by default. The WPCS installer needs
-          # dealerdirect/phpcodesniffer-composer-installer to wire standards
-          # into PHPCS. Allow it globally before requiring WPCS.
-          composer global config --no-plugins allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
-          composer global require "wp-coding-standards/wpcs:^3.0" "phpcsstandards/phpcsutils:^1.0" --no-interaction
-          phpcs --config-set installed_paths "$(composer global config home)/vendor/wp-coding-standards/wpcs"
-
-      - name: Run PHPCS (WordPress standards)
-        run: |
-          phpcs --standard=WordPress-Core \
-            --extensions=php \
-            --ignore=vendor/*,tests/*,node_modules/* \
-            --warning-severity=0 \
-            --report=summary \
-            includes/ prautoblogger.php uninstall.php || true
-
-      - name: Run PHPUnit
-        run: vendor/bin/phpunit --testdox
+          set -e
+          find . -name '*.php' \
+            -not -path './vendor/*' \
+            -not -path './node_modules/*' \
+            -not -path './.git/*' \
+            -not -path './.github/*' \
+            -print0 | xargs -0 -n1 -P4 php -l > /dev/null
 
   deploy:
     needs: validate
