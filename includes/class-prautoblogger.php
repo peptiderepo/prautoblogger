@@ -85,6 +85,10 @@ class PRAutoBlogger {
 		add_action( 'prautoblogger_daily_generation', [ $this->executor, 'on_daily_generation' ] );
 		add_action( 'prautoblogger_collect_metrics', [ $this->executor, 'on_collect_metrics' ] );
 
+		// Manual "Generate Now" runs as a one-shot cron event to avoid
+		// Hostinger's 120-second web-server connection timeout.
+		add_action( 'prautoblogger_manual_generation', [ $this->executor, 'on_manual_generation' ] );
+
 		$registry = $this->executor->get_model_registry();
 		add_action( 'prautoblogger_refresh_model_registry', [ $registry, 'refresh' ] );
 	}
@@ -92,6 +96,7 @@ class PRAutoBlogger {
 	/** Register AJAX handlers for admin actions. */
 	private function register_ajax_hooks(): void {
 		add_action( 'wp_ajax_prautoblogger_generate_now', [ $this->executor, 'on_ajax_generate_now' ] );
+		add_action( 'wp_ajax_prautoblogger_generation_status', [ $this->executor, 'on_ajax_generation_status' ] );
 		add_action( 'wp_ajax_prautoblogger_generate_image', [ $this->executor, 'on_ajax_generate_image' ] );
 		add_action( 'wp_ajax_prautoblogger_test_connection', [ $this->executor, 'on_ajax_test_connection' ] );
 		add_action( 'wp_ajax_prautoblogger_get_models', [ $this->executor, 'on_ajax_get_models' ] );

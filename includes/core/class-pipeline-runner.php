@@ -61,17 +61,20 @@ class PRAutoBlogger_Pipeline_Runner {
 		$target_count = absint( get_option( 'prautoblogger_daily_article_target', 1 ) );
 
 		// Step 1: Collect source data.
+		$this->broadcast_stage( __( 'Collecting sources from Reddit…', 'prautoblogger' ) );
 		$collector = new PRAutoBlogger_Source_Collector();
 		$collector->collect_from_all_sources();
 
 		// Step 2: Analyze collected data for patterns.
 		// Pass a generous target so the LLM returns enough diverse ideas for
 		// scoring to pick from — ask for 2× the daily target so dedup has room.
+		$this->broadcast_stage( __( 'Analyzing topics and scoring…', 'prautoblogger' ) );
 		$llm      = new PRAutoBlogger_OpenRouter_Provider();
 		$analyzer = new PRAutoBlogger_Content_Analyzer( $llm, $cost_tracker );
 		$analysis = $analyzer->analyze_recent_data( max( $target_count * 2, 6 ) );
 
 		// Step 3: Score and deduplicate ideas.
+		$this->broadcast_stage( __( 'Selecting best topic…', 'prautoblogger' ) );
 		$scorer = new PRAutoBlogger_Idea_Scorer();
 		$scorer->set_skip_dedup( $this->skip_dedup );
 		$ideas  = $scorer->score_and_rank( $analysis, $target_count );
@@ -99,9 +102,11 @@ class PRAutoBlogger_Pipeline_Runner {
 			}
 
 			try {
+				$this->broadcast_stage( __( 'Generating article draft via AI…', 'prautoblogger' ) );
 				$content = $generator->generate( $idea );
 				$generated++;
 
+				$this->broadcast_stage( __( 'Running editorial pass…', 'prautoblogger' ) );
 				$review = $editor->review( $content, $idea );
 
 				if ( 'approved' === $review->get_verdict() || 'revised' === $review->get_verdict() ) {
@@ -112,6 +117,7 @@ class PRAutoBlogger_Pipeline_Runner {
 						? ( $review->get_revised_content() ?? $content )
 						: $content;
 
+					$this->broadcast_stage( __( 'Saving and publishing…', 'prautoblogger' ) );
 					if ( $auto_publish ) {
 						$publisher->publish( $final_content, $idea, $review, $cost_tracker->get_run_id() );
 						$published++;
@@ -143,5 +149,23 @@ class PRAutoBlogger_Pipeline_Runner {
 			'rejected'  => $rejected,
 			'cost'      => $total_cost,
 		];
+	}
+
+	/**
+	 * Update the generation status transient with the current pipeline stage.
+	 *
+	 * Called at key checkpoints during the pipeline so the frontend status
+	 * poller can show real progress instead of fake timers. No-ops if the
+	 * transient doesn't exist (e.g., during daily cron runs).
+	 *
+	 * @param string $stage Human-readable stage description.
+	 */
+	private function broadcast_stage( string $stage ): void {
+		$transient_key = 'prautoblogger_generation_status';
+		$current       = get_transient( $transient_key );
+		if ( is_array( $current ) && 'running' === ( $current['status'] ?? '' ) ) {
+			$current['stage'] = $stage;
+			set_transient( $transient_key, $current, 600 );
+		}
 	}
 }

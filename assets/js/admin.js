@@ -75,6 +75,25 @@
 				$referer.val(refUrl.pathname + refUrl.search);
 			}
 		}
+
+		// Resume polling if a generation is already running (e.g., user
+		// navigated away and came back, or opened a new tab mid-generation).
+		var $genBtn = $('#prautoblogger-generate-now');
+		if ($genBtn.length && config.ajaxUrl) {
+			$.ajax({
+				url: config.ajaxUrl,
+				method: 'POST',
+				data: { action: 'prautoblogger_generation_status', nonce: config.generateNonce },
+				timeout: 10000,
+				success: function (response) {
+					if (response.success && response.data && response.data.status === 'running') {
+						setButtonLoading($genBtn, config.generatingText || 'Generating…');
+						showProgress(response.data.stage || 'Generation in progress…');
+						pollGenerationStatus($genBtn);
+					}
+				}
+			});
+		}
 	});
 
 	/*
@@ -146,29 +165,76 @@
 	 * Shows pipeline stages while the request is in-flight so the user
 	 * knows it hasn't hung.
 	 */
-	var generateStages = [
-		{ text: 'Collecting sources from Reddit…',      delay: 0 },
-		{ text: 'Analyzing topics and scoring…',        delay: 8000 },
-		{ text: 'Selecting best topic…',                delay: 16000 },
-		{ text: 'Generating article draft via AI…',     delay: 24000 },
-		{ text: 'Running editorial pass…',              delay: 50000 },
-		{ text: 'Saving and publishing…',               delay: 75000 },
-		{ text: 'Almost done — finalizing…',            delay: 100000 }
-	];
-	var stageTimers = [];
+	/*
+	 * Pipeline stages are now reported by the server via the status polling
+	 * endpoint. The old client-side fake timers have been removed.
+	 */
+
+	/** Poll interval handle for generation status checks. */
+	var statusPollTimer = null;
+
+	/**
+	 * Poll the generation status endpoint until the run finishes.
+	 * Updates the progress UI and resolves the button state on completion.
+	 *
+	 * @param {jQuery} $btn The Generate Now button.
+	 */
+	function pollGenerationStatus($btn) {
+		statusPollTimer = setInterval(function () {
+			$.ajax({
+				url: config.ajaxUrl,
+				method: 'POST',
+				data: {
+					action: 'prautoblogger_generation_status',
+					nonce: config.generateNonce
+				},
+				timeout: 15000,
+				success: function (response) {
+					if (!response.success) return;
+					var d = response.data;
+
+					if (d.status === 'running') {
+						showProgress(d.stage || 'Generating…');
+						return; // Keep polling.
+					}
+
+					// Terminal state — stop polling.
+					clearInterval(statusPollTimer);
+					statusPollTimer = null;
+					hideProgress();
+					resetButton($btn, config.generateText || 'Generate Now');
+
+					if (d.status === 'complete') {
+						showStatus(
+							'Generation complete: ' + d.generated + ' generated, ' +
+							d.published + ' published, ' + d.rejected + ' rejected. ' +
+							'Cost: $' + parseFloat(d.cost).toFixed(4),
+							'success'
+						);
+					} else if (d.status === 'error') {
+						showStatus(
+							'Generation failed: ' + (d.message || 'Unknown error'),
+							'error'
+						);
+					} else {
+						// idle or unknown — generation may have finished before
+						// polling started. Reset the button cleanly.
+						hideProgress();
+					}
+				},
+				error: function () {
+					// Network blip — keep polling, don't bail on transient errors.
+				}
+			});
+		}, 5000); // Poll every 5 seconds.
+	}
 
 	$(document).on('click', '#prautoblogger-generate-now', function () {
 		var $btn = $(this);
 		if ($btn.prop('disabled')) return;
 
 		setButtonLoading($btn, config.generatingText || 'Generating…');
-
-		// Start pipeline stage messages.
-		stageTimers = [];
-		$.each(generateStages, function (i, stage) {
-			var t = setTimeout(function () { showProgress(stage.text); }, stage.delay);
-			stageTimers.push(t);
-		});
+		showProgress('Starting generation…');
 
 		$.ajax({
 			url: config.ajaxUrl,
@@ -178,21 +244,19 @@
 				nonce: config.generateNonce,
 				force: '1' // Always clear stale locks on manual runs.
 			},
-			timeout: 300000, // 5 minutes — generation can be slow.
+			timeout: 30000, // 30s is plenty — this just schedules the cron.
 			success: function (response) {
 				if (response.success) {
-					var d = response.data;
-					showStatus(
-						'Generation complete: ' + d.generated + ' generated, ' +
-						d.published + ' published, ' + d.rejected + ' rejected. ' +
-						'Cost: $' + parseFloat(d.cost).toFixed(4),
-						'success'
-					);
+					// Generation kicked off in background — start polling.
+					showProgress(response.data.message || 'Generation started…');
+					pollGenerationStatus($btn);
 				} else {
 					showStatus(
 						'Generation failed: ' + (response.data && response.data.message || 'Unknown error'),
 						'error'
 					);
+					hideProgress();
+					resetButton($btn, config.generateText || 'Generate Now');
 				}
 			},
 			error: function (xhr, status) {
@@ -200,11 +264,6 @@
 					'Request failed: ' + status + '. Check server error logs.',
 					'error'
 				);
-			},
-			complete: function () {
-				// Clear all stage timers.
-				$.each(stageTimers, function (_, t) { clearTimeout(t); });
-				stageTimers = [];
 				hideProgress();
 				resetButton($btn, config.generateText || 'Generate Now');
 			}

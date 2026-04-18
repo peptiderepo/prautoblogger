@@ -59,11 +59,20 @@ class PRAutoBlogger_Executor {
 		}
 	}
 
+	/** Transient key for background generation status. */
+	private const STATUS_TRANSIENT = 'prautoblogger_generation_status';
+
+	/** How long to keep the result available for polling (seconds). */
+	private const STATUS_TTL = 600;
+
 	/**
-	 * AJAX handler: trigger manual generation.
-	 * Verifies nonce/capability, then runs the pipeline with the same DB lock.
+	 * AJAX handler: kick off manual generation as a background cron job.
 	 *
-	 * Side effects: API calls, database writes, WordPress post creation.
+	 * Returns immediately so the browser never hits Hostinger's 120-second
+	 * connection timeout. The frontend polls on_ajax_generation_status()
+	 * every few seconds to get progress and final results.
+	 *
+	 * Side effects: schedules a WP-Cron event, writes a status transient.
 	 */
 	public function on_ajax_generate_now(): void {
 		check_ajax_referer( 'prautoblogger_generate_now', 'nonce' );
@@ -73,34 +82,157 @@ class PRAutoBlogger_Executor {
 			return;
 		}
 
-		// LLM calls take 30-60+ seconds; extend PHP limit (may be blocked by host).
-		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-		@set_time_limit( 300 );
-
 		$force = isset( $_POST['force'] ) && '1' === $_POST['force'];
 		if ( $force ) {
 			$this->release_generation_lock();
+			delete_transient( self::STATUS_TRANSIENT );
 		}
 
+		// Check if a run is already in progress.
+		$current = get_transient( self::STATUS_TRANSIENT );
+		if ( is_array( $current ) && 'running' === ( $current['status'] ?? '' ) ) {
+			wp_send_json_success( [
+				'background' => true,
+				'message'    => __( 'Generation already in progress.', 'prautoblogger' ),
+			] );
+			return;
+		}
+
+		// Write initial "running" status for the frontend to poll.
+		set_transient( self::STATUS_TRANSIENT, [
+			'status'  => 'running',
+			'stage'   => __( 'Starting generation...', 'prautoblogger' ),
+			'started' => time(),
+		], self::STATUS_TTL );
+
+		// Schedule immediate one-shot cron event. WordPress will fire this
+		// on the next page load (or via wp-cron.php) in a separate PHP process
+		// that is not subject to the 120-second connection timeout.
+		if ( ! wp_next_scheduled( 'prautoblogger_manual_generation' ) ) {
+			wp_schedule_single_event( time(), 'prautoblogger_manual_generation' );
+		}
+
+		// Spawn the cron immediately via a non-blocking loopback request
+		// so we don't depend on the next visitor to trigger it.
+		// Some hosts (including Hostinger) set DISABLE_WP_CRON = true and
+		// rely on an external cron runner. spawn_cron() respects that flag
+		// and may no-op, so we also fire a direct loopback as a fallback.
+		spawn_cron();
+
+		// Direct non-blocking loopback to wp-cron.php — ensures the event
+		// fires even if DISABLE_WP_CRON is true or spawn_cron() no-ops.
+		wp_remote_post(
+			site_url( 'wp-cron.php?doing_wp_cron=' . sprintf( '%.22F', microtime( true ) ) ),
+			[
+				'timeout'   => 0.01,
+				'blocking'  => false,
+				'sslverify' => false,
+			]
+		);
+
+		wp_send_json_success( [
+			'background' => true,
+			'message'    => __( 'Generation started in background. Polling for status...', 'prautoblogger' ),
+		] );
+	}
+
+	/**
+	 * Cron handler for manual (background) generation.
+	 *
+	 * Runs in a separate PHP process triggered by WP-Cron, free from
+	 * the web server's connection timeout. Writes progress and final
+	 * results to a transient that the frontend polls.
+	 *
+	 * Side effects: API calls, database writes, WordPress post creation,
+	 *               transient updates.
+	 */
+	public function on_manual_generation(): void {
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		@set_time_limit( 300 );
+
 		if ( ! $this->acquire_generation_lock() ) {
-			wp_send_json_error( [ 'message' => __( 'A generation run is already in progress. Pass force=1 to clear the lock.', 'prautoblogger' ) ] );
+			set_transient( self::STATUS_TRANSIENT, [
+				'status'  => 'error',
+				'message' => __( 'Could not acquire generation lock. Another run may be in progress.', 'prautoblogger' ),
+			], self::STATUS_TTL );
 			return;
 		}
 
 		try {
-			// Manual runs skip dedup so "Generate Now" always produces content.
+			// Update stage for frontend polling.
+			$this->update_generation_stage( __( 'Collecting sources from Reddit...', 'prautoblogger' ) );
+
 			$results = ( new PRAutoBlogger_Pipeline_Runner() )
 				->set_skip_dedup( true )
 				->run();
-			wp_send_json_success( $results );
+
+			set_transient( self::STATUS_TRANSIENT, [
+				'status'    => 'complete',
+				'generated' => $results['generated'],
+				'published' => $results['published'],
+				'rejected'  => $results['rejected'],
+				'cost'      => $results['cost'],
+			], self::STATUS_TTL );
 		} catch ( \Throwable $e ) {
 			PRAutoBlogger_Logger::instance()->error(
 				sprintf( 'Manual generation %s: %s', get_class( $e ), $e->getMessage() ),
 				'pipeline'
 			);
-			wp_send_json_error( [ 'message' => $e->getMessage() ] );
+			set_transient( self::STATUS_TRANSIENT, [
+				'status'  => 'error',
+				'message' => $e->getMessage(),
+			], self::STATUS_TTL );
 		} finally {
 			$this->release_generation_lock();
+		}
+	}
+
+	/**
+	 * AJAX handler: return current generation status for frontend polling.
+	 *
+	 * Lightweight endpoint — reads a transient and returns it. Called every
+	 * few seconds by admin.js while generation is in progress.
+	 *
+	 * Side effects: none.
+	 */
+	public function on_ajax_generation_status(): void {
+		check_ajax_referer( 'prautoblogger_generate_now', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'prautoblogger' ) ], 403 );
+			return;
+		}
+
+		$status = get_transient( self::STATUS_TRANSIENT );
+
+		if ( ! is_array( $status ) ) {
+			wp_send_json_success( [ 'status' => 'idle' ] );
+			return;
+		}
+
+		// If still "running" but started more than 10 minutes ago, assume it died.
+		if ( 'running' === $status['status'] && isset( $status['started'] ) && ( time() - $status['started'] ) > self::STATUS_TTL ) {
+			delete_transient( self::STATUS_TRANSIENT );
+			wp_send_json_success( [
+				'status'  => 'error',
+				'message' => __( 'Generation timed out. Check the Activity Log for details.', 'prautoblogger' ),
+			] );
+			return;
+		}
+
+		wp_send_json_success( $status );
+	}
+
+	/**
+	 * Helper: update the generation stage for frontend polling.
+	 *
+	 * @param string $stage Human-readable stage description.
+	 */
+	private function update_generation_stage( string $stage ): void {
+		$current = get_transient( self::STATUS_TRANSIENT );
+		if ( is_array( $current ) ) {
+			$current['stage'] = $stage;
+			set_transient( self::STATUS_TRANSIENT, $current, self::STATUS_TTL );
 		}
 	}
 
