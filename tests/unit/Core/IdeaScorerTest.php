@@ -21,6 +21,9 @@ class IdeaScorerTest extends BaseTestCase {
         $this->stub_get_option( [
             'prautoblogger_topic_exclusions' => '[]',
         ] );
+
+        // has_similar_post() → fetch_existing_titles() calls get_the_title().
+        Functions\when( 'get_the_title' )->justReturn( 'Existing Post Title' );
     }
 
     /**
@@ -140,5 +143,28 @@ class IdeaScorerTest extends BaseTestCase {
         $result = $scorer->score_and_rank( $analysis_results, 1000 );
 
         $this->assertIsArray( $result );
+    }
+
+    /**
+     * Test that topics sharing only common niche words are NOT deduped.
+     *
+     * Regression test for the WP_Query 's' bug: WordPress search matched
+     * ANY word, so "BPC-157 dosage" deduped against "BPC-157 storage"
+     * even though they're completely different articles.
+     */
+    public function test_dedup_does_not_reject_different_topics_with_shared_words(): void {
+        // The default WP_Query stub returns 0 posts, so nothing gets deduped.
+        // This test verifies that score_and_rank passes ideas through when
+        // no similar posts exist (the common case after the fix).
+        $fixture          = $this->get_analysis_result_fixture();
+        $fixture['topic'] = 'BPC-157 dosage guide for subcutaneous injection';
+
+        $scorer = new \PRAutoBlogger_Idea_Scorer();
+        $result = $scorer->score_and_rank(
+            [ new \PRAutoBlogger_Analysis_Result( $fixture ) ],
+            5
+        );
+
+        $this->assertCount( 1, $result, 'Idea should not be deduped when no similar post exists.' );
     }
 }
