@@ -2,16 +2,14 @@
 declare(strict_types=1);
 
 /**
- * Execution handlers for content generation and metrics collection.
+ * Cron/AJAX handlers for content generation, metrics collection, model registry.
  *
- * What: Cron handlers, generation AJAX (start + status polling), model registry.
- * Who calls it: PRAutoBlogger registers hooks that delegate here.
- * Dependencies: Pipeline_Runner, Metrics_Collector, Generation_Lock, Logger, Model_Registry.
+ * Triggered by: PRAutoBlogger hook registration.
+ * Dependencies: Pipeline_Runner, Metrics_Collector, Generation_Lock, Logger.
  *
- * @see class-prautoblogger.php          — Hook registration that wires these handlers.
- * @see core/class-pipeline-runner.php    — Actual generation pipeline.
- * @see class-generation-lock.php         — DB mutex extracted from this class.
- * @see class-ajax-handlers.php           — Non-generation AJAX endpoints (images, models, test).
+ * @see class-prautoblogger.php       — Hook wiring.
+ * @see core/class-pipeline-runner.php — Actual generation pipeline.
+ * @see class-generation-lock.php      — DB mutex.
  */
 class PRAutoBlogger_Executor {
 
@@ -134,16 +132,7 @@ class PRAutoBlogger_Executor {
 		] );
 	}
 
-	/**
-	 * Cron handler for manual (background) generation.
-	 *
-	 * Runs in a separate PHP process triggered by WP-Cron, free from
-	 * the web server's connection timeout. Writes progress and final
-	 * results to a transient that the frontend polls.
-	 *
-	 * Side effects: API calls, database writes, WordPress post creation,
-	 *               transient updates.
-	 */
+	/** Cron handler: runs pipeline in background, writes results to transient. */
 	public function on_manual_generation(): void {
 		// Keep PHP running even after LiteSpeed closes the HTTP connection.
 		// On Hostinger shared hosting, the web server kills HTTP connections
@@ -189,19 +178,7 @@ class PRAutoBlogger_Executor {
 		}
 	}
 
-	/**
-	 * AJAX handler: return current generation status for frontend polling.
-	 *
-	 * Lightweight endpoint — reads a transient and returns it. Called every
-	 * few seconds by admin.js while generation is in progress.
-	 *
-	 * Includes fallback detection: if the pipeline produced a post but the
-	 * PHP process was killed before updating the transient (Hostinger's
-	 * 120-second timeout), this endpoint detects the orphaned state and
-	 * recovers gracefully after 180 seconds.
-	 *
-	 * Side effects: may delete stale transient and lock on recovery.
-	 */
+	/** AJAX: return generation status for frontend polling. Recovers orphaned runs. */
 	public function on_ajax_generation_status(): void {
 		check_ajax_referer( 'prautoblogger_generate_now', 'nonce' );
 
@@ -218,6 +195,10 @@ class PRAutoBlogger_Executor {
 		}
 
 		// Fallback: detect orphaned "running" state when PHP process was killed.
+		// On Hostinger shared hosting, set_time_limit() is often ignored and
+		// PHP kills the cron process at max_execution_time (120–180s). The
+		// pipeline creates the post first and images last, so the post exists
+		// even when the process died during image generation.
 		if ( 'running' === $status['status'] ) {
 			$started = $status['started'] ?? 0;
 			$elapsed = time() - $started;
@@ -232,9 +213,12 @@ class PRAutoBlogger_Executor {
 				return;
 			}
 
-			// After 5 minutes, check if pipeline produced output despite the kill.
-			// Pipeline with 3 articles + images takes 3–4 min; wait before declaring orphaned.
-			if ( $elapsed > 300 ) {
+			// After 90 seconds, proactively check if the pipeline already
+			// produced a post. This catches the common case where the cron
+			// process was killed by max_execution_time after publishing but
+			// before updating the transient. Without this, the user stares
+			// at "Generating…" for 5+ minutes despite the work being done.
+			if ( $elapsed > 90 ) {
 				$recent = get_posts( [
 					'post_type'      => 'post',
 					'post_status'    => [ 'publish', 'draft' ],
@@ -244,10 +228,10 @@ class PRAutoBlogger_Executor {
 					'orderby'        => 'date',
 					'order'          => 'DESC',
 				] );
-				delete_transient( self::STATUS_TRANSIENT );
-				PRAutoBlogger_Generation_Lock::release();
 
 				if ( ! empty( $recent ) ) {
+					delete_transient( self::STATUS_TRANSIENT );
+					PRAutoBlogger_Generation_Lock::release();
 					wp_send_json_success( [
 						'status'    => 'complete',
 						'generated' => 1,
@@ -258,11 +242,18 @@ class PRAutoBlogger_Executor {
 					] );
 					return;
 				}
-				wp_send_json_success( [
-					'status'  => 'error',
-					'message' => __( 'Generation process ended without producing content. Check Activity Log.', 'prautoblogger' ),
-				] );
-				return;
+
+				// No post found yet — only declare failure after 5 minutes.
+				// The pipeline genuinely needs 2–4 min for article + images.
+				if ( $elapsed > 300 ) {
+					delete_transient( self::STATUS_TRANSIENT );
+					PRAutoBlogger_Generation_Lock::release();
+					wp_send_json_success( [
+						'status'  => 'error',
+						'message' => __( 'Generation process ended without producing content. Check Activity Log.', 'prautoblogger' ),
+					] );
+					return;
+				}
 			}
 		}
 
