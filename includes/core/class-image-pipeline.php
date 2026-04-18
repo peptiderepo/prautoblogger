@@ -63,17 +63,34 @@ class PRAutoBlogger_Image_Pipeline {
 	/**
 	 * Construct with dependencies.
 	 *
-	 * @param PRAutoBlogger_Image_Provider_Interface|null $provider Optional provider (defaults to Cloudflare).
+	 * When no provider is injected, the constructor reads the
+	 * `prautoblogger_image_provider` setting and instantiates the
+	 * matching concrete class ('openrouter' or 'cloudflare').
+	 *
+	 * @param PRAutoBlogger_Image_Provider_Interface|null $provider Optional provider override.
 	 * @param PRAutoBlogger_Cost_Tracker|null             $cost_tracker Optional cost tracker.
 	 */
 	public function __construct(
 		?PRAutoBlogger_Image_Provider_Interface $provider = null,
 		?PRAutoBlogger_Cost_Tracker $cost_tracker = null
 	) {
-		$this->provider         = $provider ?? new PRAutoBlogger_Cloudflare_Image_Provider();
+		$this->provider         = $provider ?? self::create_default_provider();
 		$this->prompt_builder   = new PRAutoBlogger_Image_Prompt_Builder();
 		$this->sideloader       = new PRAutoBlogger_Image_Media_Sideloader();
 		$this->cost_tracker     = $cost_tracker ?? new PRAutoBlogger_Cost_Tracker();
+	}
+
+	/**
+	 * Instantiate the image provider based on the admin setting.
+	 *
+	 * @return PRAutoBlogger_Image_Provider_Interface
+	 */
+	private static function create_default_provider(): PRAutoBlogger_Image_Provider_Interface {
+		$provider_id = (string) get_option( 'prautoblogger_image_provider', PRAUTOBLOGGER_DEFAULT_IMAGE_PROVIDER );
+		if ( 'openrouter' === $provider_id ) {
+			return new PRAutoBlogger_OpenRouter_Image_Provider();
+		}
+		return new PRAutoBlogger_Cloudflare_Image_Provider();
 	}
 
 	/**
@@ -190,7 +207,7 @@ class PRAutoBlogger_Image_Pipeline {
 			// Log the cost.
 			$this->cost_tracker->log_image_generation(
 				$image_data['cost_usd'],
-				'flux-1-schnell',
+				$image_data['model'] ?? 'unknown',
 				$post_id,
 				'image_a'
 			);
@@ -256,7 +273,7 @@ class PRAutoBlogger_Image_Pipeline {
 			// Log the cost.
 			$this->cost_tracker->log_image_generation(
 				$image_data['cost_usd'],
-				'flux-1-schnell',
+				$image_data['model'] ?? 'unknown',
 				$post_id,
 				'image_b'
 			);

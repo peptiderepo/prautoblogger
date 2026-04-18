@@ -80,22 +80,8 @@ class PRAutoBlogger_Admin_Page {
 			'generateText'   => __( 'Generate Now', 'prautoblogger' ),
 			'testingText'    => __( 'Testing...', 'prautoblogger' ),
 			'testText'       => __( 'Test Connections', 'prautoblogger' ),
-			// Static Cloudflare image models for the picker (no registry API for these).
-			// FLUX.1 [dev] removed from Cloudflare Workers AI in April 2026.
-			'cloudflareModels' => [
-				[
-					'id'                => 'flux-1-schnell',
-					'name'              => 'FLUX.1 [schnell]',
-					'provider'          => 'cloudflare',
-					'context_length'    => 0,
-					'input_price_per_m' => 0,
-					'output_price_per_m' => 0,
-					'cost_per_image'    => 0.0007,
-					'capabilities'      => [ 'cloudflare_image' ],
-					'deprecated'        => false,
-					'description'       => __( 'Fast + cheap (4 steps). Default choice.', 'prautoblogger' ),
-				],
-			],
+			// Image models for the picker — defined in the settings class to keep this file short.
+			'imageModels' => PRAutoBlogger_Settings_Fields_Extended::get_image_models(),
 		] );
 	}
 

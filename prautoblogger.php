@@ -53,10 +53,11 @@ define( 'PRAUTOBLOGGER_DEFAULT_ANALYSIS_MODEL', 'google/gemini-2.5-flash-lite' )
 define( 'PRAUTOBLOGGER_DEFAULT_WRITING_MODEL', 'google/gemini-2.5-flash-lite' );
 define( 'PRAUTOBLOGGER_DEFAULT_EDITOR_MODEL', 'google/gemini-2.5-flash-lite' );
 
-// Image generation defaults (Cloudflare Workers AI, FLUX family).
-// Short alias; the Cloudflare image pricing helper expands it to the full
-// `@cf/black-forest-labs/...` model id when building the Workers AI URL.
-define( 'PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL', 'flux-1-schnell' );
+// Image generation defaults.
+// Default provider is OpenRouter (higher quality); Cloudflare is the fallback.
+// Default model is FLUX.2 Pro via OpenRouter (~$0.03/image, good quality).
+define( 'PRAUTOBLOGGER_DEFAULT_IMAGE_PROVIDER', 'openrouter' );
+define( 'PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL', 'black-forest-labs/flux-2-pro' );
 
 // CEO-approved image style suffix (decision locked 2026-04-15). Users may
 // override via Settings → Images → Style Suffix; this constant is the

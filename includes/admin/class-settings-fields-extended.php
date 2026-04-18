@@ -15,6 +15,73 @@ declare(strict_types=1);
 class PRAutoBlogger_Settings_Fields_Extended {
 
 	/**
+	 * Static image model list for the admin model picker.
+	 * No registry API for these — they're hardcoded here and updated manually.
+	 *
+	 * @return array<int, array<string, mixed>>
+	 */
+	public static function get_image_models(): array {
+		return [
+			[
+				'id'             => 'black-forest-labs/flux-2-pro',
+				'name'           => 'FLUX.2 Pro',
+				'provider'       => 'openrouter',
+				'cost_per_image' => 0.03,
+				'capabilities'   => [ 'image_generation' ],
+				'description'    => __( 'High quality, fast. Recommended.', 'prautoblogger' ),
+			],
+			[
+				'id'             => 'black-forest-labs/flux-1.1-pro',
+				'name'           => 'FLUX 1.1 Pro',
+				'provider'       => 'openrouter',
+				'cost_per_image' => 0.04,
+				'capabilities'   => [ 'image_generation' ],
+				'description'    => __( 'Previous gen Pro. Slightly pricier.', 'prautoblogger' ),
+			],
+			[
+				'id'             => 'black-forest-labs/flux-1.1-pro-ultra',
+				'name'           => 'FLUX 1.1 Pro Ultra',
+				'provider'       => 'openrouter',
+				'cost_per_image' => 0.06,
+				'capabilities'   => [ 'image_generation' ],
+				'description'    => __( 'Highest quality FLUX. Premium.', 'prautoblogger' ),
+			],
+			[
+				'id'             => 'bytedance/seedream-3.0',
+				'name'           => 'Seedream 3.0',
+				'provider'       => 'openrouter',
+				'cost_per_image' => 0.003,
+				'capabilities'   => [ 'image_generation' ],
+				'description'    => __( 'Budget. Good quality, very low cost.', 'prautoblogger' ),
+			],
+			[
+				'id'             => 'google/gemini-2.5-flash-preview:image',
+				'name'           => 'Gemini 2.5 Flash Image',
+				'provider'       => 'openrouter',
+				'cost_per_image' => 0.01,
+				'capabilities'   => [ 'image_generation' ],
+				'description'    => __( 'Google multimodal. Text-in-image.', 'prautoblogger' ),
+			],
+			[
+				'id'             => 'openai/gpt-image-1',
+				'name'           => 'GPT Image 1',
+				'provider'       => 'openrouter',
+				'cost_per_image' => 0.04,
+				'capabilities'   => [ 'image_generation' ],
+				'description'    => __( 'OpenAI. Photorealistic style.', 'prautoblogger' ),
+			],
+			[
+				'id'             => 'flux-1-schnell',
+				'name'           => 'FLUX.1 schnell (Cloudflare)',
+				'provider'       => 'cloudflare',
+				'cost_per_image' => 0.0007,
+				'capabilities'   => [ 'image_generation' ],
+				'description'    => __( 'Cheapest. Low quality, 4-step.', 'prautoblogger' ),
+			],
+		];
+	}
+
+	/**
 	 * Get schedule, publishing, analytics, and image settings fields.
 	 *
 	 * @return array<int, array<string, mixed>>
@@ -113,14 +180,36 @@ class PRAutoBlogger_Settings_Fields_Extended {
 				'type'        => 'toggle',
 				'section'     => 'prautoblogger_images',
 				'default'     => '0',
-				'description' => __( 'When enabled, generate two images (A/B) for each published article. Requires Cloudflare credentials.', 'prautoblogger' ),
+				'description' => __( 'When enabled, generate two images (A/B) for each published article.', 'prautoblogger' ),
+			],
+			[
+				'id'      => 'prautoblogger_image_provider',
+				'label'   => __( 'Image Provider', 'prautoblogger' ),
+				'type'    => 'select',
+				'section' => 'prautoblogger_images',
+				'default' => 'openrouter',
+				'options' => [
+					'openrouter' => __( 'OpenRouter (FLUX.2 Pro, Seedream, GPT-Image)', 'prautoblogger' ),
+					'cloudflare' => __( 'Cloudflare Workers AI (FLUX.1 schnell)', 'prautoblogger' ),
+				],
+				'description' => __( 'OpenRouter reuses your existing API key and offers higher-quality models. Cloudflare is cheaper but lower quality.', 'prautoblogger' ),
+			],
+			[
+				'id'          => 'prautoblogger_image_model',
+				'label'       => __( 'Image Model', 'prautoblogger' ),
+				'type'        => 'model_select',
+				'section'     => 'prautoblogger_images',
+				'default'     => PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL,
+				'capability'  => 'image_generation',
+				'description' => __( 'Pick a model from your selected provider. FLUX.2 Pro recommended for quality.', 'prautoblogger' ),
+				'badge'       => __( 'Quality', 'prautoblogger' ),
 			],
 			[
 				'id'          => 'prautoblogger_cloudflare_ai_token',
 				'label'       => __( 'Cloudflare API Token', 'prautoblogger' ),
 				'type'        => 'password',
 				'section'     => 'prautoblogger_images',
-				'description' => __( 'Workers AI token with Read + Edit scope. Create at dash.cloudflare.com → AI → API Tokens.', 'prautoblogger' ),
+				'description' => __( 'Only needed if using Cloudflare provider. Workers AI token with Read + Edit scope.', 'prautoblogger' ),
 				'icon'        => '🔑',
 			],
 			[
@@ -129,17 +218,7 @@ class PRAutoBlogger_Settings_Fields_Extended {
 				'type'        => 'text',
 				'section'     => 'prautoblogger_images',
 				'default'     => '',
-				'description' => __( 'The Account ID shown on your Cloudflare dashboard sidebar.', 'prautoblogger' ),
-			],
-			[
-				'id'          => 'prautoblogger_image_model',
-				'label'       => __( 'Image Model', 'prautoblogger' ),
-				'type'        => 'model_select',
-				'section'     => 'prautoblogger_images',
-				'default'     => PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL,
-				'capability'  => 'cloudflare_image',
-				'description' => __( 'Schnell is the normal choice. Switch to [dev] for higher quality.', 'prautoblogger' ),
-				'badge'       => __( 'Low cost', 'prautoblogger' ),
+				'description' => __( 'Only needed if using Cloudflare provider.', 'prautoblogger' ),
 			],
 			[
 				'id'          => 'prautoblogger_image_style_suffix',

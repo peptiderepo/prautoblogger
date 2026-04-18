@@ -63,7 +63,7 @@ class PRAutoBlogger_Settings_Fields {
 			'prautoblogger_images' => [
 				'title'       => __( 'Images', 'prautoblogger' ),
 				'icon'        => 'dashicons-format-image',
-				'description' => __( 'Cloudflare Workers AI credentials and image style controls.', 'prautoblogger' ),
+				'description' => __( 'Image provider, model, and style controls. OpenRouter reuses your existing API key.', 'prautoblogger' ),
 			],
 		];
 	}

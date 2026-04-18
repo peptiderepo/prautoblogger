@@ -22,10 +22,10 @@
 	 * @return {jQuery.Deferred} Resolves with model array.
 	 */
 	function fetchModels(capability) {
-		// Cloudflare image models are embedded in the page config — no AJAX needed.
-		if (capability === 'cloudflare_image') {
-			var cfModels = config.cloudflareModels || [];
-			return $.Deferred().resolve(cfModels);
+		// Image models are embedded in the page config — no AJAX needed.
+		if (capability === 'image_generation') {
+			var imgModels = config.imageModels || [];
+			return $.Deferred().resolve(imgModels);
 		}
 
 		if (cachedModels) {
@@ -160,8 +160,8 @@
 		var capability = $trigger.data('capability') || '';
 
 		// Build overlay + popup structure.
-		var isCloudflare = capability === 'cloudflare_image';
-		var priceLabel = isCloudflare ? 'Cost per generated image' : 'Prices per 1M tokens (in / out)';
+		var isImageCap = capability === 'image_generation';
+		var priceLabel = isImageCap ? 'Cost per generated image' : 'Prices per 1M tokens (in / out)';
 
 		var $overlay = $('<div class="ab-mp-overlay"></div>');
 		var $popup = $(
