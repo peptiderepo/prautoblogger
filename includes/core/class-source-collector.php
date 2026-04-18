@@ -7,6 +7,8 @@ declare(strict_types=1);
  * Iterates through enabled sources (currently Reddit), calls their
  * collect_data() method, and stores results in the ab_source_data table.
  * Handles deduplication via UNIQUE index on (source_type, source_id).
+ * Re-seen items get their collected_at timestamp refreshed so the
+ * analyzer's 24-hour window picks them up for re-analysis.
  *
  * Triggered by: PRAutoBlogger::run_generation_pipeline() (step 1).
  * Dependencies: Source provider implementations, WordPress $wpdb.
@@ -42,10 +44,11 @@ class PRAutoBlogger_Source_Collector {
 			try {
 				$data     = $provider->collect_data( $this->get_config_for_source( $source_type ) );
 				$inserted = $this->store_data( $data );
+				$refreshed = count( $data ) - $inserted;
 				$total_inserted += $inserted;
 
 				PRAutoBlogger_Logger::instance()->info(
-					sprintf( 'Collected %d items from %s (%d new).', count( $data ), $source_type, $inserted ),
+					sprintf( 'Collected %d items from %s (%d new, %d refreshed).', count( $data ), $source_type, $inserted, $refreshed ),
 					'collector'
 				);
 			} catch ( \Throwable $e ) {
@@ -101,13 +104,17 @@ class PRAutoBlogger_Source_Collector {
 	/**
 	 * Store collected source data in the database.
 	 *
-	 * Uses INSERT IGNORE to handle duplicates gracefully (UNIQUE index).
+	 * Uses INSERT … ON DUPLICATE KEY UPDATE so that re-seen items refresh
+	 * their collected_at timestamp (plus score/comment_count which change
+	 * on Reddit over time). Without this, items that age past the
+	 * analyzer's 24-hour window would never be re-analyzed even though
+	 * they keep appearing in the RSS feed.
 	 *
-	 * Side effects: database inserts.
+	 * Side effects: database inserts/updates.
 	 *
 	 * @param PRAutoBlogger_Source_Data[] $items
 	 *
-	 * @return int Number of new records inserted.
+	 * @return int Number of new records inserted (updates not counted).
 	 */
 	private function store_data( array $items ): int {
 		global $wpdb;
@@ -117,13 +124,18 @@ class PRAutoBlogger_Source_Collector {
 		foreach ( $items as $item ) {
 			$row = $item->to_db_row();
 
-			// Use INSERT IGNORE so duplicate (source_type, source_id) pairs are silently skipped.
+			// Upsert: insert new items, refresh timestamps on duplicates so
+			// the analyzer's 24-hour window picks them up again.
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 			$result = $wpdb->query(
 				$wpdb->prepare(
-					"INSERT IGNORE INTO {$table}
+					"INSERT INTO {$table}
 					(source_type, source_id, subreddit, title, content, author, score, comment_count, permalink, collected_at, metadata_json)
-					VALUES (%s, %s, %s, %s, %s, %s, %d, %d, %s, %s, %s)",
+					VALUES (%s, %s, %s, %s, %s, %s, %d, %d, %s, %s, %s)
+					ON DUPLICATE KEY UPDATE
+						collected_at  = VALUES(collected_at),
+						score         = VALUES(score),
+						comment_count = VALUES(comment_count)",
 					$row['source_type'],
 					$row['source_id'],
 					$row['subreddit'],
@@ -138,7 +150,9 @@ class PRAutoBlogger_Source_Collector {
 				)
 			);
 
-			if ( false !== $result && $result > 0 ) {
+			// ON DUPLICATE KEY UPDATE returns 2 for updates, 1 for inserts.
+			// Only count genuine inserts toward the "new" tally.
+			if ( false !== $result && 1 === (int) $result ) {
 				$inserted++;
 			}
 		}
