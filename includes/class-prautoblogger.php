@@ -95,6 +95,13 @@ class PRAutoBlogger {
 		// Hostinger's 120-second web-server connection timeout.
 		add_action( 'prautoblogger_manual_generation', [ $this->executor, 'on_manual_generation' ] );
 
+		// Chained article generation — each queued article fires as its own
+		// cron event so it gets a fresh PHP process and execution time budget.
+		add_action(
+			PRAutoBlogger_Pipeline_Runner::CRON_ACTION,
+			[ $this->executor, 'on_process_article_queue' ]
+		);
+
 		$registry = $this->executor->get_model_registry();
 		add_action( 'prautoblogger_refresh_model_registry', [ $registry, 'refresh' ] );
 	}

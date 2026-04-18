@@ -24,12 +24,14 @@ class PRAutoBlogger_Executor {
 
 	/**
 	 * Handle the daily generation cron event.
-	 * Uses an atomic DB mutex to prevent overlapping runs.
+	 *
+	 * Uses an atomic DB mutex. If the pipeline queues additional articles,
+	 * they fire as chained cron events and the lock is released by the
+	 * last article job — not here.
 	 *
 	 * Side effects: API calls, database writes, WordPress post creation.
 	 */
 	public function on_daily_generation(): void {
-		// Refresh model registry before lock — stuck lock shouldn't block refresh.
 		do_action( 'prautoblogger_refresh_model_registry', false );
 
 		if ( ! PRAutoBlogger_Generation_Lock::acquire() ) {
@@ -39,12 +41,16 @@ class PRAutoBlogger_Executor {
 
 		try {
 			( new PRAutoBlogger_Pipeline_Runner() )->run();
+
+			// Release lock only if no articles were queued for chained processing.
+			if ( ! get_option( 'prautoblogger_article_queue' ) ) {
+				PRAutoBlogger_Generation_Lock::release();
+			}
 		} catch ( \Throwable $e ) {
 			PRAutoBlogger_Logger::instance()->error(
 				sprintf( 'Daily generation %s: %s', get_class( $e ), $e->getMessage() ),
 				'scheduler'
 			);
-		} finally {
 			PRAutoBlogger_Generation_Lock::release();
 		}
 	}
@@ -132,11 +138,14 @@ class PRAutoBlogger_Executor {
 		] );
 	}
 
-	/** Cron handler: runs pipeline in background, writes results to transient. */
+	/**
+	 * Cron handler: runs pipeline orchestration + first article.
+	 *
+	 * If the pipeline queues additional articles (2..N), they will fire as
+	 * chained cron events — each in its own PHP process. The lock is released
+	 * by the pipeline when the last article completes, not here.
+	 */
 	public function on_manual_generation(): void {
-		// Keep PHP running even after LiteSpeed closes the HTTP connection.
-		// On Hostinger shared hosting, the web server kills HTTP connections
-		// at 120 seconds, but ignore_user_abort lets the PHP process continue.
 		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		@ignore_user_abort( true );
 		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
@@ -153,17 +162,21 @@ class PRAutoBlogger_Executor {
 		try {
 			$this->update_generation_stage( __( 'Collecting sources from Reddit...', 'prautoblogger' ) );
 
-			$results = ( new PRAutoBlogger_Pipeline_Runner() )
-				->set_skip_dedup( true )
-				->run();
+			$runner  = ( new PRAutoBlogger_Pipeline_Runner() )->set_skip_dedup( true );
+			$results = $runner->run();
 
-			set_transient( self::STATUS_TRANSIENT, [
-				'status'    => 'complete',
-				'generated' => $results['generated'],
-				'published' => $results['published'],
-				'rejected'  => $results['rejected'],
-				'cost'      => $results['cost'],
-			], self::STATUS_TTL );
+			// If no articles were queued (target=1 or 0 ideas), finalize here.
+			// When articles ARE queued, the pipeline handles status + lock release.
+			if ( ! get_option( 'prautoblogger_article_queue' ) ) {
+				set_transient( self::STATUS_TRANSIENT, [
+					'status'    => 'complete',
+					'generated' => $results['generated'],
+					'published' => $results['published'],
+					'rejected'  => $results['rejected'],
+					'cost'      => $results['cost'],
+				], self::STATUS_TTL );
+				PRAutoBlogger_Generation_Lock::release();
+			}
 		} catch ( \Throwable $e ) {
 			PRAutoBlogger_Logger::instance()->error(
 				sprintf( 'Manual generation %s: %s', get_class( $e ), $e->getMessage() ),
@@ -173,91 +186,85 @@ class PRAutoBlogger_Executor {
 				'status'  => 'error',
 				'message' => $e->getMessage(),
 			], self::STATUS_TTL );
-		} finally {
 			PRAutoBlogger_Generation_Lock::release();
+		}
+	}
+
+	/**
+	 * Cron handler: process the next queued article in its own PHP process.
+	 *
+	 * Chained by Pipeline_Runner — each article gets its own execution time.
+	 */
+	public function on_process_article_queue(): void {
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		@ignore_user_abort( true );
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		@set_time_limit( 300 );
+
+		try {
+			( new PRAutoBlogger_Pipeline_Runner() )->process_next_queued_article();
+		} catch ( \Throwable $e ) {
+			PRAutoBlogger_Logger::instance()->error(
+				sprintf( 'Queued article generation %s: %s', get_class( $e ), $e->getMessage() ),
+				'pipeline'
+			);
+			// Clean up on catastrophic failure.
+			delete_option( 'prautoblogger_article_queue' );
+			PRAutoBlogger_Generation_Lock::release();
+			set_transient( self::STATUS_TRANSIENT, [
+				'status'  => 'error',
+				'message' => $e->getMessage(),
+			], self::STATUS_TTL );
 		}
 	}
 
 	/** AJAX: return generation status for frontend polling. Recovers orphaned runs. */
 	public function on_ajax_generation_status(): void {
 		check_ajax_referer( 'prautoblogger_generate_now', 'nonce' );
-
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'prautoblogger' ) ], 403 );
 			return;
 		}
 
 		$status = get_transient( self::STATUS_TRANSIENT );
-
 		if ( ! is_array( $status ) ) {
 			wp_send_json_success( [ 'status' => 'idle' ] );
 			return;
 		}
 
-		// Fallback: detect orphaned "running" state when PHP process was killed.
-		// On Hostinger shared hosting, set_time_limit() is often ignored and
-		// PHP kills the cron process at max_execution_time (120–180s). The
-		// pipeline creates the post first and images last, so the post exists
-		// even when the process died during image generation.
 		if ( 'running' === $status['status'] ) {
-			$started = $status['started'] ?? 0;
-			$elapsed = time() - $started;
+			$elapsed = time() - ( $status['started'] ?? 0 );
 
-			// After 10 minutes, give up unconditionally.
+			// Absolute timeout — give up after 10 minutes.
 			if ( $elapsed > self::STATUS_TTL ) {
-				delete_transient( self::STATUS_TRANSIENT );
-				wp_send_json_success( [
-					'status'  => 'error',
-					'message' => __( 'Generation timed out. Check the Activity Log for details.', 'prautoblogger' ),
-				] );
+				$this->abort_orphaned_run( __( 'Generation timed out. Check the Activity Log.', 'prautoblogger' ) );
 				return;
 			}
 
-			// After 90 seconds, proactively check if the pipeline already
-			// produced a post. This catches the common case where the cron
-			// process was killed by max_execution_time after publishing but
-			// before updating the transient. Without this, the user stares
-			// at "Generating…" for 5+ minutes despite the work being done.
-			if ( $elapsed > 90 ) {
-				$recent = get_posts( [
-					'post_type'      => 'post',
-					'post_status'    => [ 'publish', 'draft' ],
-					'posts_per_page' => 1,
-					'date_query'     => [ [ 'after' => gmdate( 'Y-m-d H:i:s', $started ) ] ],
-					'meta_key'       => '_prautoblogger_run_id',
-					'orderby'        => 'date',
-					'order'          => 'DESC',
-				] );
-
-				if ( ! empty( $recent ) ) {
-					delete_transient( self::STATUS_TRANSIENT );
-					PRAutoBlogger_Generation_Lock::release();
-					wp_send_json_success( [
-						'status'    => 'complete',
-						'generated' => 1,
-						'published' => 1,
-						'rejected'  => 0,
-						'cost'      => 0.0,
-						'note'      => __( 'Generation completed (status recovered).', 'prautoblogger' ),
-					] );
-					return;
+			// After 90s, check if a queued job died and needs re-scheduling.
+			if ( $elapsed > 90 && get_option( 'prautoblogger_article_queue' ) ) {
+				if ( ! wp_next_scheduled( PRAutoBlogger_Pipeline_Runner::CRON_ACTION ) ) {
+					wp_schedule_single_event( time(), PRAutoBlogger_Pipeline_Runner::CRON_ACTION );
+					spawn_cron();
 				}
+			}
 
-				// No post found yet — only declare failure after 5 minutes.
-				// The pipeline genuinely needs 2–4 min for article + images.
-				if ( $elapsed > 300 ) {
-					delete_transient( self::STATUS_TRANSIENT );
-					PRAutoBlogger_Generation_Lock::release();
-					wp_send_json_success( [
-						'status'  => 'error',
-						'message' => __( 'Generation process ended without producing content. Check Activity Log.', 'prautoblogger' ),
-					] );
-					return;
-				}
+			// After 5 min with no progress, declare failure.
+			if ( $elapsed > 300 ) {
+				$this->abort_orphaned_run( __( 'Generation stalled. Check Activity Log.', 'prautoblogger' ) );
+				return;
 			}
 		}
 
 		wp_send_json_success( $status );
+	}
+
+	/** Clean up an orphaned generation run and report error. */
+	private function abort_orphaned_run( string $message ): void {
+		delete_transient( self::STATUS_TRANSIENT );
+		delete_option( 'prautoblogger_article_queue' );
+		PRAutoBlogger_Generation_Lock::release();
+		wp_send_json_success( [ 'status' => 'error', 'message' => $message ] );
 	}
 
 	/**

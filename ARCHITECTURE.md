@@ -138,7 +138,8 @@ prautoblogger/
 │   │   ├── class-image-media-sideloader.php # Imports images into WordPress media library
 │   │   ├── class-cost-tracker.php     # Logs all API costs, enforces budget limits
 │   │   ├── class-logger.php           # Structured logging singleton (error/warning/info/debug)
-│   │   ├── class-pipeline-runner.php  # Orchestrates the full generation pipeline
+│   │   ├── class-article-worker.php   # Single-article generation (content + edit + publish)
+│   │   ├── class-pipeline-runner.php  # Orchestrates pipeline; chains per-article cron jobs
 │   │   ├── class-ga4-client.php       # Google Analytics 4 API client (OAuth + Data API)
 │   │   └── class-metrics-collector.php# Collects post performance data (WP + GA4)
 │   │

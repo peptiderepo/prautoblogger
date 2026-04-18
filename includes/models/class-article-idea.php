@@ -84,4 +84,25 @@ class PRAutoBlogger_Article_Idea {
 	public function get_target_keywords(): array {
 		return $this->target_keywords;
 	}
+
+	/**
+	 * Serialize to array for storage in options/transients.
+	 *
+	 * Used by the pipeline queue to persist ideas across chained cron jobs.
+	 *
+	 * @return array<string, mixed> Constructor-compatible array.
+	 */
+	public function to_array(): array {
+		return [
+			'topic'           => $this->topic,
+			'article_type'    => $this->article_type,
+			'suggested_title' => $this->suggested_title,
+			'summary'         => $this->summary,
+			'score'           => $this->score,
+			'analysis_id'     => $this->analysis_id,
+			'source_ids'      => $this->source_ids,
+			'key_points'      => $this->key_points,
+			'target_keywords' => $this->target_keywords,
+		];
+	}
 }
