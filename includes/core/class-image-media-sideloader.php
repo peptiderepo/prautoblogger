@@ -39,6 +39,16 @@ class PRAutoBlogger_Image_Media_Sideloader {
 	 * @return int|\WP_Error Attachment ID on success, WP_Error on failure.
 	 */
 	public function sideload_image( array $image_data, int $post_id, string $alt_text = '' ) {
+		// WordPress media functions live in wp-admin/includes/ and are NOT
+		// loaded automatically in cron or REST contexts. Load them if missing.
+		// Why: WP-Cron runs as a frontend request, so admin-only files like
+		// media.php, file.php, and image.php are not included by default.
+		if ( ! function_exists( 'media_handle_sideload' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/media.php';
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+			require_once ABSPATH . 'wp-admin/includes/image.php';
+		}
+
 		// Validate input.
 		if ( empty( $image_data['bytes'] ) ) {
 			return new \WP_Error( 'invalid_image_data', 'Image data (bytes) is empty.' );
