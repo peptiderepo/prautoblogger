@@ -36,6 +36,14 @@
 			url.searchParams.set('tab', tab);
 			window.history.replaceState({}, '', url);
 		}
+
+		// Update the _wp_http_referer so WordPress redirects back to this tab after save.
+		var $referer = $('#ab-settings-form input[name="_wp_http_referer"]');
+		if ($referer.length) {
+			var refUrl = new URL($referer.val(), window.location.origin);
+			refUrl.searchParams.set('tab', tab);
+			$referer.val(refUrl.pathname + refUrl.search);
+		}
 	});
 
 	/*
@@ -54,6 +62,18 @@
 			setTimeout(function () {
 				$notice.fadeOut(400, function () { $(this).remove(); });
 			}, 6000);
+		}
+
+		// On load, sync _wp_http_referer with the current tab so the first
+		// save without switching tabs still returns to the right place.
+		var currentTab = new URL(window.location).searchParams.get('tab');
+		if (currentTab) {
+			var $referer = $('#ab-settings-form input[name="_wp_http_referer"]');
+			if ($referer.length) {
+				var refUrl = new URL($referer.val(), window.location.origin);
+				refUrl.searchParams.set('tab', currentTab);
+				$referer.val(refUrl.pathname + refUrl.search);
+			}
 		}
 	});
 
