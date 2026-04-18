@@ -114,6 +114,11 @@ class PRAutoBlogger_OpenRouter_Pricing {
 	 * @return float Estimated cost in USD.
 	 */
 	public function estimate_cost( string $model, int $prompt_tokens, int $completion_tokens ): float {
+		// OpenRouter `:free` suffix models cost nothing.
+		if ( ':free' === substr( $model, -5 ) ) {
+			return 0.0;
+		}
+
 		$pricing = self::MODEL_PRICING[ $model ] ?? null;
 
 		// Fall back to cached model list pricing.
