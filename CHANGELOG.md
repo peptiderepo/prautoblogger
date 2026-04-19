@@ -5,6 +5,24 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.6.1] — 2026-04-20
+
+### Added
+- **Peptide auto-linking.** When any peptide name from the PR Core database is
+  mentioned in a generated article, the first mention is automatically linked to
+  the corresponding `/peptides/{slug}/` page. The system prompt now includes a
+  complete peptide database reference list alongside the existing article links.
+  Gracefully degrades if PR Core is not active (`post_type_exists()` guard).
+
+### Changed
+- **Extracted prompt builders into Content_Prompts class.** Moved all prompt
+  construction (system prompt, stage prompts, linking rules) from
+  `Content_Generator` into a new `Content_Prompts` static helper. Generator
+  dropped from 324 → 162 lines; prompts class is 252 lines. Both under 300.
+- **Internal link rules strengthened.** Linking rules section now explicitly
+  instructs the model to link every peptide's first mention and never fabricate
+  URLs, with real published article and peptide page URLs provided.
+
 ## [0.6.0] — 2026-04-20
 
 ### Added

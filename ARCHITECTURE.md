@@ -133,6 +133,7 @@ prautoblogger/
 │   │   ├── class-idea-scorer.php      # Ranks and deduplicates article ideas (delegates to Semantic_Dedup)
 │   │   ├── class-semantic-dedup.php   # Embedding-based cosine similarity dedup with keyword fallback
 │   │   ├── class-content-generator.php# Writer agent — manages the generation pipeline
+│   │   ├── class-content-prompts.php  # Builds all LLM prompts for content generation (system, stage, linking rules)
 │   │   ├── class-chief-editor.php     # Editor agent — LLM-powered editorial review
 │   │   ├── class-publisher.php        # Creates WordPress posts from approved content
 │   │   ├── class-post-assembler.php   # Post-creation helpers: taxonomy, log linking, images, sanitization

@@ -9,11 +9,12 @@ declare(strict_types=1);
  * - multi_step: Outline → Draft → Polish pipeline (higher quality, more cost).
  *
  * Triggered by: PRAutoBlogger::run_generation_pipeline() (step 4).
- * Dependencies: LLM_Provider_Interface, Cost_Tracker.
+ * Dependencies: LLM_Provider_Interface, Cost_Tracker, Content_Prompts.
  *
- * @see core/class-chief-editor.php     — Reviews output of this class.
+ * @see core/class-content-prompts.php      — Builds all LLM prompts used here.
+ * @see core/class-chief-editor.php         — Reviews output of this class.
  * @see providers/interface-llm-provider.php — LLM used for generation.
- * @see ARCHITECTURE.md                 — Data flow step 4.
+ * @see ARCHITECTURE.md                     — Data flow step 4.
  */
 class PRAutoBlogger_Content_Generator {
 
@@ -66,31 +67,20 @@ class PRAutoBlogger_Content_Generator {
 	 * @return string Generated HTML content.
 	 */
 	private function generate_single_pass( PRAutoBlogger_Content_Request $request ): string {
-		$model    = get_option( 'prautoblogger_writing_model', PRAUTOBLOGGER_DEFAULT_WRITING_MODEL );
-		$idea     = $request->get_idea();
-
-		$system = $this->build_writer_system_prompt( $request );
-		$user   = $this->build_single_pass_prompt( $request );
+		$model = get_option( 'prautoblogger_writing_model', PRAUTOBLOGGER_DEFAULT_WRITING_MODEL );
 
 		$response = $this->llm->send_chat_completion(
 			[
-				[ 'role' => 'system', 'content' => $system ],
-				[ 'role' => 'user', 'content' => $user ],
+				[ 'role' => 'system', 'content' => PRAutoBlogger_Content_Prompts::build_system( $request ) ],
+				[ 'role' => 'user', 'content' => PRAutoBlogger_Content_Prompts::build_single_pass( $request ) ],
 			],
 			$model,
-			[
-				'temperature' => 0.7,
-				'max_tokens'  => 4000,
-			]
+			[ 'temperature' => 0.7, 'max_tokens' => 4000 ]
 		);
 
 		$this->cost_tracker->log_api_call(
-			null,
-			'draft',
-			$this->llm->get_provider_name(),
-			$response['model'],
-			$response['prompt_tokens'],
-			$response['completion_tokens']
+			null, 'draft', $this->llm->get_provider_name(),
+			$response['model'], $response['prompt_tokens'], $response['completion_tokens']
 		);
 
 		return $response['content'];
@@ -100,13 +90,8 @@ class PRAutoBlogger_Content_Generator {
 	private function generate_multi_step( PRAutoBlogger_Content_Request $request ): string {
 		$model = get_option( 'prautoblogger_writing_model', PRAUTOBLOGGER_DEFAULT_WRITING_MODEL );
 
-		// Step 1: Generate outline.
-		$outline = $this->stage_outline( $request, $model );
-
-		// Step 2: Generate draft from outline.
-		$draft = $this->stage_draft( $request, $outline, $model );
-
-		// Step 3: Polish the draft.
+		$outline  = $this->stage_outline( $request, $model );
+		$draft    = $this->stage_draft( $request, $outline, $model );
 		$polished = $this->stage_polish( $request, $draft, $model );
 
 		return $polished;
@@ -114,29 +99,12 @@ class PRAutoBlogger_Content_Generator {
 
 	/** Multi-step stage 1: Generate an article outline. */
 	private function stage_outline( PRAutoBlogger_Content_Request $request, string $model ): string {
-		$idea = $request->get_idea();
-
-		$prompt = sprintf(
-			"Create a detailed outline for a blog post titled: \"%s\"\n\n" .
-			"Topic: %s\nArticle type: %s\n\nKey points to cover:\n%s\n\n" .
-			"Target keywords: %s\n\n" .
-			"The outline should have 4-6 main sections with bullet points under each. " .
-			"Include an introduction hook and a conclusion with a call to action. " .
-			"Word count target: %d-%d words.\n\n" .
-			"Plan the structure to satisfy EVERY requirement in your system prompt style guide.",
-			$idea->get_suggested_title(),
-			$idea->get_topic(),
-			$idea->get_article_type(),
-			implode( "\n- ", $idea->get_key_points() ),
-			implode( ', ', $idea->get_target_keywords() ),
-			$request->get_min_word_count(),
-			$request->get_max_word_count()
-		);
+		$system = PRAutoBlogger_Content_Prompts::build_system( $request );
 
 		$response = $this->llm->send_chat_completion(
 			[
-				[ 'role' => 'system', 'content' => $this->build_writer_system_prompt( $request ) ],
-				[ 'role' => 'user', 'content' => $prompt ],
+				[ 'role' => 'system', 'content' => $system ],
+				[ 'role' => 'user', 'content' => PRAutoBlogger_Content_Prompts::build_outline( $request ) ],
 			],
 			$model,
 			[ 'temperature' => 0.5, 'max_tokens' => 1500 ]
@@ -152,29 +120,12 @@ class PRAutoBlogger_Content_Generator {
 
 	/** Multi-step stage 2: Write the full draft from the outline. */
 	private function stage_draft( PRAutoBlogger_Content_Request $request, string $outline, string $model ): string {
-		$prompt = sprintf(
-			"Using this outline, write the full blog post in HTML format.\n\n" .
-			"OUTLINE:\n%s\n\n" .
-			"Requirements:\n" .
-			"- Write in a %s tone\n" .
-			"- Target %d-%d words\n" .
-			"- Use proper HTML headings (h2, h3), paragraphs, and lists\n" .
-			"- Include an engaging introduction and strong conclusion\n" .
-			"- Naturally incorporate these keywords: %s\n" .
-			"- Do NOT include the title in the HTML (it will be set separately)\n" .
-			"- Do NOT wrap in <html>, <head>, or <body> tags — just the article content\n" .
-			"- Follow EVERY formatting and structural requirement from your system prompt style guide",
-			$outline,
-			$request->get_tone(),
-			$request->get_min_word_count(),
-			$request->get_max_word_count(),
-			implode( ', ', $request->get_idea()->get_target_keywords() )
-		);
+		$system = PRAutoBlogger_Content_Prompts::build_system( $request );
 
 		$response = $this->llm->send_chat_completion(
 			[
-				[ 'role' => 'system', 'content' => $this->build_writer_system_prompt( $request ) ],
-				[ 'role' => 'user', 'content' => $prompt ],
+				[ 'role' => 'system', 'content' => $system ],
+				[ 'role' => 'user', 'content' => PRAutoBlogger_Content_Prompts::build_draft( $request, $outline ) ],
 			],
 			$model,
 			[ 'temperature' => 0.7, 'max_tokens' => 4000 ]
@@ -190,23 +141,12 @@ class PRAutoBlogger_Content_Generator {
 
 	/** Multi-step stage 3: Polish and refine the draft. */
 	private function stage_polish( PRAutoBlogger_Content_Request $request, string $draft, string $model ): string {
-		$prompt = "Review and polish this blog post draft. Improve:\n" .
-			"1. Flow and readability\n" .
-			"2. SEO optimization (headings, keyword placement)\n" .
-			"3. Engagement (hooks, transitions, call-to-action)\n" .
-			"4. Accuracy and clarity\n" .
-			"5. Remove any filler or redundant sentences\n\n" .
-			"IMPORTANT: Preserve all bullet points, numbered lists, hyperlinks, and " .
-			"structural elements from the draft. Do NOT flatten lists into prose or " .
-			"remove links. Ensure every requirement from your system prompt style " .
-			"guide is satisfied in the final output.\n\n" .
-			"Return the polished HTML content only. Do not add commentary.\n\n" .
-			"DRAFT:\n" . $draft;
+		$system = PRAutoBlogger_Content_Prompts::build_system( $request );
 
 		$response = $this->llm->send_chat_completion(
 			[
-				[ 'role' => 'system', 'content' => $this->build_writer_system_prompt( $request ) ],
-				[ 'role' => 'user', 'content' => $prompt ],
+				[ 'role' => 'system', 'content' => $system ],
+				[ 'role' => 'user', 'content' => PRAutoBlogger_Content_Prompts::build_polish( $draft ) ],
 			],
 			$model,
 			[ 'temperature' => 0.4, 'max_tokens' => 4000 ]
@@ -218,66 +158,5 @@ class PRAutoBlogger_Content_Generator {
 		);
 
 		return $response['content'];
-	}
-
-	/**
-	 * Build the system prompt shared across all writing stages.
-	 *
-	 * @param PRAutoBlogger_Content_Request $request Content request with settings.
-	 * @return string
-	 */
-	private function build_writer_system_prompt( PRAutoBlogger_Content_Request $request ): string {
-		$niche = $request->get_niche_description();
-		$prompt = "You are an expert blog writer";
-		if ( '' !== $niche ) {
-			$prompt .= " specializing in {$niche}";
-		}
-		$prompt .= ". Write well-researched, engaging, SEO-friendly content. ";
-		$prompt .= "Use a {$request->get_tone()} tone. ";
-		$prompt .= "Output HTML content only — no markdown, no code fences, no commentary.";
-
-		// Append user-defined writing instructions as a mandatory style guide.
-		// Framed prominently to ensure the model treats them as requirements,
-		// not optional suggestions — "Additional instructions" was too weak.
-		$instructions = trim( $request->get_writing_instructions() );
-		if ( '' !== $instructions ) {
-			$prompt .= "\n\n--- MANDATORY STYLE GUIDE ---\n";
-			$prompt .= "You MUST follow every requirement below. These override any conflicting defaults:\n\n";
-			$prompt .= $instructions;
-			$prompt .= "\n--- END STYLE GUIDE ---";
-		}
-
-		return $prompt;
-	}
-
-	/**
-	 * Build the user prompt for single-pass generation.
-	 *
-	 * @param PRAutoBlogger_Content_Request $request
-	 *
-	 * @return string
-	 */
-	private function build_single_pass_prompt( PRAutoBlogger_Content_Request $request ): string {
-		$idea = $request->get_idea();
-
-		return sprintf(
-			"Write a complete blog post in HTML format.\n\n" .
-			"Title: %s\nTopic: %s\nType: %s\n\nKey points:\n- %s\n\n" .
-			"Keywords: %s\n\n" .
-			"Requirements:\n" .
-			"- %d-%d words\n" .
-			"- Proper HTML (h2, h3, p, ul/li)\n" .
-			"- Engaging intro, strong conclusion with CTA\n" .
-			"- Do NOT include the title or <html>/<body> tags\n" .
-			"- Output HTML only, no markdown or commentary\n" .
-			"- Follow EVERY formatting and structural requirement from your system prompt style guide",
-			$idea->get_suggested_title(),
-			$idea->get_topic(),
-			$idea->get_article_type(),
-			implode( "\n- ", $idea->get_key_points() ),
-			implode( ', ', $idea->get_target_keywords() ),
-			$request->get_min_word_count(),
-			$request->get_max_word_count()
-		);
 	}
 }
