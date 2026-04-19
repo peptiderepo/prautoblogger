@@ -248,7 +248,8 @@ class PRAutoBlogger_Settings_Fields {
 				'type'        => 'checkboxes',
 				'section'     => 'prautoblogger_sources',
 				'options'     => [
-					'reddit'    => __( 'Reddit (RSS + .json)', 'prautoblogger' ),
+					'reddit'       => __( 'Reddit (RSS + .json)', 'prautoblogger' ),
+					'llm_research' => __( 'LLM Deep Research (reasoning model)', 'prautoblogger' ),
 				],
 				'default'     => '["reddit"]',
 				'description' => __( 'Select which platforms to monitor for topics.', 'prautoblogger' ),

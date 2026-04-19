@@ -5,6 +5,25 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.5.0] — 2026-04-20
+
+### Added
+- **LLM Deep Research source provider.** New data source that sends a configurable
+  research prompt to a reasoning-capable model (e.g. Grok 4.1 Fast, DeepSeek-R1)
+  to identify trending topics, emerging questions, misconceptions, and content gaps.
+  Findings feed into the content analyzer alongside Reddit data, giving the pipeline
+  both real-time community signals AND deep knowledge-base research.
+  - `includes/providers/class-llm-research-provider.php` — Source provider implementation.
+  - New admin settings in Sources tab:
+    - "LLM Deep Research" checkbox in Enabled Sources.
+    - "Research Model" model picker — pick a reasoning-capable model.
+    - "Research Prompt" textarea — customizable research brief with `{niche}` placeholder.
+  - Each research run produces 8-12 findings stored as `llm_research` source data.
+  - Deduplication via date-based source IDs (one fresh run per day, refreshes on re-run).
+  - Cost tracked as `llm_research` stage in generation logs.
+- Content analyzer now formats LLM research findings with a cleaner label
+  (`[LLM Research] Relevance: N`) instead of the Reddit-specific `r/subreddit` format.
+
 ## [0.4.9] — 2026-04-19
 
 ### Added

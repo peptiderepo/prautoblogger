@@ -16,9 +16,10 @@ PRAutoBlogger is a WordPress plugin that monitors social media (starting with Re
              │
              ▼
 ┌─────────────────────────┐
-│  1. Source Collector     │  Pulls raw posts/comments from social platforms
-│  (Reddit RSS primary    │  Reddit RSS/Atom feeds (primary) / .json (fallback)
-│   / .json fallback)        Stores raw data in `ab_source_data` table
+│  1. Source Collector     │  Pulls data from enabled sources:
+│  (Reddit + LLM Research)│  - Reddit RSS/Atom (primary) / .json (fallback)
+│                         │  - LLM Deep Research (reasoning model)
+│                         │  Stores raw data in `ab_source_data` table
 └────────────┬────────────┘
              │
              ▼
@@ -151,6 +152,7 @@ prautoblogger/
 │   │   ├── class-open-router-pricing.php  # Model pricing lookup and cost estimation
 │   │   ├── interface-source-provider.php # Contract for any social media source
 │   │   ├── class-reddit-json-client.php  # Reddit HTTP client — RSS (primary) + .json (fallback)
+│   │   ├── class-llm-research-provider.php # LLM deep research source (reasoning models)
 │   │   ├── class-reddit-provider.php     # Reddit data collection orchestrator (RSS primary)
 │   │   ├── interface-image-provider.php  # Contract for any image generation provider (incl. batch)
 │   │   ├── class-open-router-image-provider.php  # OpenRouter image gen (single + batch dispatch)

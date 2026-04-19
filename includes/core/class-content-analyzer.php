@@ -147,12 +147,14 @@ class PRAutoBlogger_Content_Analyzer {
 		$current_chars = 0;
 
 		foreach ( $items as $item ) {
+			// LLM research findings have no subreddit; use a cleaner label.
+			$source_label = 'llm_research' === $item['source_type']
+				? sprintf( '[LLM Research] Relevance: %d', (int) $item['score'] )
+				: sprintf( '[%s] r/%s | Score: %d | Comments: %d', $item['source_type'], $item['subreddit'] ?? 'unknown', (int) $item['score'], (int) $item['comment_count'] );
+
 			$entry = sprintf(
-				"[%s] r/%s | Score: %d | Comments: %d\nTitle: %s\n%s\n---",
-				$item['source_type'],
-				$item['subreddit'] ?? 'unknown',
-				(int) $item['score'],
-				(int) $item['comment_count'],
+				"%s\nTitle: %s\n%s\n---",
+				$source_label,
 				$item['title'] ?? '(comment)',
 				mb_substr( $item['content'] ?? '', 0, 500 )
 			);

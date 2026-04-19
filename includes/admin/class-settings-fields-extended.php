@@ -80,6 +80,26 @@ class PRAutoBlogger_Settings_Fields_Extended {
 	 */
 	public static function get_fields(): array {
 		return [
+			// ── Sources (extended) ──────────────────────────────────────
+			[
+				'id'          => 'prautoblogger_research_model',
+				'label'       => __( 'Research Model', 'prautoblogger' ),
+				'type'        => 'model_select',
+				'section'     => 'prautoblogger_sources',
+				'default'     => PRAUTOBLOGGER_DEFAULT_ANALYSIS_MODEL,
+				'capability'  => 'text→text',
+				'description' => __( 'Model for LLM Deep Research. Pick a reasoning-capable model (e.g. Grok 4.1 Fast, DeepSeek-R1) for best results. Only used when LLM Deep Research is enabled above.', 'prautoblogger' ),
+				'badge'       => __( 'Reasoning', 'prautoblogger' ),
+			],
+			[
+				'id'          => 'prautoblogger_research_prompt',
+				'label'       => __( 'Research Prompt', 'prautoblogger' ),
+				'type'        => 'textarea',
+				'section'     => 'prautoblogger_sources',
+				'default'     => 'Conduct a deep research sweep of the {niche} space and identify the most substantive, actionable topics that practitioners and curious newcomers are searching for or actively discussing.' . "\n\n" . 'Focus on:' . "\n" . '- Practical questions real readers would search for (not theoretical debates)' . "\n" . '- Emerging trends gaining momentum in the community' . "\n" . '- Common misconceptions that deserve clarification' . "\n" . '- Comparative analysis (product vs. product, protocol vs. protocol)' . "\n" . '- Safety and efficacy topics that drive concern or curiosity' . "\n" . '- Beginner-to-advanced mix — cover entry-level and depth-focused topics' . "\n\n" . 'Aim for topics that feel timely, underserved by existing content, and likely to drive reader engagement. Return 8-12 findings with detailed analysis in each.',
+				'description' => __( 'The research brief sent to the LLM. Use {niche} as a placeholder for your niche description. The system prompt handles output format — this controls WHAT to research.', 'prautoblogger' ),
+			],
+
 			// ── AI Models (extended) ────────────────────────────────────
 			[
 				'id'          => 'prautoblogger_reasoning_enabled',

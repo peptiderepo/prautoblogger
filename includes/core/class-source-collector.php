@@ -4,7 +4,7 @@ declare(strict_types=1);
 /**
  * Orchestrates data collection from all enabled source providers.
  *
- * Iterates through enabled sources (currently Reddit), calls their
+ * Iterates through enabled sources (Reddit, LLM Research), calls their
  * collect_data() method, and stores results in the ab_source_data table.
  * Handles deduplication via UNIQUE index on (source_type, source_id).
  * Re-seen items get their collected_at timestamp refreshed so the
@@ -14,7 +14,8 @@ declare(strict_types=1);
  * Dependencies: Source provider implementations, WordPress $wpdb.
  *
  * @see providers/interface-source-provider.php — Interface providers implement.
- * @see providers/class-reddit-provider.php     — Primary source provider.
+ * @see providers/class-reddit-provider.php       — Reddit source provider.
+ * @see providers/class-llm-research-provider.php — LLM deep research provider.
  * @see ARCHITECTURE.md                         — Data flow step 1.
  */
 class PRAutoBlogger_Source_Collector {
@@ -169,8 +170,8 @@ class PRAutoBlogger_Source_Collector {
 	 */
 	private function get_provider( string $source_type ): ?PRAutoBlogger_Source_Provider_Interface {
 		$providers = [
-			'reddit' => PRAutoBlogger_Reddit_Provider::class,
-			// New providers can be added here — see CONVENTIONS.md for how-to.
+			'reddit'       => PRAutoBlogger_Reddit_Provider::class,
+			'llm_research' => PRAutoBlogger_LLM_Research_Provider::class,
 		];
 
 		/**
@@ -209,11 +210,18 @@ class PRAutoBlogger_Source_Collector {
 	private function get_config_for_source( string $source_type ): array {
 		if ( 'reddit' === $source_type ) {
 			return [
-				'subreddits'       => json_decode( get_option( 'prautoblogger_target_subreddits', '[]' ), true ) ?: [],
-				'limit'            => 25,
-				'time_filter'      => 'day',
-				'include_comments' => true,
+				'subreddits'        => json_decode( get_option( 'prautoblogger_target_subreddits', '[]' ), true ) ?: [],
+				'limit'             => 25,
+				'time_filter'       => 'day',
+				'include_comments'  => true,
 				'comments_per_post' => 10,
+			];
+		}
+
+		if ( 'llm_research' === $source_type ) {
+			return [
+				'model'  => get_option( 'prautoblogger_research_model', PRAUTOBLOGGER_DEFAULT_ANALYSIS_MODEL ),
+				'prompt' => get_option( 'prautoblogger_research_prompt', '' ),
 			];
 		}
 
