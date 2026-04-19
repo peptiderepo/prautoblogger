@@ -4,27 +4,25 @@ declare(strict_types=1);
 /**
  * Ranks and deduplicates article ideas from analysis results.
  *
- * Two dedup scopes: (1) intra-batch — prevents proposing two articles on
- * the same topic in one run; (2) recent posts — avoids back-to-back
- * similar content within a configurable recency window (default 7 days).
- * Older articles are intentionally NOT deduped against — revisiting a
- * topic weeks later is fine.
+ * Uses PRAutoBlogger_Semantic_Dedup for similarity detection — embedding-based
+ * cosine similarity with automatic fallback to keyword overlap if the embedding
+ * API is unavailable.
  *
- * Triggered by: PRAutoBlogger::run_generation_pipeline() (step 3).
- * Dependencies: WordPress WP_Query.
+ * Triggered by: PRAutoBlogger_Pipeline_Runner (step 3).
+ * Dependencies: Semantic_Dedup, WP_Query.
  *
+ * @see core/class-semantic-dedup.php    — Embedding + keyword dedup engine.
  * @see core/class-content-analyzer.php  — Produces the analysis results we consume.
  * @see core/class-content-generator.php — Consumes the ranked ideas we produce.
  * @see ARCHITECTURE.md                  — Data flow step 3.
  */
 class PRAutoBlogger_Idea_Scorer {
 
-	/** @var bool Whether to skip the has_similar_post() check. */
+	/** @var bool Whether to skip deduplication entirely. */
 	private bool $skip_dedup = false;
 
 	/**
 	 * @param bool $skip True to skip deduplication.
-	 *
 	 * @return $this
 	 */
 	public function set_skip_dedup( bool $skip ): self {
@@ -35,10 +33,15 @@ class PRAutoBlogger_Idea_Scorer {
 	/**
 	 * Score, deduplicate, and rank article ideas.
 	 *
-	 * @param PRAutoBlogger_Analysis_Result[] $analysis_results Raw analysis output.
-	 * @param int                           $target_count     Number of ideas to return.
+	 * Initializes the semantic dedup engine once, then checks each candidate
+	 * against (1) intra-batch duplicates and (2) recently published posts.
 	 *
-	 * @return PRAutoBlogger_Article_Idea[] Top-ranked ideas, sorted by score descending.
+	 * Side effects: embedding API calls (via Semantic_Dedup), WP_Query.
+	 *
+	 * @param PRAutoBlogger_Analysis_Result[] $analysis_results Raw analysis output.
+	 * @param int                             $target_count     Max ideas to return.
+	 *
+	 * @return PRAutoBlogger_Article_Idea[] Top-ranked ideas, sorted by score desc.
 	 */
 	public function score_and_rank( array $analysis_results, int $target_count ): array {
 		$exclusions     = json_decode( get_option( 'prautoblogger_topic_exclusions', '[]' ), true ) ?: [];
@@ -46,7 +49,12 @@ class PRAutoBlogger_Idea_Scorer {
 		$excluded_count = 0;
 		$deduped_count  = 0;
 
-		// Track keywords of already-accepted ideas for intra-batch dedup.
+		$dedup = new PRAutoBlogger_Semantic_Dedup();
+		if ( ! $this->skip_dedup ) {
+			$dedup->initialize();
+		}
+
+		// Keyword sets kept for fallback (passed through to Semantic_Dedup).
 		$accepted_keyword_sets = [];
 
 		foreach ( $analysis_results as $result ) {
@@ -56,29 +64,29 @@ class PRAutoBlogger_Idea_Scorer {
 			}
 
 			if ( ! $this->skip_dedup ) {
-				$topic_keywords = $this->extract_meaningful_keywords( $result->get_topic() );
+				$topic          = $result->get_topic();
+				$topic_keywords = $this->extract_meaningful_keywords( $topic );
 
-				// Intra-batch: skip if too similar to an already-accepted idea.
-				if ( $this->overlaps_any( $topic_keywords, $accepted_keyword_sets ) ) {
+				if ( $dedup->is_batch_duplicate( $topic, $topic_keywords, $accepted_keyword_sets ) ) {
 					$deduped_count++;
 					PRAutoBlogger_Logger::instance()->info(
-						sprintf( 'Dedup(batch): skipping "%s" — overlaps accepted idea.', substr( $result->get_topic(), 0, 80 ) ),
+						sprintf( 'Dedup(batch): skipping "%s"', substr( $topic, 0, 80 ) ),
 						'scorer'
 					);
 					continue;
 				}
 
-				// Recent posts: skip if ≥60% overlap with a post from the last 7 days.
-				if ( $this->has_recent_similar_post( $topic_keywords ) ) {
+				if ( $dedup->is_recent_duplicate( $topic, $topic_keywords ) ) {
 					$deduped_count++;
 					PRAutoBlogger_Logger::instance()->info(
-						sprintf( 'Dedup(recent): skipping "%s" — similar post in last 7 days.', substr( $result->get_topic(), 0, 80 ) ),
+						sprintf( 'Dedup(recent): skipping "%s"', substr( $topic, 0, 80 ) ),
 						'scorer'
 					);
 					continue;
 				}
 
 				$accepted_keyword_sets[] = $topic_keywords;
+				$dedup->record_accepted( $topic );
 			}
 
 			$metadata = $result->get_metadata() ?? [];
@@ -121,14 +129,12 @@ class PRAutoBlogger_Idea_Scorer {
 	 * Factors: LLM relevance score (50%), frequency (30%), recency bonus (20%).
 	 *
 	 * @param PRAutoBlogger_Analysis_Result $result
-	 *
 	 * @return float Score between 0 and 1.
 	 */
 	private function compute_score( PRAutoBlogger_Analysis_Result $result ): float {
 		$relevance = min( $result->get_relevance_score(), 1.0 );
 		$frequency = min( $result->get_frequency() / 10.0, 1.0 );
 
-		// Recency: analyzed within last 24h gets full bonus.
 		$hours_ago = ( time() - strtotime( $result->get_analyzed_at() ) ) / 3600.0;
 		$recency   = max( 0.0, 1.0 - ( $hours_ago / 48.0 ) );
 
@@ -140,7 +146,6 @@ class PRAutoBlogger_Idea_Scorer {
 	 *
 	 * @param string   $topic      Topic text.
 	 * @param string[] $exclusions List of excluded terms/phrases.
-	 *
 	 * @return bool
 	 */
 	private function is_excluded( string $topic, array $exclusions ): bool {
@@ -154,94 +159,12 @@ class PRAutoBlogger_Idea_Scorer {
 	}
 
 	/**
-	 * Check if a keyword set overlaps ≥60% with any set in the given list.
+	 * Extract meaningful keywords from a text string (for fallback dedup).
 	 *
-	 * @param string[] $keywords     Keywords to check.
-	 * @param array    $keyword_sets List of previously accepted keyword arrays.
-	 * @return bool
-	 */
-	private function overlaps_any( array $keywords, array $keyword_sets ): bool {
-		if ( count( $keywords ) < 2 ) {
-			return false;
-		}
-		foreach ( $keyword_sets as $existing ) {
-			$overlap = count( array_intersect( $keywords, $existing ) );
-			if ( $overlap / count( $keywords ) >= 0.6 ) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	/**
-	 * Check if a recently published post (last 7 days) is too similar.
-	 *
-	 * Only deduplicates against recent content — revisiting a topic
-	 * weeks later is intentionally allowed. The recency window keeps
-	 * the dedup scope narrow so the blog can grow without increasingly
-	 * rejecting all topics.
-	 *
-	 * @param string[] $topic_keywords Pre-extracted keywords from the topic.
-	 * @return bool True if a recent post has ≥60% keyword overlap.
-	 */
-	private function has_recent_similar_post( array $topic_keywords ): bool {
-		if ( count( $topic_keywords ) < 2 ) {
-			return false;
-		}
-
-		static $recent_titles = null;
-		if ( null === $recent_titles ) {
-			$recent_titles = $this->fetch_recent_post_titles();
-		}
-
-		foreach ( $recent_titles as $title ) {
-			$title_keywords = $this->extract_meaningful_keywords( $title );
-			$overlap        = count( array_intersect( $topic_keywords, $title_keywords ) );
-			if ( $overlap / count( $topic_keywords ) >= 0.6 ) {
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	/**
-	 * Fetch titles of generated posts from the last 7 days only.
-	 *
-	 * @return string[]
-	 */
-	private function fetch_recent_post_titles(): array {
-		$query = new \WP_Query( [
-			'post_type'      => 'post',
-			'post_status'    => [ 'publish', 'draft', 'pending' ],
-			'meta_key'       => '_prautoblogger_generated',
-			'meta_value'     => '1',
-			'date_query'     => [
-				[ 'after' => '7 days ago' ],
-			],
-			'posts_per_page' => 50,
-			'fields'         => 'ids',
-			'no_found_rows'  => true,
-		] );
-
-		$titles = [];
-		foreach ( $query->posts as $post_id ) {
-			$titles[] = get_the_title( $post_id );
-		}
-		return $titles;
-	}
-
-	/**
-	 * Extract meaningful keywords from a text string.
-	 *
-	 * Strips stopwords and short filler words so dedup focuses on
-	 * substantive terms. Returns lowercase unique keywords.
-	 *
-	 * @param string $text Input text (topic or title).
+	 * @param string $text Input text.
 	 * @return string[] Unique lowercase keywords.
 	 */
 	private function extract_meaningful_keywords( string $text ): array {
-		// Common stopwords that add no topical signal.
 		static $stopwords = [
 			'a', 'an', 'the', 'and', 'or', 'but', 'is', 'are', 'was', 'were',
 			'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'as',
@@ -259,8 +182,6 @@ class PRAutoBlogger_Idea_Scorer {
 		];
 
 		$text  = strtolower( $text );
-		// Preserve compound identifiers like "BPC-157" by treating hyphens
-		// between alphanumerics as part of the word.
 		$words = preg_split( '/[^a-z0-9-]+/', $text, -1, PREG_SPLIT_NO_EMPTY );
 		$words = array_filter( $words, static function ( string $w ) use ( $stopwords ): bool {
 			return strlen( $w ) >= 2 && ! in_array( $w, $stopwords, true );
@@ -272,8 +193,7 @@ class PRAutoBlogger_Idea_Scorer {
 	/**
 	 * Map analysis type to a reader-friendly article type.
 	 *
-	 * @param string $analysis_type 'question', 'complaint', 'comparison'.
-	 *
+	 * @param string $analysis_type 'question', 'complaint', 'comparison', etc.
 	 * @return string Article type label.
 	 */
 	private function map_type( string $analysis_type ): string {

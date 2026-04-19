@@ -56,6 +56,11 @@ class PRAutoBlogger_Analysis_Prompts {
 			$prompt .= $performance_context . "\n\n";
 		}
 
+		$recent_context = self::get_recent_articles_context();
+		if ( '' !== $recent_context ) {
+			$prompt .= $recent_context . "\n\n";
+		}
+
 		$prompt .= "Respond with valid JSON containing exactly {$target_count} patterns:\n";
 		$prompt .= '{"patterns": [{"type": "...", "topic": "...", "summary": "...", "frequency": N, "relevance_score": 0.X, "suggested_title": "...", "key_points": [...], "target_keywords": [...]}]}';
 
@@ -111,5 +116,44 @@ class PRAutoBlogger_Analysis_Prompts {
 		}
 
 		return implode( "\n", $lines );
+	}
+
+	/**
+	 * Get titles of recently published articles so the LLM avoids repeating them.
+	 *
+	 * Fetches generated posts from the last 30 days. A wider window than the
+	 * scorer's 7-day dedup because the LLM is smart enough to find genuinely
+	 * new angles even on adjacent topics — we just need it to know what exists.
+	 *
+	 * Side effects: database read via WP_Query.
+	 *
+	 * @return string Formatted context block, or empty string if no recent articles.
+	 */
+	public static function get_recent_articles_context(): string {
+		$query = new \WP_Query( [
+			'post_type'      => 'post',
+			'post_status'    => [ 'publish', 'draft', 'pending' ],
+			'meta_key'       => '_prautoblogger_generated',
+			'meta_value'     => '1',
+			'date_query'     => [ [ 'after' => '30 days ago' ] ],
+			'posts_per_page' => 100,
+			'fields'         => 'ids',
+			'no_found_rows'  => true,
+		] );
+
+		if ( empty( $query->posts ) ) {
+			return '';
+		}
+
+		$titles = [];
+		foreach ( $query->posts as $post_id ) {
+			$titles[] = '- "' . get_the_title( $post_id ) . '"';
+		}
+
+		$block  = "IMPORTANT — Topics already covered (last 30 days). Do NOT suggest topics that overlap with these. ";
+		$block .= "Find genuinely NEW angles, questions, or subjects that are NOT already covered:\n";
+		$block .= implode( "\n", $titles );
+
+		return $block;
 	}
 }

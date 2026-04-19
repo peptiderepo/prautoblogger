@@ -128,7 +128,8 @@ prautoblogger/
 │   │   ├── class-source-collector.php # Orchestrates data collection from all sources
 │   │   ├── class-content-analyzer.php # LLM-powered analysis of collected social data
 │   │   ├── class-analysis-prompts.php # System/user prompt builders + performance context for analyzer
-│   │   ├── class-idea-scorer.php      # Ranks and deduplicates article ideas
+│   │   ├── class-idea-scorer.php      # Ranks and deduplicates article ideas (delegates to Semantic_Dedup)
+│   │   ├── class-semantic-dedup.php   # Embedding-based cosine similarity dedup with keyword fallback
 │   │   ├── class-content-generator.php# Writer agent — manages the generation pipeline
 │   │   ├── class-chief-editor.php     # Editor agent — LLM-powered editorial review
 │   │   ├── class-publisher.php        # Creates WordPress posts from approved content
@@ -145,7 +146,8 @@ prautoblogger/
 │   │
 │   ├── providers/
 │   │   ├── interface-llm-provider.php    # Contract for any LLM provider
-│   │   ├── class-open-router-provider.php # OpenRouter API implementation
+│   │   ├── class-open-router-provider.php # OpenRouter API implementation (chat completions)
+│   │   ├── class-open-router-embedding-provider.php # Text embeddings for semantic dedup
 │   │   ├── class-open-router-pricing.php  # Model pricing lookup and cost estimation
 │   │   ├── interface-source-provider.php # Contract for any social media source
 │   │   ├── class-reddit-json-client.php  # Reddit HTTP client — RSS (primary) + .json (fallback)
