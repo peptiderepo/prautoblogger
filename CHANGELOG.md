@@ -5,6 +5,13 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.4.7] — 2026-04-19
+
+### Added
+- **Cost breakdown popover.** The Cost column in the post list is now clickable.
+  Hovering or clicking shows a per-step breakdown: stage name, model used, token
+  count, and cost for every LLM call that produced the article.
+
 ## [0.4.6] — 2026-04-19
 
 ### Added

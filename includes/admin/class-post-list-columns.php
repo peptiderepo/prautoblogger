@@ -112,7 +112,19 @@ class PRAutoBlogger_Post_List_Columns {
 			. '.wp-list-table .column-title{width:35%;word-wrap:break-word;overflow-wrap:break-word}'
 			. '.column-prab_writing_model{width:100px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
 			. '.column-prab_image_model{width:100px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
-			. '.column-prab_cost{width:55px;white-space:nowrap}'
+			. '.column-prab_cost{width:55px;white-space:nowrap;overflow:visible}'
+			. '.prab-cost-wrap{position:relative;display:inline-block}'
+			. '.prab-cost-trigger{font-size:12px;color:#2271b1;text-decoration:underline;cursor:pointer}'
+			. '.prab-cost-popover{display:none;position:absolute;right:0;top:100%;z-index:9999;'
+			. 'background:#fff;border:1px solid #c3c4c7;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.15);'
+			. 'padding:8px;min-width:340px;white-space:normal}'
+			. '.prab-cost-wrap:hover .prab-cost-popover,'
+			. '.prab-cost-trigger:focus+.prab-cost-popover{display:block}'
+			. '.prab-cost-table{width:100%;border-collapse:collapse;font-size:12px}'
+			. '.prab-cost-table th{text-align:left;border-bottom:2px solid #dcdcde;padding:3px 6px;color:#50575e;font-weight:600}'
+			. '.prab-cost-table td{padding:3px 6px;border-bottom:1px solid #f0f0f1;color:#3c434a}'
+			. '.prab-cost-table tr:last-child td{border-bottom:none}'
+			. '.prab-cost-total td{border-top:2px solid #dcdcde;border-bottom:none}'
 			. '</style>';
 	}
 
@@ -151,12 +163,11 @@ class PRAutoBlogger_Post_List_Columns {
 	}
 
 	/**
-	 * Sum all generation_log costs for this post and render.
+	 * Fetch generation_log rows for a post, render total with clickable breakdown.
 	 *
 	 * @param int $post_id The post ID.
 	 */
 	private function render_cost_cell( int $post_id ): void {
-		// Only query for posts we generated — skip the DB hit for regular posts.
 		$is_generated = get_post_meta( $post_id, '_prautoblogger_generated', true );
 		if ( '1' !== $is_generated ) {
 			echo '—';
@@ -167,27 +178,74 @@ class PRAutoBlogger_Post_List_Columns {
 		$table = $wpdb->prefix . 'prautoblogger_generation_log';
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$total = (float) $wpdb->get_var(
+		$rows = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT SUM(estimated_cost) FROM {$table} WHERE post_id = %d",
+				"SELECT stage, model, prompt_tokens, completion_tokens, estimated_cost
+				FROM {$table} WHERE post_id = %d ORDER BY id ASC",
 				$post_id
-			)
+			),
+			ARRAY_A
 		);
 
-		if ( $total <= 0.0 ) {
+		if ( empty( $rows ) ) {
 			echo '<span style="font-size:12px;color:#999;">$0.00</span>';
 			return;
 		}
 
-		// Show 4 decimals for sub-cent precision, 2 decimals for larger amounts.
+		$total = array_sum( array_column( $rows, 'estimated_cost' ) );
 		$formatted = $total < 0.01
 			? sprintf( '$%.4f', $total )
 			: sprintf( '$%.2f', $total );
 
+		$breakdown = $this->build_breakdown_html( $rows, $total );
+
 		printf(
-			'<span style="font-size:12px;color:#666;">%s</span>',
-			esc_html( $formatted )
+			'<span class="prab-cost-wrap">'
+			. '<a href="#" class="prab-cost-trigger" onclick="return false;">%s</a>'
+			. '<span class="prab-cost-popover">%s</span>'
+			. '</span>',
+			esc_html( $formatted ),
+			$breakdown
 		);
+	}
+
+	/**
+	 * Build the HTML breakdown table for the cost popover.
+	 *
+	 * @param array[] $rows  Generation log rows.
+	 * @param float   $total Total cost.
+	 * @return string HTML table (already escaped).
+	 */
+	private function build_breakdown_html( array $rows, float $total ): string {
+		$html  = '<table class="prab-cost-table">';
+		$html .= '<tr><th>Stage</th><th>Model</th><th>Tokens</th><th>Cost</th></tr>';
+
+		foreach ( $rows as $row ) {
+			$stage  = esc_html( ucfirst( str_replace( '_', ' ', $row['stage'] ) ) );
+			$model  = esc_html( $this->shorten( $row['model'] ) );
+			$tokens = (int) $row['prompt_tokens'] + (int) $row['completion_tokens'];
+			$cost   = (float) $row['estimated_cost'];
+			$cost_f = $cost < 0.01 ? sprintf( '$%.4f', $cost ) : sprintf( '$%.2f', $cost );
+
+			$html .= sprintf(
+				'<tr><td>%s</td><td title="%s">%s</td><td>%s</td><td>%s</td></tr>',
+				$stage,
+				esc_attr( $row['model'] ),
+				$model,
+				esc_html( number_format( $tokens ) ),
+				esc_html( $cost_f )
+			);
+		}
+
+		$total_f = $total < 0.01 ? sprintf( '$%.4f', $total ) : sprintf( '$%.2f', $total );
+		$html   .= sprintf(
+			'<tr class="prab-cost-total"><td colspan="3"><strong>Total</strong></td>'
+			. '<td><strong>%s</strong></td></tr>',
+			esc_html( $total_f )
+		);
+		$html .= '</table>';
+
+		return $html;
 	}
 
 	/**
