@@ -103,7 +103,7 @@
 
 		if (data.post_id) {
 			var editUrl = config.adminUrl + 'post.php?post=' + data.post_id + '&action=edit';
-			var viewUrl = config.adminUrl + '?p=' + data.post_id;
+			var viewUrl = config.siteUrl + '?p=' + data.post_id;
 			html += ' &mdash; <a href="' + editUrl + '">Edit</a>';
 			html += ' | <a href="' + viewUrl + '" target="_blank">View</a>';
 		}
