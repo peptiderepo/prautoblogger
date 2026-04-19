@@ -109,6 +109,7 @@ class PRAutoBlogger_Chief_Editor {
 		$prompt .= "- REVISE if fixable issues exist — you MUST provide the full revised HTML\n";
 		$prompt .= "- REJECT only if the content is fundamentally flawed or off-topic\n";
 		$prompt .= "- When revising, fix the issues yourself. Don't just describe them.\n";
+		$prompt .= "- When revising, PRESERVE all bullet points, numbered lists, hyperlinks, and structural formatting from the original. Do NOT flatten lists into prose or remove links.\n";
 
 		// Append user-defined editor instructions if configured.
 		$instructions = trim( (string) get_option( 'prautoblogger_editor_instructions', '' ) );

@@ -5,6 +5,24 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.5.3] — 2026-04-20
+
+### Fixed
+- **Writing instructions not obeyed by LLM.** The user-configured writing
+  instructions (bullet points, hyperlinks, style rules) were appended to the
+  system prompt as a weak "Additional instructions:" afterthought. Models
+  prioritized competing format directives in the user prompts and ignored
+  the style guide.
+  - System prompt now frames writing instructions as a "MANDATORY STYLE GUIDE"
+    with explicit override language.
+  - Every stage's user prompt (outline, draft, single-pass) now includes a
+    reinforcement line: "Follow EVERY requirement from your system prompt
+    style guide."
+  - Polish stage explicitly preserves bullet points, numbered lists, and
+    hyperlinks instead of flattening them.
+  - Chief editor's revision rules now preserve structural formatting (lists,
+    links) from the original draft.
+
 ## [0.5.2] — 2026-04-20
 
 ### Added

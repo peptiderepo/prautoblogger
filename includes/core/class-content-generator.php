@@ -96,13 +96,7 @@ class PRAutoBlogger_Content_Generator {
 		return $response['content'];
 	}
 
-	/**
-	 * Multi-step generation: Outline → Draft → Polish.
-	 *
-	 * @param PRAutoBlogger_Content_Request $request
-	 *
-	 * @return string Generated HTML content.
-	 */
+	/** Multi-step generation: Outline → Draft → Polish. */
 	private function generate_multi_step( PRAutoBlogger_Content_Request $request ): string {
 		$model = get_option( 'prautoblogger_writing_model', PRAUTOBLOGGER_DEFAULT_WRITING_MODEL );
 
@@ -118,14 +112,7 @@ class PRAutoBlogger_Content_Generator {
 		return $polished;
 	}
 
-	/**
-	 * Multi-step stage 1: Generate an article outline.
-	 *
-	 * @param PRAutoBlogger_Content_Request $request
-	 * @param string                      $model
-	 *
-	 * @return string The outline text.
-	 */
+	/** Multi-step stage 1: Generate an article outline. */
 	private function stage_outline( PRAutoBlogger_Content_Request $request, string $model ): string {
 		$idea = $request->get_idea();
 
@@ -135,7 +122,8 @@ class PRAutoBlogger_Content_Generator {
 			"Target keywords: %s\n\n" .
 			"The outline should have 4-6 main sections with bullet points under each. " .
 			"Include an introduction hook and a conclusion with a call to action. " .
-			"Word count target: %d-%d words.",
+			"Word count target: %d-%d words.\n\n" .
+			"Plan the structure to satisfy EVERY requirement in your system prompt style guide.",
 			$idea->get_suggested_title(),
 			$idea->get_topic(),
 			$idea->get_article_type(),
@@ -162,15 +150,7 @@ class PRAutoBlogger_Content_Generator {
 		return $response['content'];
 	}
 
-	/**
-	 * Multi-step stage 2: Write the full draft from the outline.
-	 *
-	 * @param PRAutoBlogger_Content_Request $request
-	 * @param string                      $outline
-	 * @param string                      $model
-	 *
-	 * @return string Draft HTML content.
-	 */
+	/** Multi-step stage 2: Write the full draft from the outline. */
 	private function stage_draft( PRAutoBlogger_Content_Request $request, string $outline, string $model ): string {
 		$prompt = sprintf(
 			"Using this outline, write the full blog post in HTML format.\n\n" .
@@ -182,7 +162,8 @@ class PRAutoBlogger_Content_Generator {
 			"- Include an engaging introduction and strong conclusion\n" .
 			"- Naturally incorporate these keywords: %s\n" .
 			"- Do NOT include the title in the HTML (it will be set separately)\n" .
-			"- Do NOT wrap in <html>, <head>, or <body> tags — just the article content",
+			"- Do NOT wrap in <html>, <head>, or <body> tags — just the article content\n" .
+			"- Follow EVERY formatting and structural requirement from your system prompt style guide",
 			$outline,
 			$request->get_tone(),
 			$request->get_min_word_count(),
@@ -207,15 +188,7 @@ class PRAutoBlogger_Content_Generator {
 		return $response['content'];
 	}
 
-	/**
-	 * Multi-step stage 3: Polish and refine the draft.
-	 *
-	 * @param PRAutoBlogger_Content_Request $request
-	 * @param string                      $draft
-	 * @param string                      $model
-	 *
-	 * @return string Polished HTML content.
-	 */
+	/** Multi-step stage 3: Polish and refine the draft. */
 	private function stage_polish( PRAutoBlogger_Content_Request $request, string $draft, string $model ): string {
 		$prompt = "Review and polish this blog post draft. Improve:\n" .
 			"1. Flow and readability\n" .
@@ -223,6 +196,10 @@ class PRAutoBlogger_Content_Generator {
 			"3. Engagement (hooks, transitions, call-to-action)\n" .
 			"4. Accuracy and clarity\n" .
 			"5. Remove any filler or redundant sentences\n\n" .
+			"IMPORTANT: Preserve all bullet points, numbered lists, hyperlinks, and " .
+			"structural elements from the draft. Do NOT flatten lists into prose or " .
+			"remove links. Ensure every requirement from your system prompt style " .
+			"guide is satisfied in the final output.\n\n" .
 			"Return the polished HTML content only. Do not add commentary.\n\n" .
 			"DRAFT:\n" . $draft;
 
@@ -259,10 +236,15 @@ class PRAutoBlogger_Content_Generator {
 		$prompt .= "Use a {$request->get_tone()} tone. ";
 		$prompt .= "Output HTML content only — no markdown, no code fences, no commentary.";
 
-		// Append user-defined writing instructions if configured.
+		// Append user-defined writing instructions as a mandatory style guide.
+		// Framed prominently to ensure the model treats them as requirements,
+		// not optional suggestions — "Additional instructions" was too weak.
 		$instructions = trim( $request->get_writing_instructions() );
 		if ( '' !== $instructions ) {
-			$prompt .= "\n\nAdditional instructions:\n" . $instructions;
+			$prompt .= "\n\n--- MANDATORY STYLE GUIDE ---\n";
+			$prompt .= "You MUST follow every requirement below. These override any conflicting defaults:\n\n";
+			$prompt .= $instructions;
+			$prompt .= "\n--- END STYLE GUIDE ---";
 		}
 
 		return $prompt;
@@ -287,7 +269,8 @@ class PRAutoBlogger_Content_Generator {
 			"- Proper HTML (h2, h3, p, ul/li)\n" .
 			"- Engaging intro, strong conclusion with CTA\n" .
 			"- Do NOT include the title or <html>/<body> tags\n" .
-			"- Output HTML only, no markdown or commentary",
+			"- Output HTML only, no markdown or commentary\n" .
+			"- Follow EVERY formatting and structural requirement from your system prompt style guide",
 			$idea->get_suggested_title(),
 			$idea->get_topic(),
 			$idea->get_article_type(),
