@@ -5,6 +5,16 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.4.3] — 2026-04-19
+
+### Fixed
+- **"Analysis response was not valid JSON" with some models.** Models like
+  GPT 5.1 Nano ignore `response_format: json_object` and wrap JSON in markdown
+  fences or preamble text. New `PRAutoBlogger_Json_Extractor` utility strips
+  fences and extracts the outermost JSON object. Applied to both the content
+  analyzer and chief editor parsers. Raw response now logged on failure for
+  debugging.
+
 ## [0.4.2] — 2026-04-19
 
 ### Fixed

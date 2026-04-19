@@ -15,6 +15,7 @@ declare(strict_types=1);
  * @see core/class-analysis-prompts.php       — System/user prompt builders + performance context.
  * @see providers/interface-llm-provider.php  — LLM used for analysis.
  * @see core/class-cost-tracker.php           — Logs API costs.
+ * @see core/class-json-extractor.php         — Tolerant JSON parsing for LLM output.
  * @see core/class-idea-scorer.php            — Consumes analysis results.
  * @see ARCHITECTURE.md                       — Data flow step 2.
  */
@@ -175,9 +176,10 @@ class PRAutoBlogger_Content_Analyzer {
 	 * @return PRAutoBlogger_Analysis_Result[]
 	 */
 	private function parse_analysis_response( string $content, array $source_items ): array {
-		$data = json_decode( $content, true );
+		$data = PRAutoBlogger_Json_Extractor::decode( $content );
 		if ( ! isset( $data['patterns'] ) || ! is_array( $data['patterns'] ) ) {
 			PRAutoBlogger_Logger::instance()->error( 'Analysis response was not valid JSON or missing patterns key.', 'analyzer' );
+			PRAutoBlogger_Logger::instance()->debug( 'Raw analysis response: ' . mb_substr( $content, 0, 500 ), 'analyzer' );
 			return [];
 		}
 

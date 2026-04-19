@@ -12,6 +12,7 @@ declare(strict_types=1);
  * Dependencies: LLM_Provider_Interface, Cost_Tracker.
  *
  * @see core/class-content-generator.php — Produces the content we review.
+ * @see core/class-json-extractor.php    — Tolerant JSON parsing for LLM output.
  * @see core/class-publisher.php         — Publishes approved content.
  * @see ARCHITECTURE.md                  — Data flow step 5.
  */
@@ -145,10 +146,11 @@ class PRAutoBlogger_Chief_Editor {
 	 * @return PRAutoBlogger_Editorial_Review
 	 */
 	private function parse_review_response( string $content ): PRAutoBlogger_Editorial_Review {
-		$data = json_decode( $content, true );
+		$data = PRAutoBlogger_Json_Extractor::decode( $content );
 
 		if ( ! is_array( $data ) || ! isset( $data['verdict'] ) ) {
 			PRAutoBlogger_Logger::instance()->error( 'Chief editor response was not valid JSON. Defaulting to rejected.', 'editor' );
+			PRAutoBlogger_Logger::instance()->debug( 'Raw editor response: ' . mb_substr( $content, 0, 500 ), 'editor' );
 			return new PRAutoBlogger_Editorial_Review( [
 				'verdict'       => 'rejected',
 				'notes'         => 'Editor response could not be parsed.',
