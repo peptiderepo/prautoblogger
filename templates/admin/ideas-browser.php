@@ -19,6 +19,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 $base_url = admin_url( 'admin.php?page=prautoblogger-ideas' );
 ?>
+<style>
+	.ab-spin { animation: ab-spin 1s linear infinite; display: inline-block; }
+	@keyframes ab-spin { 100% { transform: rotate(360deg); } }
+</style>
 <div class="wrap prautoblogger-ideas-browser">
 	<h1><?php esc_html_e( 'PRAutoBlogger — Ideas', 'prautoblogger' ); ?></h1>
 	<p class="description">
@@ -50,35 +54,41 @@ $base_url = admin_url( 'admin.php?page=prautoblogger-ideas' );
 
 	<?php if ( empty( $rows ) ) : ?>
 		<div class="prautoblogger-empty-queue">
-			<p><?php esc_html_e( 'No ideas found. Ideas will appear here after the next generation run collects and analyzes source data.', 'prautoblogger' ); ?></p>
+			<p><?php esc_html_e( 'No ideas found. Ideas will appear here after the next generation run.', 'prautoblogger' ); ?></p>
 		</div>
 	<?php else : ?>
 		<table class="widefat striped prautoblogger-ideas-table">
 			<thead>
 				<tr>
-					<th style="width:30%"><?php esc_html_e( 'Title / Topic', 'prautoblogger' ); ?></th>
-					<th style="width:8%"><?php esc_html_e( 'Type', 'prautoblogger' ); ?></th>
+					<th style="width:28%"><?php esc_html_e( 'Title / Topic', 'prautoblogger' ); ?></th>
+					<th style="width:7%"><?php esc_html_e( 'Type', 'prautoblogger' ); ?></th>
 					<th style="width:6%"><?php esc_html_e( 'Score', 'prautoblogger' ); ?></th>
-					<th style="width:6%"><?php esc_html_e( 'Freq', 'prautoblogger' ); ?></th>
-					<th style="width:35%"><?php esc_html_e( 'Key Points / Keywords', 'prautoblogger' ); ?></th>
-					<th style="width:15%"><?php esc_html_e( 'Analyzed', 'prautoblogger' ); ?></th>
+					<th style="width:5%"><?php esc_html_e( 'Freq', 'prautoblogger' ); ?></th>
+					<th style="width:30%"><?php esc_html_e( 'Key Points / Keywords', 'prautoblogger' ); ?></th>
+					<th style="width:10%"><?php esc_html_e( 'Analyzed', 'prautoblogger' ); ?></th>
+					<th style="width:14%"><?php esc_html_e( 'Generate', 'prautoblogger' ); ?></th>
 				</tr>
 			</thead>
 			<tbody>
 				<?php foreach ( $rows as $row ) : ?>
 					<?php
-					$meta = json_decode( $row['metadata_json'] ?? '{}', true ) ?: [];
-					$suggested_title = $meta['suggested_title'] ?? '';
-					$key_points      = $meta['key_points'] ?? [];
-					$keywords        = $meta['target_keywords'] ?? [];
-					$score_pct       = round( (float) $row['relevance_score'] * 100 );
-					$type_label      = ucfirst( $row['analysis_type'] ?? 'unknown' );
-					$type_class      = 'prab-type-' . sanitize_html_class( $row['analysis_type'] );
+					$meta       = json_decode( $row['metadata_json'] ?? '{}', true ) ?: [];
+					$suggested  = $meta['suggested_title'] ?? '';
+					$key_points = $meta['key_points'] ?? [];
+					$keywords   = $meta['target_keywords'] ?? [];
+					$score_pct  = round( (float) $row['relevance_score'] * 100 );
+					$type_label = ucfirst( $row['analysis_type'] ?? 'unknown' );
+					$type_class = 'prab-type-' . sanitize_html_class( $row['analysis_type'] );
+					$idea_id    = (int) $row['id'];
+
+					// Check if this idea is already mid-generation.
+					$idea_status = get_transient( 'prab_idea_gen_' . $idea_id );
+					$gen_state   = is_array( $idea_status ) ? ( $idea_status['status'] ?? 'idle' ) : 'idle';
 					?>
 					<tr>
 						<td>
-							<strong><?php echo esc_html( '' !== $suggested_title ? $suggested_title : $row['topic'] ); ?></strong>
-							<?php if ( '' !== $suggested_title && $suggested_title !== $row['topic'] ) : ?>
+							<strong><?php echo esc_html( '' !== $suggested ? $suggested : $row['topic'] ); ?></strong>
+							<?php if ( '' !== $suggested && $suggested !== $row['topic'] ) : ?>
 								<div style="color:#666; font-size:12px; margin-top:2px;">
 									<?php echo esc_html( $row['topic'] ); ?>
 								</div>
@@ -95,9 +105,7 @@ $base_url = admin_url( 'admin.php?page=prautoblogger-ideas' );
 							</span>
 						</td>
 						<td>
-							<?php
-							$bar_color = $score_pct >= 70 ? '#00a32a' : ( $score_pct >= 40 ? '#dba617' : '#d63638' );
-							?>
+							<?php $bar_color = $score_pct >= 70 ? '#00a32a' : ( $score_pct >= 40 ? '#dba617' : '#d63638' ); ?>
 							<div style="display:flex; align-items:center; gap:6px;">
 								<div style="width:40px; height:6px; background:#ddd; border-radius:3px; overflow:hidden;">
 									<div style="width:<?php echo (int) $score_pct; ?>%; height:100%; background:<?php echo esc_attr( $bar_color ); ?>;"></div>
@@ -129,6 +137,24 @@ $base_url = admin_url( 'admin.php?page=prautoblogger-ideas' );
 						</td>
 						<td style="font-size:12px; color:#666;">
 							<?php echo esc_html( wp_date( 'M j, g:i A', strtotime( $row['analyzed_at'] ) ) ); ?>
+						</td>
+						<td class="prab-idea-gen-cell"
+							data-idea-id="<?php echo $idea_id; ?>"
+							data-status="<?php echo esc_attr( $gen_state ); ?>">
+							<?php if ( 'complete' === $gen_state && ! empty( $idea_status['post_id'] ) ) : ?>
+								<span class="dashicons dashicons-yes-alt" style="color:#00a32a;"></span>
+								<a href="<?php echo esc_url( admin_url( 'post.php?post=' . $idea_status['post_id'] . '&action=edit' ) ); ?>">Edit</a>
+								| <a href="<?php echo esc_url( get_permalink( $idea_status['post_id'] ) ); ?>" target="_blank">View</a>
+							<?php elseif ( 'running' === $gen_state ) : ?>
+								<span class="dashicons dashicons-update ab-spin"></span>
+								<span class="prab-idea-stage"><?php echo esc_html( $idea_status['stage'] ?? 'Generating…' ); ?></span>
+							<?php else : ?>
+								<button type="button"
+										class="button button-small prab-gen-idea-btn"
+										data-idea-id="<?php echo $idea_id; ?>">
+									<?php esc_html_e( 'Generate', 'prautoblogger' ); ?>
+								</button>
+							<?php endif; ?>
 						</td>
 					</tr>
 				<?php endforeach; ?>

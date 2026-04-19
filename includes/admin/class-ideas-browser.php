@@ -2,30 +2,25 @@
 declare(strict_types=1);
 
 /**
- * Admin page listing analysis results (article ideas) from all pipeline runs.
- *
- * Shows every idea the content analyzer has surfaced: topic, type, relevance
- * score, frequency, source, and metadata (key points, keywords). Filterable
- * by type and source, with pagination. Gives the CEO a live view of the idea
- * pipeline without needing to trigger a generation run.
+ * Admin page listing analysis results (article ideas) with per-idea generation.
  *
  * Triggered by: PRAutoBlogger::register_admin_hooks() on `admin_menu`.
- * Dependencies: WordPress $wpdb for direct table queries.
+ * Dependencies: WordPress $wpdb, Article_Worker, Cost_Tracker, Generation_Lock.
  *
- * @see core/class-content-analyzer.php       — Produces the rows this page displays.
- * @see models/class-analysis-result.php      — Data model for analysis results.
+ * @see core/class-article-worker.php         — Generates articles from ideas.
  * @see templates/admin/ideas-browser.php     — Renders the HTML.
- * @see ARCHITECTURE.md                       — Data flow step 2.
  */
 class PRAutoBlogger_Ideas_Browser {
 
 	private const PER_PAGE = 30;
 
-	/**
-	 * Register the Ideas submenu page under PRAutoBlogger.
-	 *
-	 * @return void
-	 */
+	/** Transient prefix for per-idea generation status. */
+	private const STATUS_PREFIX = 'prab_idea_gen_';
+
+	/** How long to keep per-idea status (seconds). */
+	private const STATUS_TTL = 600;
+
+	/** Register the Ideas submenu page under PRAutoBlogger. */
 	public function on_register_menu(): void {
 		add_submenu_page(
 			'prautoblogger-settings',
@@ -37,14 +32,7 @@ class PRAutoBlogger_Ideas_Browser {
 		);
 	}
 
-	/**
-	 * Render the ideas browser page.
-	 *
-	 * Reads filter/pagination parameters from $_GET, queries the analysis_results
-	 * table, and includes the template.
-	 *
-	 * @return void
-	 */
+	/** Render the ideas browser page. */
 	public function render_page(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
@@ -52,9 +40,8 @@ class PRAutoBlogger_Ideas_Browser {
 
 		$paged       = isset( $_GET['paged'] ) ? absint( $_GET['paged'] ) : 1;
 		$type_filter = isset( $_GET['type'] ) ? sanitize_key( $_GET['type'] ) : '';
-		$source_filter = isset( $_GET['source'] ) ? sanitize_key( $_GET['source'] ) : '';
 
-		$result      = $this->query_ideas( $paged, $type_filter, $source_filter );
+		$result      = $this->query_ideas( $paged, $type_filter );
 		$rows        = $result['rows'];
 		$total       = $result['total'];
 		$total_pages = (int) ceil( $total / self::PER_PAGE );
@@ -64,16 +51,202 @@ class PRAutoBlogger_Ideas_Browser {
 	}
 
 	/**
-	 * Query analysis results with optional filtering and pagination.
+	 * AJAX: trigger article generation from a specific idea.
 	 *
-	 * Side effects: database SELECT.
+	 * Loads the analysis result, stores it as a transient, sets a per-idea
+	 * status transient, and schedules a one-shot cron event so the actual
+	 * generation runs in a separate PHP process (Hostinger 120s limit).
 	 *
-	 * @param int    $paged  Page number (1-based).
-	 * @param string $type   Filter by analysis_type (empty = all).
-	 * @param string $source Filter: 'llm_research' or 'reddit' based on source_ids content.
-	 * @return array{rows: array[], total: int}
+	 * Side effects: transient writes, cron scheduling.
 	 */
-	private function query_ideas( int $paged, string $type, string $source ): array {
+	public function on_ajax_generate_from_idea(): void {
+		check_ajax_referer( 'prautoblogger_idea_gen', 'nonce' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => 'Insufficient permissions.' ], 403 );
+			return;
+		}
+
+		$idea_id = absint( $_POST['idea_id'] ?? 0 );
+		if ( $idea_id < 1 ) {
+			wp_send_json_error( [ 'message' => 'Invalid idea ID.' ] );
+			return;
+		}
+
+		// Build Article_Idea from the analysis row.
+		$idea_data = self::load_idea_data( $idea_id );
+		if ( null === $idea_data ) {
+			wp_send_json_error( [ 'message' => 'Idea not found.' ] );
+			return;
+		}
+
+		// Store idea for the cron handler and set initial "running" status.
+		set_transient( self::STATUS_PREFIX . 'data_' . $idea_id, $idea_data, self::STATUS_TTL );
+		set_transient( self::STATUS_PREFIX . $idea_id, [
+			'status'  => 'running',
+			'stage'   => __( 'Starting generation…', 'prautoblogger' ),
+			'started' => time(),
+		], self::STATUS_TTL );
+
+		// Schedule background cron — passes idea_id as argument.
+		$hook = 'prautoblogger_generate_from_idea';
+		if ( ! wp_next_scheduled( $hook, [ $idea_id ] ) ) {
+			wp_schedule_single_event( time(), $hook, [ $idea_id ] );
+		}
+		spawn_cron();
+		wp_remote_post(
+			site_url( 'wp-cron.php?doing_wp_cron=' . sprintf( '%.22F', microtime( true ) ) ),
+			[ 'timeout' => 0.01, 'blocking' => false, 'sslverify' => false ]
+		);
+
+		wp_send_json_success( [ 'message' => 'Generation started.' ] );
+	}
+
+	/**
+	 * AJAX: return per-idea generation status for frontend polling.
+	 *
+	 * Side effects: none (reads transient only).
+	 */
+	public function on_ajax_idea_gen_status(): void {
+		check_ajax_referer( 'prautoblogger_idea_gen', 'nonce' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => 'Insufficient permissions.' ], 403 );
+			return;
+		}
+
+		$idea_id = absint( $_POST['idea_id'] ?? 0 );
+		$status  = get_transient( self::STATUS_PREFIX . $idea_id );
+		if ( ! is_array( $status ) ) {
+			wp_send_json_success( [ 'status' => 'idle' ] );
+			return;
+		}
+
+		wp_send_json_success( $status );
+	}
+
+	/**
+	 * Cron handler: generate a single article from a stored idea.
+	 *
+	 * Runs in a background PHP process. Acquires the generation lock,
+	 * runs Article_Worker, and writes the result to the per-idea status transient.
+	 *
+	 * Side effects: LLM API calls, DB writes, post creation, cost logging.
+	 *
+	 * @param int $idea_id Analysis result row ID.
+	 */
+	public static function on_cron_generate_from_idea( int $idea_id ): void {
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		@ignore_user_abort( true );
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		@set_time_limit( 300 );
+
+		$key       = self::STATUS_PREFIX . $idea_id;
+		$idea_data = get_transient( self::STATUS_PREFIX . 'data_' . $idea_id );
+		if ( ! is_array( $idea_data ) ) {
+			set_transient( $key, [ 'status' => 'error', 'message' => 'Idea data expired.' ], self::STATUS_TTL );
+			return;
+		}
+
+		if ( ! PRAutoBlogger_Generation_Lock::acquire() ) {
+			set_transient( $key, [ 'status' => 'error', 'message' => 'Another generation is running.' ], self::STATUS_TTL );
+			return;
+		}
+
+		try {
+			$idea         = new PRAutoBlogger_Article_Idea( $idea_data );
+			$cost_tracker = new PRAutoBlogger_Cost_Tracker();
+			$cost_tracker->set_run_id( wp_generate_uuid4() );
+
+			self::update_idea_stage( $idea_id, __( 'Generating article draft…', 'prautoblogger' ) );
+			$worker = new PRAutoBlogger_Article_Worker( $cost_tracker );
+			$result = $worker->generate( $idea );
+
+			// Amortize any research costs for this single-article run.
+			PRAutoBlogger_Post_Assembler::amortize_research_costs( $cost_tracker->get_run_id() );
+
+			// Find the generated post ID for the "View" link.
+			$post_id = self::find_post_by_run_id( $cost_tracker->get_run_id() );
+
+			set_transient( $key, [
+				'status'    => 'complete',
+				'generated' => $result['generated'],
+				'published' => $result['published'],
+				'cost'      => $result['cost'],
+				'post_id'   => $post_id,
+			], self::STATUS_TTL );
+		} catch ( \Throwable $e ) {
+			PRAutoBlogger_Logger::instance()->error(
+				sprintf( 'Idea generation %s for #%d: %s', get_class( $e ), $idea_id, $e->getMessage() ),
+				'pipeline'
+			);
+			set_transient( $key, [ 'status' => 'error', 'message' => $e->getMessage() ], self::STATUS_TTL );
+		}
+
+		PRAutoBlogger_Generation_Lock::release();
+		delete_transient( self::STATUS_PREFIX . 'data_' . $idea_id );
+	}
+
+	// ── Private helpers ─────────────────────────────────────────────────
+
+	/** Update the per-idea status transient with a stage message. */
+	private static function update_idea_stage( int $idea_id, string $stage ): void {
+		$key     = self::STATUS_PREFIX . $idea_id;
+		$current = get_transient( $key );
+		if ( is_array( $current ) ) {
+			$current['stage'] = $stage;
+			set_transient( $key, $current, self::STATUS_TTL );
+		}
+	}
+
+	/** Find the most recent post created by a specific run_id. */
+	private static function find_post_by_run_id( string $run_id ): ?int {
+		global $wpdb;
+		$table = $wpdb->prefix . 'prautoblogger_generation_log';
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		$post_id = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT DISTINCT post_id FROM {$table} WHERE run_id = %s AND post_id IS NOT NULL LIMIT 1",
+				$run_id
+			)
+		);
+		return null !== $post_id ? (int) $post_id : null;
+	}
+
+	/**
+	 * Load an analysis result row and map it to Article_Idea constructor data.
+	 *
+	 * @param int $idea_id Analysis result row ID.
+	 * @return array<string, mixed>|null Article_Idea-compatible array, or null.
+	 */
+	private static function load_idea_data( int $idea_id ): ?array {
+		global $wpdb;
+		$table = $wpdb->prefix . 'prautoblogger_analysis_results';
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		$row = $wpdb->get_row(
+			$wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", $idea_id ),
+			ARRAY_A
+		);
+		if ( ! $row ) {
+			return null;
+		}
+
+		$meta = json_decode( $row['metadata_json'] ?? '{}', true ) ?: [];
+		return [
+			'topic'           => $row['topic'],
+			'article_type'    => $row['analysis_type'],
+			'suggested_title' => $meta['suggested_title'] ?? $row['topic'],
+			'summary'         => $row['summary'] ?? '',
+			'score'           => (float) $row['relevance_score'],
+			'analysis_id'     => (int) $row['id'],
+			'source_ids'      => json_decode( $row['source_ids_json'] ?? '[]', true ) ?: [],
+			'key_points'      => $meta['key_points'] ?? [],
+			'target_keywords' => $meta['target_keywords'] ?? [],
+		];
+	}
+
+	/** Query analysis results with optional filtering and pagination. */
+	private function query_ideas( int $paged, string $type ): array {
 		global $wpdb;
 		$table  = $wpdb->prefix . 'prautoblogger_analysis_results';
 		$where  = [];
@@ -103,19 +276,10 @@ class PRAutoBlogger_Ideas_Browser {
 			? $wpdb->get_results( $full_sql, ARRAY_A )
 			: $wpdb->get_results( $wpdb->prepare( $full_sql, ...$params ), ARRAY_A );
 
-		return [
-			'rows'  => $rows ?: [],
-			'total' => $total,
-		];
+		return [ 'rows' => $rows ?: [], 'total' => $total ];
 	}
 
-	/**
-	 * Get counts per analysis_type for the filter badges.
-	 *
-	 * Side effects: database SELECT.
-	 *
-	 * @return array<string, int> Map of analysis_type => count.
-	 */
+	/** Get counts per analysis_type for the filter badges. */
 	private function get_type_counts(): array {
 		global $wpdb;
 		$table = $wpdb->prefix . 'prautoblogger_analysis_results';

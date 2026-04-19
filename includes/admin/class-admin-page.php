@@ -72,11 +72,13 @@ class PRAutoBlogger_Admin_Page {
 
 		wp_localize_script( 'prautoblogger-admin', 'prautobloggerAdmin', [
 			'ajaxUrl'        => admin_url( 'admin-ajax.php' ),
+			'adminUrl'       => admin_url(),
 			'generateNonce'  => wp_create_nonce( 'prautoblogger_generate_now' ),
 			'imageNonce'     => wp_create_nonce( 'prautoblogger_generate_image' ),
 			'testNonce'      => wp_create_nonce( 'prautoblogger_test_connection' ),
 			'modelsNonce'    => wp_create_nonce( 'prautoblogger_get_models' ),
 			'reviewNonce'    => wp_create_nonce( 'prautoblogger_review_queue' ),
+			'ideaGenNonce'   => wp_create_nonce( 'prautoblogger_idea_gen' ),
 			'generatingText' => __( 'Generating...', 'prautoblogger' ),
 			'generateText'   => __( 'Generate Now', 'prautoblogger' ),
 			'testingText'    => __( 'Testing...', 'prautoblogger' ),
@@ -84,6 +86,11 @@ class PRAutoBlogger_Admin_Page {
 			// Image models for the picker — defined in the settings class to keep this file short.
 			'imageModels' => PRAutoBlogger_Settings_Fields_Extended::get_image_models(),
 		] );
+
+		// Ideas browser: generate-from-idea JS (only on the Ideas page).
+		if ( 'prautoblogger_page_prautoblogger-ideas' === $hook_suffix ) {
+			wp_enqueue_script( 'prautoblogger-ideas-browser', PRAUTOBLOGGER_PLUGIN_URL . 'assets/js/ideas-browser.js', [ 'jquery', 'prautoblogger-admin' ], PRAUTOBLOGGER_VERSION, true );
+		}
 	}
 
 	/** Render the settings page (delegates to template). */

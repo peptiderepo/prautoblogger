@@ -73,7 +73,8 @@ class PRAutoBlogger {
 		$review_queue = new PRAutoBlogger_Review_Queue();
 		add_action( 'admin_menu', [ $review_queue, 'on_register_menu' ] );
 
-		add_action( 'admin_menu', [ new PRAutoBlogger_Ideas_Browser(), 'on_register_menu' ] );
+		$ideas_browser = new PRAutoBlogger_Ideas_Browser();
+		add_action( 'admin_menu', [ $ideas_browser, 'on_register_menu' ] );
 		add_action( 'admin_menu', [ new PRAutoBlogger_Log_Viewer(), 'on_register_menu' ] );
 
 		( new PRAutoBlogger_Post_List_Columns() )->register();
@@ -107,6 +108,9 @@ class PRAutoBlogger {
 
 		$registry = $this->executor->get_model_registry();
 		add_action( 'prautoblogger_refresh_model_registry', [ $registry, 'refresh' ] );
+
+		// Single-idea generation from the Ideas browser page.
+		add_action( 'prautoblogger_generate_from_idea', [ 'PRAutoBlogger_Ideas_Browser', 'on_cron_generate_from_idea' ] );
 	}
 
 	/** Register AJAX handlers for admin actions. */
@@ -125,6 +129,10 @@ class PRAutoBlogger {
 		add_action( 'wp_ajax_prautoblogger_reject_post', [ $review_queue, 'on_ajax_reject_post' ] );
 
 		add_action( 'wp_ajax_prautoblogger_clear_logs', [ new PRAutoBlogger_Log_Viewer(), 'on_ajax_clear_logs' ] );
+
+		$ideas = new PRAutoBlogger_Ideas_Browser();
+		add_action( 'wp_ajax_prautoblogger_generate_from_idea', [ $ideas, 'on_ajax_generate_from_idea' ] );
+		add_action( 'wp_ajax_prautoblogger_idea_gen_status', [ $ideas, 'on_ajax_idea_gen_status' ] );
 	}
 
 	/**

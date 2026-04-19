@@ -5,6 +5,24 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.6.0] — 2026-04-20
+
+### Added
+- **Generate article from idea.** New "Generate" column in the Ideas browser.
+  Click any idea's Generate button to produce an article directly, bypassing
+  the scheduled pipeline's collect → analyze → score steps. The button shows
+  real-time stage updates (drafting, editing, publishing) via per-idea status
+  polling, then swaps to Edit/View links with cost on completion.
+  - `Ideas_Browser::on_ajax_generate_from_idea()` — AJAX trigger that stores
+    the idea and schedules a one-shot WP-Cron event.
+  - `Ideas_Browser::on_cron_generate_from_idea()` — Background handler that
+    runs Article_Worker for the selected idea.
+  - `Ideas_Browser::on_ajax_idea_gen_status()` — Per-idea status polling.
+  - `assets/js/ideas-browser.js` — Button click, AJAX, polling, and UI state.
+  - Per-idea transients (`prab_idea_gen_{id}`) for independent status tracking.
+  - Page-load polling resume for ideas that were mid-generation.
+  - Generation lock respected — only one generation at a time.
+
 ## [0.5.3] — 2026-04-20
 
 ### Fixed
