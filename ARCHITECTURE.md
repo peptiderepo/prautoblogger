@@ -134,6 +134,7 @@ prautoblogger/
 │   │   ├── class-semantic-dedup.php   # Embedding-based cosine similarity dedup with keyword fallback
 │   │   ├── class-content-generator.php# Writer agent — manages the generation pipeline
 │   │   ├── class-content-prompts.php  # Builds all LLM prompts for content generation (system, stage, linking rules)
+│   │   ├── class-peptide-linker.php   # Deterministic post-processor: hyperlinks peptide mentions to /peptides/ pages
 │   │   ├── class-chief-editor.php     # Editor agent — LLM-powered editorial review
 │   │   ├── class-publisher.php        # Creates WordPress posts from approved content
 │   │   ├── class-post-assembler.php   # Post-creation helpers: taxonomy, log linking, images, sanitization

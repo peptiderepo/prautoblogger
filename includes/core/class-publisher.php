@@ -12,6 +12,7 @@ declare(strict_types=1);
  *               WordPress wp_insert_post(), post meta API.
  *
  * @see core/class-post-assembler.php   — Post-creation helpers (taxonomy, images, logs).
+ * @see core/class-peptide-linker.php   — Injects peptide database hyperlinks into content.
  * @see core/class-chief-editor.php     — Produces the editorial review we consume.
  * @see core/class-content-generator.php — Produces the content we publish.
  * @see ARCHITECTURE.md                  — Data flow step 6.
@@ -74,9 +75,15 @@ class PRAutoBlogger_Publisher {
 		string $post_status,
 		?string $run_id = null
 	): int {
+		// Clean LLM artifacts, then inject peptide hyperlinks deterministically
+		// before the content enters WordPress. Peptide linker no-ops gracefully
+		// if PR Core is not active.
+		$clean_content  = PRAutoBlogger_Post_Assembler::sanitize_llm_content( $content );
+		$linked_content = PRAutoBlogger_Peptide_Linker::inject_links( $clean_content );
+
 		$post_data = [
 			'post_title'   => sanitize_text_field( $idea->get_suggested_title() ),
-			'post_content' => wp_kses_post( PRAutoBlogger_Post_Assembler::sanitize_llm_content( $content ) ),
+			'post_content' => wp_kses_post( $linked_content ),
 			'post_status'  => $post_status,
 			'post_type'    => 'post',
 			'post_author'  => PRAutoBlogger_Post_Assembler::get_default_author_id(),

@@ -5,6 +5,23 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.6.2] — 2026-04-20
+
+### Added
+- **Deterministic peptide auto-linker.** New `Peptide_Linker` class scans
+  generated HTML and wraps every mention of a known peptide in a hyperlink
+  to its `/peptides/{slug}/` database page. Runs as a post-processing step
+  in Publisher before `wp_insert_post` — no LLM involvement, 100% reliable.
+  Handles case-insensitive matching, hyphen/space variants (e.g., "BPC-157"
+  and "BPC 157"), and skips text already inside `<a>` tags. Gracefully
+  no-ops if PR Core is not active.
+
+### Changed
+- **Removed prompt-based peptide linking.** The system prompt no longer asks
+  the LLM to link peptides (unreliable). Peptide links are now injected
+  deterministically by `Peptide_Linker` after content generation. The prompt
+  still provides article links and the "never fabricate URLs" rule.
+
 ## [0.6.1] — 2026-04-20
 
 ### Added

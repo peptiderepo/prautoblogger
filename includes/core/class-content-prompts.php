@@ -167,13 +167,10 @@ class PRAutoBlogger_Content_Prompts {
 		$rules  = "--- LINKING RULES ---\n";
 		$rules .= "NEVER fabricate or invent URLs. You do NOT have access to external sources.\n";
 		$rules .= "Only use the internal links listed below when linking within the article.\n";
-		$rules .= "If no listed page is relevant to a section, do not insert a link.\n";
-		$rules .= "IMPORTANT: Whenever ANY peptide name from the peptide database list below\n";
-		$rules .= "is mentioned in the article, ALWAYS link the FIRST mention to its database page.\n\n";
+		$rules .= "If no listed article is relevant to a section, do not insert a link.\n";
+		$rules .= "Do NOT add links for peptide names — those are injected automatically after generation.\n\n";
 
 		$rules .= self::build_article_links();
-		$rules .= "\n";
-		$rules .= self::build_peptide_links();
 
 		$rules .= "--- END LINKING RULES ---";
 
@@ -211,42 +208,4 @@ class PRAutoBlogger_Content_Prompts {
 		return implode( "\n", $lines ) . "\n";
 	}
 
-	/**
-	 * Build a reference list of all published peptide database pages.
-	 *
-	 * Every peptide mentioned in an article must link to its database page
-	 * on first mention. This gives the model the real URLs to use.
-	 *
-	 * @return string Formatted peptide link list, or empty if CPT unavailable.
-	 */
-	private static function build_peptide_links(): string {
-		// PR Core may not be active — guard against missing post type.
-		if ( ! post_type_exists( 'pr_peptide' ) ) {
-			return '';
-		}
-
-		$peptides = get_posts( [
-			'post_type'      => 'pr_peptide',
-			'post_status'    => 'publish',
-			'posts_per_page' => 200,
-			'orderby'        => 'title',
-			'order'          => 'ASC',
-			'fields'         => 'ids',
-		] );
-
-		if ( empty( $peptides ) ) {
-			return '';
-		}
-
-		$lines = [ "Peptide database pages — ALWAYS link the first mention of each peptide:\n" ];
-		foreach ( $peptides as $peptide_id ) {
-			$title = get_the_title( $peptide_id );
-			$url   = get_permalink( $peptide_id );
-			if ( $title && $url ) {
-				$lines[] = "- {$title}: {$url}";
-			}
-		}
-
-		return implode( "\n", $lines ) . "\n";
-	}
 }
