@@ -5,6 +5,36 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] — 2026-04-19
+
+### Added
+- **Semantic dedup via embedding cosine similarity.** Replaces keyword-overlap
+  dedup (60% word match) with MiniLM-L12-v2 embeddings via OpenRouter. Catches
+  rephrasings like "BPC-157 dosing" vs "how much BPC-157 to take" that keyword
+  matching misses. Automatic fallback to keywords if embedding API unavailable.
+  Cost: ~$0.00001 per generation run.
+  - `includes/core/class-semantic-dedup.php` — Dedup engine with embedding +
+    keyword fallback.
+  - `includes/providers/class-open-router-embedding-provider.php` — OpenRouter
+    `/embeddings` client with batch support and cosine similarity helper.
+
+- **LLM-aware topic avoidance.** Analysis prompt now includes the last 30 days
+  of published article titles with explicit "do not suggest similar topics"
+  instruction. Zero additional cost — appended to the existing analysis call.
+
+### Changed
+- Dedup window widened from 7 days to 30 days (semantic similarity is precise
+  enough to avoid over-blocking).
+- `class-idea-scorer.php` refactored to delegate dedup to `Semantic_Dedup`.
+
+### Fixed
+- Featured images displayed at 300×300 (WordPress "medium" size) instead of full
+  width. Changed theme to use `the_post_thumbnail('full')` with responsive CSS.
+- Race condition causing duplicate article generation when the AJAX status poller
+  re-scheduled a cron event for an article already being generated.
+- False stall detection on multi-article runs (measured elapsed time from start
+  instead of idle time since last progress update).
+
 ## [Unreleased]
 
 ### Added
