@@ -110,6 +110,12 @@ class PRAutoBlogger_Chief_Editor {
 		$prompt .= "- REJECT only if the content is fundamentally flawed or off-topic\n";
 		$prompt .= "- When revising, fix the issues yourself. Don't just describe them.\n";
 
+		// Append user-defined editor instructions if configured.
+		$instructions = trim( (string) get_option( 'prautoblogger_editor_instructions', '' ) );
+		if ( '' !== $instructions ) {
+			$prompt .= "\nAdditional instructions:\n" . $instructions . "\n";
+		}
+
 		return $prompt;
 	}
 

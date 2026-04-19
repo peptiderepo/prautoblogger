@@ -162,6 +162,14 @@ class PRAutoBlogger_Settings_Fields {
 				'description' => __( 'Describe your site\'s niche. Guides content analysis and generation.', 'prautoblogger' ),
 			],
 			[
+				'id'          => 'prautoblogger_analysis_instructions',
+				'label'       => __( 'Analysis Instructions', 'prautoblogger' ),
+				'type'        => 'textarea',
+				'section'     => 'prautoblogger_content',
+				'default'     => '',
+				'description' => __( 'Custom instructions for the topic analysis LLM. Steers how source data is evaluated and which ideas get surfaced — e.g. "Prioritize questions over news. Ignore price-related discussions."', 'prautoblogger' ),
+			],
+			[
 				'id'      => 'prautoblogger_tone',
 				'label'   => __( 'Content Tone', 'prautoblogger' ),
 				'type'    => 'select',
@@ -209,6 +217,14 @@ class PRAutoBlogger_Settings_Fields {
 				'section'     => 'prautoblogger_content',
 				'default'     => '',
 				'description' => __( 'Custom instructions appended to the LLM\'s system prompt when writing articles. Use this to steer style, structure, voice, and formatting — e.g. "Always open with a hook question. Use short paragraphs. Cite at least two studies."', 'prautoblogger' ),
+			],
+			[
+				'id'          => 'prautoblogger_editor_instructions',
+				'label'       => __( 'Editor Instructions', 'prautoblogger' ),
+				'type'        => 'textarea',
+				'section'     => 'prautoblogger_content',
+				'default'     => '',
+				'description' => __( 'Custom instructions for the chief editor LLM review pass. Steers what the editor looks for and how it revises — e.g. "Be strict about medical disclaimers. Reject any article under 800 words."', 'prautoblogger' ),
 			],
 			[
 				'id'          => 'prautoblogger_topic_exclusions',

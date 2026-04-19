@@ -5,6 +5,16 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.4.5] — 2026-04-19
+
+### Added
+- **Analysis Instructions setting.** Custom instructions appended to the analysis
+  LLM's system prompt. Steers how source data is evaluated and which topic ideas
+  get surfaced.
+- **Editor Instructions setting.** Custom instructions appended to the chief
+  editor's system prompt. Controls what the editorial review looks for and how
+  it decides to approve, revise, or reject articles.
+
 ## [0.4.4] — 2026-04-19
 
 ### Added

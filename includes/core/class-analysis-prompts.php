@@ -61,6 +61,12 @@ class PRAutoBlogger_Analysis_Prompts {
 			$prompt .= $recent_context . "\n\n";
 		}
 
+		// Append user-defined analysis instructions if configured.
+		$instructions = trim( (string) get_option( 'prautoblogger_analysis_instructions', '' ) );
+		if ( '' !== $instructions ) {
+			$prompt .= "Additional instructions:\n" . $instructions . "\n\n";
+		}
+
 		$prompt .= "Respond with valid JSON containing exactly {$target_count} patterns:\n";
 		$prompt .= '{"patterns": [{"type": "...", "topic": "...", "summary": "...", "frequency": N, "relevance_score": 0.X, "suggested_title": "...", "key_points": [...], "target_keywords": [...]}]}';
 
