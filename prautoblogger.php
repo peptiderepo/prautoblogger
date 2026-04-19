@@ -8,7 +8,7 @@ declare(strict_types=1);
  * Plugin Name:       PRAutoBlogger
  * Plugin URI:        https://peptiderepo.com/prautoblogger
  * Description:       Monitors social media for trending topics, generates SEO-friendly blog posts using AI, and publishes them on a daily schedule with full cost tracking and self-improvement metrics.
- * Version:           0.4.7
+ * Version:           0.4.8
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            PeptideRepo
@@ -35,7 +35,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 | and limits without magic strings.
 */
 
-define( 'PRAUTOBLOGGER_VERSION', '0.4.7' );
+define( 'PRAUTOBLOGGER_VERSION', '0.4.8' );
 define( 'PRAUTOBLOGGER_DB_VERSION', '1.1.0' );
 define( 'PRAUTOBLOGGER_PLUGIN_FILE', __FILE__ );
 define( 'PRAUTOBLOGGER_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
@@ -45,7 +45,7 @@ define( 'PRAUTOBLOGGER_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
 // API and retry limits — named constants instead of magic numbers.
 define( 'PRAUTOBLOGGER_MAX_RETRIES', 3 );
 define( 'PRAUTOBLOGGER_RETRY_BASE_DELAY_SECONDS', 2 );
-define( 'PRAUTOBLOGGER_API_TIMEOUT_SECONDS', 120 );
+define( 'PRAUTOBLOGGER_API_TIMEOUT_SECONDS', 180 );
 define( 'PRAUTOBLOGGER_CACHE_TTL_SECONDS', 3600 );
 
 // Default models for OpenRouter (user can override in settings).

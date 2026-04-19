@@ -155,8 +155,11 @@ class PRAutoBlogger_Chief_Editor {
 		$data = PRAutoBlogger_Json_Extractor::decode( $content );
 
 		if ( ! is_array( $data ) || ! isset( $data['verdict'] ) ) {
-			PRAutoBlogger_Logger::instance()->error( 'Chief editor response was not valid JSON. Defaulting to rejected.', 'editor' );
-			PRAutoBlogger_Logger::instance()->debug( 'Raw editor response: ' . mb_substr( $content, 0, 500 ), 'editor' );
+			PRAutoBlogger_Logger::instance()->error(
+				'Chief editor response was not valid JSON. Defaulting to rejected. Raw (first 500 chars): '
+				. mb_substr( $content, 0, 500 ),
+				'editor'
+			);
 			return new PRAutoBlogger_Editorial_Review( [
 				'verdict'       => 'rejected',
 				'notes'         => 'Editor response could not be parsed.',

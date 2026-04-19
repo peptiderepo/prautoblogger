@@ -178,8 +178,11 @@ class PRAutoBlogger_Content_Analyzer {
 	private function parse_analysis_response( string $content, array $source_items ): array {
 		$data = PRAutoBlogger_Json_Extractor::decode( $content );
 		if ( ! isset( $data['patterns'] ) || ! is_array( $data['patterns'] ) ) {
-			PRAutoBlogger_Logger::instance()->error( 'Analysis response was not valid JSON or missing patterns key.', 'analyzer' );
-			PRAutoBlogger_Logger::instance()->debug( 'Raw analysis response: ' . mb_substr( $content, 0, 500 ), 'analyzer' );
+			PRAutoBlogger_Logger::instance()->error(
+				'Analysis response was not valid JSON or missing patterns key. Raw (first 500 chars): '
+				. mb_substr( $content, 0, 500 ),
+				'analyzer'
+			);
 			return [];
 		}
 

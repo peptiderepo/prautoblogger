@@ -5,6 +5,16 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.4.8] — 2026-04-19
+
+### Fixed
+- **GLM 4.7 Flash timeout during analysis.** The model was timing out at 120s on
+  large analysis prompts (especially with the new custom instructions). Bumped
+  API timeout from 120s to 180s.
+- **Empty raw response in error logs.** Parse failure errors now include the raw
+  LLM response inline (first 500 chars) at error level, not debug level, so
+  the actual failure reason is always visible in the Activity Log.
+
 ## [0.4.7] — 2026-04-19
 
 ### Added
