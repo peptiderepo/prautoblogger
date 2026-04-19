@@ -21,6 +21,7 @@ class PRAutoBlogger_Content_Request {
 	private int $max_word_count;
 	private string $niche_description;
 	private array $topic_exclusions;
+	private string $writing_instructions;
 
 	public function __construct(
 		PRAutoBlogger_Article_Idea $idea,
@@ -29,15 +30,17 @@ class PRAutoBlogger_Content_Request {
 		int $min_word_count,
 		int $max_word_count,
 		string $niche_description,
-		array $topic_exclusions = []
+		array $topic_exclusions = [],
+		string $writing_instructions = ''
 	) {
-		$this->idea              = $idea;
-		$this->pipeline_mode     = $pipeline_mode;
-		$this->tone              = $tone;
-		$this->min_word_count    = $min_word_count;
-		$this->max_word_count    = $max_word_count;
-		$this->niche_description = $niche_description;
-		$this->topic_exclusions  = $topic_exclusions;
+		$this->idea                 = $idea;
+		$this->pipeline_mode        = $pipeline_mode;
+		$this->tone                 = $tone;
+		$this->min_word_count       = $min_word_count;
+		$this->max_word_count       = $max_word_count;
+		$this->niche_description    = $niche_description;
+		$this->topic_exclusions     = $topic_exclusions;
+		$this->writing_instructions = $writing_instructions;
 	}
 
 	public function get_idea(): PRAutoBlogger_Article_Idea {
@@ -66,5 +69,9 @@ class PRAutoBlogger_Content_Request {
 
 	public function get_topic_exclusions(): array {
 		return $this->topic_exclusions;
+	}
+
+	public function get_writing_instructions(): string {
+		return $this->writing_instructions;
 	}
 }

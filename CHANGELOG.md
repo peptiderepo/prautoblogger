@@ -5,6 +5,14 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.4.4] — 2026-04-19
+
+### Added
+- **Writing Instructions setting.** New textarea in Content settings lets you
+  provide custom instructions appended to the LLM's system prompt when writing
+  articles. Use it to steer style, structure, voice, and formatting without
+  editing code.
+
 ## [0.4.3] — 2026-04-19
 
 ### Fixed

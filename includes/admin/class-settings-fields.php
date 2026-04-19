@@ -203,6 +203,14 @@ class PRAutoBlogger_Settings_Fields {
 				'min'     => 500,
 			],
 			[
+				'id'          => 'prautoblogger_writing_instructions',
+				'label'       => __( 'Writing Instructions', 'prautoblogger' ),
+				'type'        => 'textarea',
+				'section'     => 'prautoblogger_content',
+				'default'     => '',
+				'description' => __( 'Custom instructions appended to the LLM\'s system prompt when writing articles. Use this to steer style, structure, voice, and formatting — e.g. "Always open with a hook question. Use short paragraphs. Cite at least two studies."', 'prautoblogger' ),
+			],
+			[
 				'id'          => 'prautoblogger_topic_exclusions',
 				'label'       => __( 'Topic Exclusions', 'prautoblogger' ),
 				'type'        => 'textarea',

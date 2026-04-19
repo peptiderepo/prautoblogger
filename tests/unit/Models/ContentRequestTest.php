@@ -25,7 +25,8 @@ class ContentRequestTest extends BaseTestCase {
             1000,
             2500,
             'Technology and innovation',
-            [ 'politics', 'religion' ]
+            [ 'politics', 'religion' ],
+            'Always open with a hook question.'
         );
 
         $this->assertSame( $idea, $request->get_idea() );
@@ -35,6 +36,7 @@ class ContentRequestTest extends BaseTestCase {
         $this->assertSame( 2500, $request->get_max_word_count() );
         $this->assertSame( 'Technology and innovation', $request->get_niche_description() );
         $this->assertSame( [ 'politics', 'religion' ], $request->get_topic_exclusions() );
+        $this->assertSame( 'Always open with a hook question.', $request->get_writing_instructions() );
     }
 
     /**
@@ -61,6 +63,25 @@ class ContentRequestTest extends BaseTestCase {
         $this->assertIsInt( $request->get_max_word_count() );
         $this->assertIsString( $request->get_niche_description() );
         $this->assertIsArray( $request->get_topic_exclusions() );
+    }
+
+    /**
+     * Test writing_instructions defaults to empty string when omitted.
+     */
+    public function test_writing_instructions_defaults_to_empty(): void {
+        $idea_data = $this->get_article_idea_fixture();
+        $idea      = new \PRAutoBlogger_Article_Idea( $idea_data );
+
+        $request = new \PRAutoBlogger_Content_Request(
+            $idea,
+            'auto',
+            'professional',
+            1000,
+            2500,
+            'Tech'
+        );
+
+        $this->assertSame( '', $request->get_writing_instructions() );
     }
 
     /**

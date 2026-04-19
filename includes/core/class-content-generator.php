@@ -32,13 +32,10 @@ class PRAutoBlogger_Content_Generator {
 	 * Generate a blog post from an article idea.
 	 *
 	 * Reads pipeline mode from settings and dispatches to the appropriate method.
-	 *
 	 * Side effects: LLM API calls (1-3 depending on mode), cost logging.
 	 *
 	 * @param PRAutoBlogger_Article_Idea $idea The scored idea to generate content for.
-	 *
 	 * @return string Generated HTML content.
-	 *
 	 * @throws \RuntimeException On generation failure.
 	 */
 	public function generate( PRAutoBlogger_Article_Idea $idea ): string {
@@ -51,7 +48,8 @@ class PRAutoBlogger_Content_Generator {
 			absint( get_option( 'prautoblogger_min_word_count', 800 ) ),
 			absint( get_option( 'prautoblogger_max_word_count', 2000 ) ),
 			get_option( 'prautoblogger_niche_description', '' ),
-			json_decode( get_option( 'prautoblogger_topic_exclusions', '[]' ), true ) ?: []
+			json_decode( get_option( 'prautoblogger_topic_exclusions', '[]' ), true ) ?: [],
+			get_option( 'prautoblogger_writing_instructions', '' )
 		);
 
 		if ( 'single_pass' === $mode ) {
@@ -64,8 +62,7 @@ class PRAutoBlogger_Content_Generator {
 	/**
 	 * Single-pass generation: one LLM call produces the complete article.
 	 *
-	 * @param PRAutoBlogger_Content_Request $request
-	 *
+	 * @param PRAutoBlogger_Content_Request $request Content request with settings.
 	 * @return string Generated HTML content.
 	 */
 	private function generate_single_pass( PRAutoBlogger_Content_Request $request ): string {
@@ -249,8 +246,7 @@ class PRAutoBlogger_Content_Generator {
 	/**
 	 * Build the system prompt shared across all writing stages.
 	 *
-	 * @param PRAutoBlogger_Content_Request $request
-	 *
+	 * @param PRAutoBlogger_Content_Request $request Content request with settings.
 	 * @return string
 	 */
 	private function build_writer_system_prompt( PRAutoBlogger_Content_Request $request ): string {
@@ -262,6 +258,13 @@ class PRAutoBlogger_Content_Generator {
 		$prompt .= ". Write well-researched, engaging, SEO-friendly content. ";
 		$prompt .= "Use a {$request->get_tone()} tone. ";
 		$prompt .= "Output HTML content only — no markdown, no code fences, no commentary.";
+
+		// Append user-defined writing instructions if configured.
+		$instructions = trim( $request->get_writing_instructions() );
+		if ( '' !== $instructions ) {
+			$prompt .= "\n\nAdditional instructions:\n" . $instructions;
+		}
+
 		return $prompt;
 	}
 
