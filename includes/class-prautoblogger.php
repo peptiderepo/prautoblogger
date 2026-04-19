@@ -73,6 +73,7 @@ class PRAutoBlogger {
 		$review_queue = new PRAutoBlogger_Review_Queue();
 		add_action( 'admin_menu', [ $review_queue, 'on_register_menu' ] );
 
+		add_action( 'admin_menu', [ new PRAutoBlogger_Ideas_Browser(), 'on_register_menu' ] );
 		add_action( 'admin_menu', [ new PRAutoBlogger_Log_Viewer(), 'on_register_menu' ] );
 
 		( new PRAutoBlogger_Post_List_Columns() )->register();

@@ -58,6 +58,7 @@ class PRAutoBlogger_Admin_Page {
 			'toplevel_page_' . self::PAGE_SLUG,
 			'prautoblogger_page_prautoblogger-metrics',
 			'prautoblogger_page_prautoblogger-review-queue',
+			'prautoblogger_page_prautoblogger-ideas',
 			'prautoblogger_page_prautoblogger-logs',
 		];
 		if ( ! in_array( $hook_suffix, $pages, true ) ) {

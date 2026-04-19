@@ -5,6 +5,15 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.5.1] — 2026-04-20
+
+### Added
+- **Ideas browser admin page.** New "Ideas" submenu under PRAutoBlogger showing
+  all article ideas collected by the content analyzer. Displays suggested title,
+  topic, type (question/complaint/comparison/news/guide), relevance score bar,
+  frequency, key points, and target keywords. Filterable by type with count
+  badges. Paginated at 30 per page, newest first.
+
 ## [0.5.0] — 2026-04-20
 
 ### Added

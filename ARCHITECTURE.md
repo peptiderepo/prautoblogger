@@ -121,6 +121,7 @@ prautoblogger/
 │   │   ├── class-dashboard-widget.php # WP Dashboard widget showing generation status
 │   │   ├── class-post-metabox.php     # Metabox on posts showing generation metadata
 │   │   ├── class-metrics-page.php     # Admin page for cost dashboard and content scores
+│   │   ├── class-ideas-browser.php    # Browse all analysis results (article ideas)
 │   │   ├── class-review-queue.php     # Approve/edit/reject queue for generated drafts
 │   │   └── class-log-viewer.php       # Activity log viewer with level filtering
 │   │
