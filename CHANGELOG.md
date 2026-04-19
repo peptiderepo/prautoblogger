@@ -5,6 +5,13 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.4.6] — 2026-04-19
+
+### Added
+- **Image B toggle.** New "Generate Second Image (B)" toggle in Images settings.
+  Disabling saves one image generation call + one LLM prompt rewrite per article.
+  Defaults to enabled for backwards compatibility.
+
 ## [0.4.5] — 2026-04-19
 
 ### Added

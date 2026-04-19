@@ -172,7 +172,15 @@ class PRAutoBlogger_Settings_Fields_Extended {
 				'type'        => 'toggle',
 				'section'     => 'prautoblogger_images',
 				'default'     => '0',
-				'description' => __( 'When enabled, generate two images (A/B) for each published article.', 'prautoblogger' ),
+				'description' => __( 'Generate images for each published article.', 'prautoblogger' ),
+			],
+			[
+				'id'          => 'prautoblogger_image_b_enabled',
+				'label'       => __( 'Generate Second Image (B)', 'prautoblogger' ),
+				'type'        => 'toggle',
+				'section'     => 'prautoblogger_images',
+				'default'     => '1',
+				'description' => __( 'Generate a second image from source data for A/B testing. Disabling saves one image generation + one LLM prompt rewrite per article.', 'prautoblogger' ),
 			],
 			[
 				'id'      => 'prautoblogger_image_provider',

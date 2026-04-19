@@ -94,8 +94,13 @@ class PRAutoBlogger_Image_Pipeline {
 			return $result;
 		}
 
+		// Check whether Image B is enabled in settings.
+		$image_b_enabled = get_option( 'prautoblogger_image_b_enabled', '1' );
+		$has_source_data = null !== $source_data && ! empty( $source_data );
+		$generate_b      = $has_source_data && '1' === $image_b_enabled;
+
 		// Budget pre-check: estimate cost for all images before any HTTP calls.
-		$image_count    = ( null !== $source_data && ! empty( $source_data ) ) ? 2 : 1;
+		$image_count    = $generate_b ? 2 : 1;
 		$estimated_cost = $this->provider->estimate_cost( self::DEFAULT_WIDTH, self::DEFAULT_HEIGHT ) * $image_count;
 		if ( $this->cost_tracker->would_exceed_budget( $estimated_cost ) ) {
 			$result['errors'][] = 'Image generation would exceed monthly budget.';
@@ -114,7 +119,7 @@ class PRAutoBlogger_Image_Pipeline {
 		$captions = [ 'image_a' => $article_prompt['caption'] ];
 
 		$source_prompt = null;
-		if ( null !== $source_data && ! empty( $source_data ) ) {
+		if ( $generate_b ) {
 			$source_prompt = $this->prompt_builder->build_source_prompt( $source_data );
 			$batch_requests['image_b'] = [
 				'prompt' => $source_prompt['prompt'],
