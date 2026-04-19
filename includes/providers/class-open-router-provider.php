@@ -36,7 +36,8 @@ class PRAutoBlogger_OpenRouter_Provider implements PRAutoBlogger_LLM_Provider_In
 	 *     temperature?: float,
 	 *     max_tokens?: int,
 	 *     response_format?: array{type: string},
-	 * } $options Optional parameters.
+	 *     reasoning?: array{enabled: bool, effort?: string},
+	 * } $options Optional parameters. Pass 'reasoning' to override the global setting.
 	 *
 	 * @return array{
 	 *     content: string,
@@ -86,6 +87,16 @@ class PRAutoBlogger_OpenRouter_Provider implements PRAutoBlogger_LLM_Provider_In
 		}
 		if ( isset( $options['response_format'] ) ) {
 			$body['response_format'] = $options['response_format'];
+		}
+
+		// Reasoning mode: explicit caller override takes priority, then global setting.
+		if ( isset( $options['reasoning'] ) ) {
+			$body['reasoning'] = $options['reasoning'];
+		} elseif ( '1' === get_option( 'prautoblogger_reasoning_enabled', '0' ) ) {
+			$body['reasoning'] = [
+				'enabled' => true,
+				'effort'  => get_option( 'prautoblogger_reasoning_effort', 'medium' ),
+			];
 		}
 
 		$last_error = '';

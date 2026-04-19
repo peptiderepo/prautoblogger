@@ -5,6 +5,20 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.4.9] — 2026-04-19
+
+### Added
+- **OpenRouter reasoning mode support.** New "Enable Reasoning" toggle and
+  "Reasoning Effort" selector in AI Models settings. When enabled, sends
+  `reasoning: {enabled: true, effort: "<level>"}` to models that support it
+  (Grok 4.1 Fast, DeepSeek-R1, etc.). Effort levels: Extra High, High,
+  Medium, Low, Minimal. Reasoning tokens are billed as output tokens — cost
+  is automatically tracked. Models that don't support reasoning ignore the
+  parameter. Per-call override available via the `reasoning` key in the
+  provider options array.
+- Response parser now captures `reasoning_tokens` and `reasoning_content`
+  from the OpenRouter response for downstream logging and debugging.
+
 ## [0.4.8] — 2026-04-19
 
 ### Fixed

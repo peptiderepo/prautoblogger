@@ -80,6 +80,31 @@ class PRAutoBlogger_Settings_Fields_Extended {
 	 */
 	public static function get_fields(): array {
 		return [
+			// ── AI Models (extended) ────────────────────────────────────
+			[
+				'id'          => 'prautoblogger_reasoning_enabled',
+				'label'       => __( 'Enable Reasoning', 'prautoblogger' ),
+				'type'        => 'toggle',
+				'section'     => 'prautoblogger_models',
+				'default'     => '0',
+				'description' => __( 'Send reasoning instructions to models that support it (e.g. Grok, DeepSeek-R1). Reasoning tokens are billed as output tokens — expect higher costs per call. Models that don\'t support reasoning will ignore this.', 'prautoblogger' ),
+			],
+			[
+				'id'      => 'prautoblogger_reasoning_effort',
+				'label'   => __( 'Reasoning Effort', 'prautoblogger' ),
+				'type'    => 'select',
+				'section' => 'prautoblogger_models',
+				'default' => 'medium',
+				'options' => [
+					'xhigh'   => __( 'Extra High — maximum depth, highest cost', 'prautoblogger' ),
+					'high'    => __( 'High — thorough reasoning', 'prautoblogger' ),
+					'medium'  => __( 'Medium — balanced (recommended)', 'prautoblogger' ),
+					'low'     => __( 'Low — light reasoning, lower cost', 'prautoblogger' ),
+					'minimal' => __( 'Minimal — barely any reasoning', 'prautoblogger' ),
+				],
+				'description' => __( 'How much effort the model spends reasoning before answering. Higher effort = more reasoning tokens = higher cost. Only applies when reasoning is enabled above.', 'prautoblogger' ),
+			],
+
 			// ── Schedule & Budget ───────────────────────────────────────
 			[
 				'id'      => 'prautoblogger_daily_article_target',

@@ -43,8 +43,10 @@ class PRAutoBlogger_OpenRouter_Response_Parser {
 	 *     model: string,
 	 *     prompt_tokens: int,
 	 *     completion_tokens: int,
+	 *     reasoning_tokens: int,
 	 *     total_tokens: int,
 	 *     finish_reason: string,
+	 *     reasoning_content: string,
 	 * }
 	 *
 	 * @throws \RuntimeException If response structure is invalid.
@@ -94,13 +96,18 @@ class PRAutoBlogger_OpenRouter_Response_Parser {
 
 		$usage = $data['usage'] ?? [];
 
+		// Reasoning content lives alongside 'content' in the message object.
+		$reasoning_content = $data['choices'][0]['message']['reasoning'] ?? '';
+
 		return [
 			'content'           => (string) $content,
 			'model'             => $data['model'] ?? $model,
 			'prompt_tokens'     => (int) ( $usage['prompt_tokens'] ?? 0 ),
 			'completion_tokens' => (int) ( $usage['completion_tokens'] ?? 0 ),
+			'reasoning_tokens'  => (int) ( $usage['reasoning_tokens'] ?? 0 ),
 			'total_tokens'      => (int) ( $usage['total_tokens'] ?? 0 ),
 			'finish_reason'     => $data['choices'][0]['finish_reason'] ?? 'unknown',
+			'reasoning_content' => (string) $reasoning_content,
 		];
 	}
 
