@@ -27,6 +27,7 @@ class PRAutoBlogger_Post_List_Columns {
 		add_action( 'manage_posts_custom_column', [ $this, 'on_render_column' ], 10, 2 );
 		add_filter( 'manage_edit-post_sortable_columns', [ $this, 'filter_sortable_columns' ] );
 		add_action( 'pre_get_posts', [ $this, 'on_sort_by_model' ] );
+		add_action( 'admin_head', [ $this, 'on_column_styles' ] );
 	}
 
 	/**
@@ -97,6 +98,21 @@ class PRAutoBlogger_Post_List_Columns {
 		}
 		$query->set( 'meta_key', '_prautoblogger_model_used' );
 		$query->set( 'orderby', 'meta_value' );
+	}
+
+	/**
+	 * Output column width styles on the Posts list screen only.
+	 */
+	public function on_column_styles(): void {
+		$screen = get_current_screen();
+		if ( ! $screen || 'edit-post' !== $screen->id ) {
+			return;
+		}
+		echo '<style>'
+			. '.column-prab_writing_model{width:120px}'
+			. '.column-prab_image_model{width:120px}'
+			. '.column-prab_cost{width:60px}'
+			. '</style>';
 	}
 
 	// ── Private helpers ─────────────────────────────────────────────────
