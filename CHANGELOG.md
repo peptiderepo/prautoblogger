@@ -5,6 +5,26 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.5.2] — 2026-04-20
+
+### Added
+- **LLM research cost amortization.** The research LLM call (which runs once
+  per pipeline execution) is now divided evenly across all articles produced
+  in that run. Each article's cost breakdown popover shows its amortized share
+  of the research overhead. Previously, research costs were orphaned with no
+  post attribution.
+  - `Post_Assembler::amortize_research_costs()` — Queries the unlinked
+    research log entry, divides cost and tokens by article count, inserts one
+    row per article, and removes the original.
+  - `link_generation_logs()` now excludes `llm_research` stage from per-article
+    linking so the cost isn't grabbed wholesale by the first article.
+  - `Source_Collector::set_cost_tracker()` — Accepts the pipeline's cost
+    tracker so research costs are tagged with the pipeline's `run_id`.
+  - `LLM_Research_Provider` now uses the pipeline's cost tracker when available,
+    ensuring research log entries share the same `run_id` as article entries.
+  - Amortization runs after all articles complete (both single-article and
+    chained-job paths in `Pipeline_Runner`).
+
 ## [0.5.1] — 2026-04-20
 
 ### Added

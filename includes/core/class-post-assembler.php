@@ -58,10 +58,13 @@ class PRAutoBlogger_Post_Assembler {
 		$table = $wpdb->prefix . 'prautoblogger_generation_log';
 
 		if ( null !== $run_id && '' !== $run_id ) {
+			// Exclude 'llm_research' stage — those shared costs are amortized
+			// across all articles after the full pipeline completes, not linked
+			// to a single post. See amortize_research_costs().
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 			$wpdb->query(
 				$wpdb->prepare(
-					"UPDATE {$table} SET post_id = %d WHERE post_id IS NULL AND run_id = %s",
+					"UPDATE {$table} SET post_id = %d WHERE post_id IS NULL AND run_id = %s AND stage != 'llm_research'",
 					$post_id,
 					$run_id
 				)
@@ -77,6 +80,97 @@ class PRAutoBlogger_Post_Assembler {
 				)
 			);
 		}
+	}
+
+	/**
+	 * Amortize shared LLM research costs across all articles in a pipeline run.
+	 *
+	 * The research LLM call runs once per pipeline execution before any articles
+	 * are generated. Its cost is logged with the run_id but no post_id. After all
+	 * articles finish, this method divides the research cost evenly and inserts
+	 * one 'llm_research' row per article so the cost breakdown popover includes
+	 * the amortized research overhead.
+	 *
+	 * Side effects: database SELECT, INSERT, DELETE on generation_log.
+	 *
+	 * @param string|null $run_id Pipeline run UUID. Null or empty is a no-op.
+	 */
+	public static function amortize_research_costs( ?string $run_id ): void {
+		if ( null === $run_id || '' === $run_id ) {
+			return;
+		}
+
+		global $wpdb;
+		$table = $wpdb->prefix . 'prautoblogger_generation_log';
+
+		// Find the unlinked research cost row for this run.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		$research_row = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT id, estimated_cost, provider, model, prompt_tokens, completion_tokens
+				FROM {$table}
+				WHERE run_id = %s AND stage = 'llm_research' AND post_id IS NULL
+				LIMIT 1",
+				$run_id
+			)
+		);
+
+		if ( ! $research_row || (float) $research_row->estimated_cost <= 0.0 ) {
+			return; // No research cost to amortize (LLM research not enabled or free).
+		}
+
+		// Count distinct articles produced in this run.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		$post_ids = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT DISTINCT post_id FROM {$table} WHERE run_id = %s AND post_id IS NOT NULL",
+				$run_id
+			)
+		);
+
+		$post_count = count( $post_ids );
+		if ( $post_count < 1 ) {
+			return; // No articles produced — nothing to amortize into.
+		}
+
+		$total_cost        = (float) $research_row->estimated_cost;
+		$amortized_cost    = $total_cost / $post_count;
+		$total_prompt      = (int) $research_row->prompt_tokens;
+		$total_completion  = (int) $research_row->completion_tokens;
+		$amortized_prompt  = (int) round( $total_prompt / $post_count );
+		$amortized_compl   = (int) round( $total_completion / $post_count );
+
+		// Insert one amortized research row per article.
+		foreach ( $post_ids as $post_id ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			$wpdb->insert( $table, [
+				'post_id'           => (int) $post_id,
+				'run_id'            => $run_id,
+				'stage'             => 'llm_research',
+				'provider'          => $research_row->provider,
+				'model'             => $research_row->model,
+				'prompt_tokens'     => $amortized_prompt,
+				'completion_tokens' => $amortized_compl,
+				'estimated_cost'    => $amortized_cost,
+				'response_status'   => 'success',
+				'error_message'     => '',
+				'created_at'        => current_time( 'mysql' ),
+			] );
+		}
+
+		// Remove the original unlinked row — it's been replaced by per-article rows.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		$wpdb->delete( $table, [ 'id' => (int) $research_row->id ] );
+
+		PRAutoBlogger_Logger::instance()->info(
+			sprintf(
+				'Amortized LLM research cost $%.4f across %d articles ($%.4f each).',
+				$total_cost,
+				$post_count,
+				$amortized_cost
+			),
+			'cost-tracker'
+		);
 	}
 
 	/**

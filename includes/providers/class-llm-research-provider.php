@@ -34,7 +34,7 @@ class PRAutoBlogger_LLM_Research_Provider implements PRAutoBlogger_Source_Provid
 	 *
 	 * Side effects: LLM API call via OpenRouter, cost logging.
 	 *
-	 * @param array{prompt?: string, model?: string} $config Research-specific configuration.
+	 * @param array{prompt?: string, model?: string, cost_tracker?: PRAutoBlogger_Cost_Tracker} $config Research-specific configuration.
 	 * @return PRAutoBlogger_Source_Data[] Array of research findings as source data.
 	 * @throws \RuntimeException On API error after retries.
 	 */
@@ -65,7 +65,9 @@ class PRAutoBlogger_LLM_Research_Provider implements PRAutoBlogger_Source_Provid
 			]
 		);
 
-		$cost_tracker = new PRAutoBlogger_Cost_Tracker();
+		// Use the pipeline's cost tracker if provided (for run_id tagging),
+		// otherwise create a standalone one (backward compat for manual calls).
+		$cost_tracker = $config['cost_tracker'] ?? new PRAutoBlogger_Cost_Tracker();
 		$cost_tracker->log_api_call(
 			null,
 			'llm_research',

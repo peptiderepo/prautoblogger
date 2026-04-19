@@ -21,6 +21,24 @@ declare(strict_types=1);
 class PRAutoBlogger_Source_Collector {
 
 	/**
+	 * Pipeline cost tracker — passed to providers that need run_id tagging.
+	 * Null when called outside the pipeline (e.g., manual test collection).
+	 */
+	private ?PRAutoBlogger_Cost_Tracker $cost_tracker = null;
+
+	/**
+	 * Inject the pipeline's cost tracker so source providers can log costs
+	 * with the correct run_id. Without this, provider costs are orphaned.
+	 *
+	 * @param PRAutoBlogger_Cost_Tracker $cost_tracker Pipeline cost tracker with run_id set.
+	 * @return $this
+	 */
+	public function set_cost_tracker( PRAutoBlogger_Cost_Tracker $cost_tracker ): self {
+		$this->cost_tracker = $cost_tracker;
+		return $this;
+	}
+
+	/**
 	 * Collect data from all enabled source providers and store in database.
 	 *
 	 * Side effects: HTTP requests to source APIs, database inserts.
@@ -219,10 +237,16 @@ class PRAutoBlogger_Source_Collector {
 		}
 
 		if ( 'llm_research' === $source_type ) {
-			return [
+			$config = [
 				'model'  => get_option( 'prautoblogger_research_model', PRAUTOBLOGGER_DEFAULT_ANALYSIS_MODEL ),
 				'prompt' => get_option( 'prautoblogger_research_prompt', '' ),
 			];
+			// Pass the pipeline's cost tracker so research costs get tagged
+			// with the run_id for post-pipeline amortization across articles.
+			if ( null !== $this->cost_tracker ) {
+				$config['cost_tracker'] = $this->cost_tracker;
+			}
+			return $config;
 		}
 
 		return [];

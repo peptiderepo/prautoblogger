@@ -75,6 +75,8 @@ class PRAutoBlogger_Pipeline_Runner {
 		if ( ! empty( $ideas ) ) {
 			$this->queue_remaining( $ideas, $cost_tracker->get_run_id(), $result );
 		} else {
+			// Single-article run — amortize research costs now (1 article = full cost).
+			PRAutoBlogger_Post_Assembler::amortize_research_costs( $cost_tracker->get_run_id() );
 			$this->log_summary( $result );
 		}
 
@@ -134,6 +136,8 @@ class PRAutoBlogger_Pipeline_Runner {
 			$this->update_queue_status( $queue );
 			$this->schedule_next();
 		} else {
+			// All articles done — amortize shared research costs across them.
+			PRAutoBlogger_Post_Assembler::amortize_research_costs( $queue['run_id'] );
 			$this->write_final_status( $queue['results'] );
 			delete_option( self::QUEUE_KEY );
 			PRAutoBlogger_Generation_Lock::release();
@@ -153,7 +157,9 @@ class PRAutoBlogger_Pipeline_Runner {
 		$target = absint( get_option( 'prautoblogger_daily_article_target', 1 ) );
 
 		$this->broadcast_stage( __( 'Collecting sources from Reddit…', 'prautoblogger' ) );
-		( new PRAutoBlogger_Source_Collector() )->collect_from_all_sources();
+		( new PRAutoBlogger_Source_Collector() )
+			->set_cost_tracker( $cost_tracker )
+			->collect_from_all_sources();
 
 		$this->broadcast_stage( __( 'Analyzing topics and scoring…', 'prautoblogger' ) );
 		$llm      = new PRAutoBlogger_OpenRouter_Provider();
