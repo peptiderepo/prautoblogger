@@ -1,0 +1,186 @@
+<?php
+declare(strict_types=1);
+
+/**
+ * Adds "Writing Model", "Image Model", and "Cost" columns to the Posts list.
+ *
+ * Shows which LLM wrote each article, which model generated its featured image,
+ * and the total API cost of generating the article. Non-generated posts show "—".
+ *
+ * Triggered by: PRAutoBlogger::register_admin_hooks().
+ * Dependencies: Post meta, attachment meta, prab_generation_log table.
+ *
+ * @see core/class-publisher.php              — Sets _prautoblogger_model_used.
+ * @see core/class-image-media-sideloader.php — Sets _prautoblogger_image_model on attachment.
+ * @see core/class-cost-tracker.php           — Writes generation_log with estimated_cost.
+ * @see class-prautoblogger.php               — Registers hooks for this class.
+ */
+class PRAutoBlogger_Post_List_Columns {
+
+	/**
+	 * Register column and render hooks.
+	 *
+	 * Side effects: adds WordPress filters/actions for post list customization.
+	 */
+	public function register(): void {
+		add_filter( 'manage_posts_columns', [ $this, 'filter_add_columns' ] );
+		add_action( 'manage_posts_custom_column', [ $this, 'on_render_column' ], 10, 2 );
+		add_filter( 'manage_edit-post_sortable_columns', [ $this, 'filter_sortable_columns' ] );
+		add_action( 'pre_get_posts', [ $this, 'on_sort_by_model' ] );
+	}
+
+	/**
+	 * Insert three columns after the title column.
+	 *
+	 * @param array<string, string> $columns Existing columns.
+	 * @return array<string, string> Modified columns.
+	 */
+	public function filter_add_columns( array $columns ): array {
+		$new = [];
+		foreach ( $columns as $key => $label ) {
+			$new[ $key ] = $label;
+			if ( 'title' === $key ) {
+				$new['prab_writing_model'] = __( 'Writing Model', 'prautoblogger' );
+				$new['prab_image_model']   = __( 'Image Model', 'prautoblogger' );
+				$new['prab_cost']          = __( 'Cost', 'prautoblogger' );
+			}
+		}
+		return $new;
+	}
+
+	/**
+	 * Render cell content for our custom columns.
+	 *
+	 * @param string $column  Column identifier.
+	 * @param int    $post_id Current post ID.
+	 */
+	public function on_render_column( string $column, int $post_id ): void {
+		switch ( $column ) {
+			case 'prab_writing_model':
+				$this->render_model_cell(
+					(string) get_post_meta( $post_id, '_prautoblogger_model_used', true )
+				);
+				break;
+
+			case 'prab_image_model':
+				$this->render_image_model_cell( $post_id );
+				break;
+
+			case 'prab_cost':
+				$this->render_cost_cell( $post_id );
+				break;
+		}
+	}
+
+	/**
+	 * Make the writing model column sortable.
+	 *
+	 * @param array<string, string> $columns Sortable column map.
+	 * @return array<string, string>
+	 */
+	public function filter_sortable_columns( array $columns ): array {
+		$columns['prab_writing_model'] = 'prab_writing_model';
+		return $columns;
+	}
+
+	/**
+	 * Handle sorting by writing model meta value.
+	 *
+	 * @param \WP_Query $query The admin posts query.
+	 */
+	public function on_sort_by_model( \WP_Query $query ): void {
+		if ( ! is_admin() || ! $query->is_main_query() ) {
+			return;
+		}
+		if ( 'prab_writing_model' !== $query->get( 'orderby' ) ) {
+			return;
+		}
+		$query->set( 'meta_key', '_prautoblogger_model_used' );
+		$query->set( 'orderby', 'meta_value' );
+	}
+
+	// ── Private helpers ─────────────────────────────────────────────────
+
+	/**
+	 * Render a model name cell with shortened display and full tooltip.
+	 *
+	 * @param string $model Full model identifier (may be empty).
+	 */
+	private function render_model_cell( string $model ): void {
+		if ( '' === $model ) {
+			echo '—';
+			return;
+		}
+		printf(
+			'<span title="%s" style="font-size:12px;color:#666;">%s</span>',
+			esc_attr( $model ),
+			esc_html( $this->shorten( $model ) )
+		);
+	}
+
+	/**
+	 * Look up the featured image's model and render it.
+	 *
+	 * @param int $post_id The post ID.
+	 */
+	private function render_image_model_cell( int $post_id ): void {
+		$thumbnail_id = (int) get_post_thumbnail_id( $post_id );
+		if ( 0 === $thumbnail_id ) {
+			echo '—';
+			return;
+		}
+		$model = (string) get_post_meta( $thumbnail_id, '_prautoblogger_image_model', true );
+		$this->render_model_cell( $model );
+	}
+
+	/**
+	 * Sum all generation_log costs for this post and render.
+	 *
+	 * @param int $post_id The post ID.
+	 */
+	private function render_cost_cell( int $post_id ): void {
+		// Only query for posts we generated — skip the DB hit for regular posts.
+		$is_generated = get_post_meta( $post_id, '_prautoblogger_generated', true );
+		if ( '1' !== $is_generated ) {
+			echo '—';
+			return;
+		}
+
+		global $wpdb;
+		$table = $wpdb->prefix . 'prautoblogger_generation_log';
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$total = (float) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT SUM(estimated_cost) FROM {$table} WHERE post_id = %d",
+				$post_id
+			)
+		);
+
+		if ( $total <= 0.0 ) {
+			echo '<span style="font-size:12px;color:#999;">$0.00</span>';
+			return;
+		}
+
+		// Show 4 decimals for sub-cent precision, 2 decimals for larger amounts.
+		$formatted = $total < 0.01
+			? sprintf( '$%.4f', $total )
+			: sprintf( '$%.2f', $total );
+
+		printf(
+			'<span style="font-size:12px;color:#666;">%s</span>',
+			esc_html( $formatted )
+		);
+	}
+
+	/**
+	 * Strip provider prefix for compact display.
+	 *
+	 * @param string $model Full model identifier.
+	 * @return string Shortened name.
+	 */
+	private function shorten( string $model ): string {
+		$pos = strpos( $model, '/' );
+		return false !== $pos ? substr( $model, $pos + 1 ) : $model;
+	}
+}

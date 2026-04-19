@@ -5,6 +5,17 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.4.1] — 2026-04-19
+
+### Added
+- **Posts list columns: Writing Model, Image Model, Cost.** Three new columns
+  on the WordPress Posts admin page. Writing Model shows the LLM that wrote the
+  article, Image Model shows the model that generated the featured image, and
+  Cost shows the total API spend for generating that article (summed from the
+  generation log). All columns show "—" for non-generated posts. Writing Model
+  is sortable. Model names are shortened (provider prefix stripped) with full
+  ID in a tooltip.
+
 ## [0.4.0] — 2026-04-19
 
 ### Added

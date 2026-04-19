@@ -75,6 +75,8 @@ class PRAutoBlogger {
 
 		add_action( 'admin_menu', [ new PRAutoBlogger_Log_Viewer(), 'on_register_menu' ] );
 
+		( new PRAutoBlogger_Post_List_Columns() )->register();
+
 		// Block false update notifications — our slug collides with another plugin.
 		add_filter( 'site_transient_update_plugins', [ $this, 'filter_block_false_updates' ] );
 	}
