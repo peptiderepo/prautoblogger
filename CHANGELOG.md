@@ -5,6 +5,13 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.4.2] — 2026-04-19
+
+### Fixed
+- **Posts list Title column unreadable.** Title was compressed to ~30px by the
+  three custom columns. Title now gets 35% minimum width with word-wrap enabled.
+  Model columns trimmed to 100px with text-overflow ellipsis for long model names.
+
 ## [0.4.1] — 2026-04-19
 
 ### Added

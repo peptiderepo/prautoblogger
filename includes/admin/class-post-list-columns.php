@@ -109,9 +109,10 @@ class PRAutoBlogger_Post_List_Columns {
 			return;
 		}
 		echo '<style>'
-			. '.column-prab_writing_model{width:120px}'
-			. '.column-prab_image_model{width:120px}'
-			. '.column-prab_cost{width:60px}'
+			. '.wp-list-table .column-title{width:35%;word-wrap:break-word;overflow-wrap:break-word}'
+			. '.column-prab_writing_model{width:100px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+			. '.column-prab_image_model{width:100px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+			. '.column-prab_cost{width:55px;white-space:nowrap}'
 			. '</style>';
 	}
 
