@@ -110,6 +110,16 @@ class PRAutoBlogger_Pipeline_Runner {
 			return;
 		}
 
+		// Persist the consumed queue BEFORE generating so the status poller
+		// cannot re-schedule a cron event for the same idea. Without this,
+		// the DB still holds the old queue during the ~90s generation window,
+		// and the poller's orphan-recovery logic duplicates the last article.
+		if ( ! empty( $queue['ideas'] ) ) {
+			update_option( self::QUEUE_KEY, $queue, false );
+		} else {
+			delete_option( self::QUEUE_KEY );
+		}
+
 		$worker         = new PRAutoBlogger_Article_Worker( $cost_tracker );
 		$article_result = $worker->generate( $idea );
 
