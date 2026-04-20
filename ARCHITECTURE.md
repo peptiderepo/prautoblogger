@@ -116,7 +116,8 @@ prautoblogger/
 │   ├── admin/
 │   │   ├── class-admin-page.php       # Main settings page (tabbed SaaS-style UI)
 │   │   ├── class-settings-fields.php  # Declarative settings: sections + core fields (API/Models/Content/Sources)
-│   │   ├── class-settings-fields-extended.php # Operational fields: schedule, publishing, analytics, images
+│   │   ├── class-settings-fields-extended.php # Operational fields: schedule, publishing, display, analytics, images
+│   │   ├── class-image-model-registry.php # Static list of image generation models for the model picker
 │   │   ├── class-admin-notices.php    # Onboarding notices, error alerts, budget warnings
 │   │   ├── class-dashboard-widget.php # WP Dashboard widget showing generation status
 │   │   ├── class-post-metabox.php     # Metabox on posts showing generation metadata
@@ -177,6 +178,7 @@ prautoblogger/
 │   │   └── (Phase 3: class-cloudflare-workers-ai-model-registry.php)
 │   │
 │   ├── frontend/
+│   │   ├── class-article-typography.php # Inline CSS for font, size, table borders on generated posts
 │   │   └── class-posts-widget.php     # [prautoblogger_posts] shortcode + REST endpoint
 │   │
 │   └── models/
@@ -430,6 +432,9 @@ All prefixed with `prautoblogger_`:
 | `prautoblogger_cloudflare_ai_token`    | Encrypted Cloudflare Workers AI API token             |
 | `prautoblogger_cloudflare_account_id`  | Cloudflare account UUID (plaintext — identifier, not secret) |
 | `prautoblogger_image_model`            | Image model alias: `flux-1-schnell` (default) or `flux-1-dev` |
+| `prautoblogger_article_font_family`    | Font family key: 'default', 'inter', 'georgia', 'merriweather', 'lora', 'open_sans', 'roboto', 'system' |
+| `prautoblogger_article_font_size`     | Body font size in px (0 = theme default). Recommended: 16–18. |
+| `prautoblogger_table_borders`         | Toggle: add borders/padding/striping to tables (default: '1') |
 | `prautoblogger_image_style_suffix`     | Text appended to every image prompt (default: CEO-locked 90s infomercial prompt) |
 | `prautoblogger_openrouter_model_registry` | Normalized OpenRouter model list (JSON array, daily refresh, serves as durable cache) |
 | `prautoblogger_openrouter_model_registry_fetched_at` | Unix timestamp of last successful model registry refresh |

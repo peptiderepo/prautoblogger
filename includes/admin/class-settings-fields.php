@@ -60,6 +60,11 @@ class PRAutoBlogger_Settings_Fields {
 				'icon'        => 'dashicons-chart-area',
 				'description' => __( 'Connect Google Analytics 4 for post performance scoring.', 'prautoblogger' ),
 			],
+			'prautoblogger_display' => [
+				'title'       => __( 'Display', 'prautoblogger' ),
+				'icon'        => 'dashicons-editor-textcolor',
+				'description' => __( 'Control how generated articles look on the frontend — fonts, sizes, and table styling.', 'prautoblogger' ),
+			],
 			'prautoblogger_images' => [
 				'title'       => __( 'Images', 'prautoblogger' ),
 				'icon'        => 'dashicons-format-image',

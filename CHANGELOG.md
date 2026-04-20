@@ -5,6 +5,22 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.7.0] — 2026-04-20
+
+### Added
+- **Display settings section.** New "Display" tab in admin with three
+  settings that control how generated articles render on the frontend:
+  - **Article Font** — choose from 7 font families (Inter, Georgia,
+    Merriweather, Lora, Open Sans, Roboto, System) or keep theme default.
+    Google Fonts are loaded only on PRAutoBlogger posts that need them.
+  - **Article Font Size** — set body text size in pixels (0 = theme
+    default). Recommended 16–18px for comfortable reading.
+  - **Table Borders** — adds visible borders, cell padding, header
+    background, and alternating row colors to tables. Enabled by default.
+- **Article_Typography frontend class.** Injects inline CSS only on
+  singular post pages with `_prautoblogger_generated` meta — zero
+  impact on non-PRAutoBlogger pages.
+
 ## [0.6.3] — 2026-04-20
 
 ### Fixed

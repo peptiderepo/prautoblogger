@@ -83,11 +83,15 @@ class PRAutoBlogger {
 		add_filter( 'site_transient_update_plugins', [ $this, 'filter_block_false_updates' ] );
 	}
 
-	/** Register frontend hooks (shortcode + REST for posts widget). */
+	/** Register frontend hooks (shortcode, REST, typography). */
 	private function register_frontend_hooks(): void {
 		$posts_widget = new PRAutoBlogger_Posts_Widget();
 		add_action( 'init', [ $posts_widget, 'on_register_shortcode' ] );
 		add_action( 'rest_api_init', [ $posts_widget, 'on_register_rest_route' ] );
+
+		$typography = new PRAutoBlogger_Article_Typography();
+		add_action( 'wp_head', [ $typography, 'on_wp_head' ] );
+		add_action( 'wp_enqueue_scripts', [ $typography, 'on_enqueue_fonts' ] );
 	}
 
 	/** Register cron-triggered hooks for scheduled generation and metrics. */

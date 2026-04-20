@@ -2,75 +2,29 @@
 declare(strict_types=1);
 
 /**
- * Extended settings fields: schedule, publishing, analytics, and images.
+ * Extended settings fields: schedule, publishing, analytics, display, and images.
  *
  * What: Declarative field definitions for operational settings sections.
  * Who calls it: PRAutoBlogger_Settings_Fields::get_fields() merges these in.
- * Dependencies: PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL, PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX constants.
+ * Dependencies: PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL, PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX constants,
+ *               PRAutoBlogger_Article_Typography (font choices), PRAutoBlogger_Image_Model_Registry.
  *
- * @see admin/class-settings-fields.php — Core fields and sections; calls get_extended_fields().
- * @see admin/class-admin-page.php       — Renders fields registered from these definitions.
- * @see CONVENTIONS.md                   — "How To: Add a New Admin Setting".
+ * @see admin/class-settings-fields.php       — Core fields and sections; calls get_extended_fields().
+ * @see admin/class-admin-page.php            — Renders fields registered from these definitions.
+ * @see admin/class-image-model-registry.php  — Static image model list extracted for 300-line compliance.
+ * @see frontend/class-article-typography.php — Reads Display settings on the frontend.
+ * @see CONVENTIONS.md                        — "How To: Add a New Admin Setting".
  */
 class PRAutoBlogger_Settings_Fields_Extended {
 
 	/**
 	 * Static image model list for the admin model picker.
-	 * No registry API for these — they're hardcoded here and updated manually.
+	 * Delegates to Image_Model_Registry (extracted for 300-line file limit).
 	 *
 	 * @return array<int, array<string, mixed>>
 	 */
 	public static function get_image_models(): array {
-		return [
-			[
-				'id'             => 'google/gemini-2.5-flash-image',
-				'name'           => 'Gemini 2.5 Flash Image (Nano Banana)',
-				'provider'       => 'openrouter',
-				'cost_per_image' => 0.005,
-				'capabilities'   => [ 'image_generation' ],
-				'description'    => __( 'Good quality, low cost. Recommended.', 'prautoblogger' ),
-			],
-			[
-				'id'             => 'google/gemini-3.1-flash-image-preview',
-				'name'           => 'Gemini 3.1 Flash Image (Nano Banana 2)',
-				'provider'       => 'openrouter',
-				'cost_per_image' => 0.008,
-				'capabilities'   => [ 'image_generation' ],
-				'description'    => __( 'Latest Google. Better quality.', 'prautoblogger' ),
-			],
-			[
-				'id'             => 'google/gemini-3-pro-image-preview',
-				'name'           => 'Gemini 3 Pro Image (Nano Banana Pro)',
-				'provider'       => 'openrouter',
-				'cost_per_image' => 0.03,
-				'capabilities'   => [ 'image_generation' ],
-				'description'    => __( 'Highest quality Google. Premium.', 'prautoblogger' ),
-			],
-			[
-				'id'             => 'openai/gpt-5-image-mini',
-				'name'           => 'GPT-5 Image Mini',
-				'provider'       => 'openrouter',
-				'cost_per_image' => 0.02,
-				'capabilities'   => [ 'image_generation' ],
-				'description'    => __( 'OpenAI budget image model.', 'prautoblogger' ),
-			],
-			[
-				'id'             => 'openai/gpt-5-image',
-				'name'           => 'GPT-5 Image',
-				'provider'       => 'openrouter',
-				'cost_per_image' => 0.08,
-				'capabilities'   => [ 'image_generation' ],
-				'description'    => __( 'OpenAI premium. Photorealistic.', 'prautoblogger' ),
-			],
-			[
-				'id'             => 'flux-1-schnell',
-				'name'           => 'FLUX.1 schnell (Cloudflare)',
-				'provider'       => 'cloudflare',
-				'cost_per_image' => 0.0007,
-				'capabilities'   => [ 'image_generation' ],
-				'description'    => __( 'Cheapest. Low quality, 4-step.', 'prautoblogger' ),
-			],
-		];
+		return PRAutoBlogger_Image_Model_Registry::get_models();
 	}
 
 	/**
@@ -208,6 +162,35 @@ class PRAutoBlogger_Settings_Fields_Extended {
 				'type'        => 'password',
 				'section'     => 'prautoblogger_analytics',
 				'description' => __( 'Paste the full JSON key file for a service account with Analytics read access.', 'prautoblogger' ),
+			],
+
+			// ── Display ────────────────────────────────────────────────
+			[
+				'id'          => 'prautoblogger_article_font_family',
+				'label'       => __( 'Article Font', 'prautoblogger' ),
+				'type'        => 'select',
+				'section'     => 'prautoblogger_display',
+				'default'     => 'default',
+				'options'     => PRAutoBlogger_Article_Typography::get_font_choices(),
+				'description' => __( 'Font family used for generated article body text. Serif fonts improve long-form readability.', 'prautoblogger' ),
+			],
+			[
+				'id'          => 'prautoblogger_article_font_size',
+				'label'       => __( 'Article Font Size (px)', 'prautoblogger' ),
+				'type'        => 'number',
+				'section'     => 'prautoblogger_display',
+				'default'     => 0,
+				'min'         => 0,
+				'max'         => 32,
+				'description' => __( 'Base font size for article body text. 0 uses the theme default (13px). Recommended: 16–18px for comfortable reading.', 'prautoblogger' ),
+			],
+			[
+				'id'          => 'prautoblogger_table_borders',
+				'label'       => __( 'Table Borders', 'prautoblogger' ),
+				'type'        => 'toggle',
+				'section'     => 'prautoblogger_display',
+				'default'     => '1',
+				'description' => __( 'Add visible borders, padding, and alternating row colors to tables in generated articles.', 'prautoblogger' ),
 			],
 
 			// ── Images ─────────────────────────────────────────────────

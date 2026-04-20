@@ -169,6 +169,9 @@ class PRAutoBlogger_Activator {
 			'prautoblogger_max_word_count'        => 2000,
 			'prautoblogger_topic_exclusions'      => '[]',
 			'prautoblogger_enabled_sources'       => '["reddit"]',
+			'prautoblogger_article_font_family'   => 'default',
+			'prautoblogger_article_font_size'     => 0,
+			'prautoblogger_table_borders'         => '1',
 			'prautoblogger_schedule_time'         => '03:00',
 			'prautoblogger_log_level'             => 'info',
 		];
