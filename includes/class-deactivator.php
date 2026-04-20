@@ -36,6 +36,7 @@ class PRAutoBlogger_Deactivator {
 		$hooks = [
 			'prautoblogger_daily_generation',
 			'prautoblogger_collect_metrics',
+			'prautoblogger_reap_orphan_research_rows',
 		];
 
 		foreach ( $hooks as $hook ) {

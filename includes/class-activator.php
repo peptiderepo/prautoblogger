@@ -28,6 +28,7 @@ class PRAutoBlogger_Activator {
 		self::create_tables();
 		self::set_default_options();
 		self::schedule_cron();
+		self::backpopulate_run_id_meta_v081();
 
 		// Store the DB version so we can run migrations on future updates.
 		update_option( 'prautoblogger_db_version', PRAUTOBLOGGER_DB_VERSION, false );
@@ -225,5 +226,62 @@ class PRAutoBlogger_Activator {
 		if ( ! wp_next_scheduled( 'prautoblogger_collect_metrics' ) ) {
 			wp_schedule_event( time() + HOUR_IN_SECONDS, 'prautoblogger_six_hours', 'prautoblogger_collect_metrics' );
 		}
+
+		// v0.8.1: daily reaper for orphan `llm_research` rows. Pinned to
+		// 03:15 so it runs 15 min after the primary generation cron, giving
+		// any live pipeline time to finish and call amortize_research_costs
+		// cleanly before the reaper scans.
+		if ( ! wp_next_scheduled( 'prautoblogger_reap_orphan_research_rows' ) ) {
+			$tomorrow = strtotime( 'tomorrow 03:15' );
+			if ( false !== $tomorrow ) {
+				wp_schedule_event( $tomorrow, 'daily', 'prautoblogger_reap_orphan_research_rows' );
+			}
+		}
+	}
+
+	/**
+	 * One-shot v0.8.1 migration — back-populate `_prautoblogger_run_id`
+	 * post_meta for existing posts from their gen-log rows.
+	 *
+	 * Lets the orphan-research-row reaper (v0.8.1+) attribute historic
+	 * orphan rows to sibling posts via post_meta lookup, without having
+	 * to walk the generation_log table. Gated by
+	 * `prautoblogger_migrated_run_id_meta_v081` so it runs exactly once
+	 * per site.
+	 *
+	 * Side effects: adds post_meta rows for existing PRAutoBlogger posts
+	 *               that don't already have `_prautoblogger_run_id`.
+	 *
+	 * @return void
+	 */
+	private static function backpopulate_run_id_meta_v081(): void {
+		if ( get_option( 'prautoblogger_migrated_run_id_meta_v081' ) ) {
+			return;
+		}
+
+		global $wpdb;
+		$gen_log = $wpdb->prefix . 'prautoblogger_generation_log';
+
+		// For each (post_id, run_id) pair present in the gen-log, write
+		// the run_id meta if it's not already set. Uses the first run_id
+		// seen per post — in practice each post is linked to exactly one run.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		$pairs = $wpdb->get_results(
+			"SELECT post_id, MIN(run_id) AS run_id FROM {$gen_log}
+			WHERE post_id IS NOT NULL AND run_id IS NOT NULL AND run_id != ''
+			GROUP BY post_id"
+		);
+
+		if ( is_array( $pairs ) ) {
+			foreach ( $pairs as $row ) {
+				$post_id = (int) ( $row->post_id ?? 0 );
+				$run_id  = (string) ( $row->run_id ?? '' );
+				if ( $post_id > 0 && '' !== $run_id && ! metadata_exists( 'post', $post_id, '_prautoblogger_run_id' ) ) {
+					update_post_meta( $post_id, '_prautoblogger_run_id', $run_id );
+				}
+			}
+		}
+
+		update_option( 'prautoblogger_migrated_run_id_meta_v081', '1' );
 	}
 }

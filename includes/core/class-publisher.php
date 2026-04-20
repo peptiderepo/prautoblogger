@@ -87,7 +87,7 @@ class PRAutoBlogger_Publisher {
 			'post_status'  => $post_status,
 			'post_type'    => 'post',
 			'post_author'  => PRAutoBlogger_Post_Assembler::get_default_author_id(),
-			'meta_input'   => $this->build_meta( $idea, $review ),
+			'meta_input'   => $this->build_meta( $idea, $review, $run_id ),
 		];
 
 		/** @see class-prautoblogger.php — listeners registered in main loader. */
@@ -120,15 +120,22 @@ class PRAutoBlogger_Publisher {
 	/**
 	 * Build post_meta array for generation metadata.
 	 *
+	 * The `_prautoblogger_run_id` key (added v0.8.1) lets the orphan-research
+	 * reaper attribute an orphan `llm_research` row back to its sibling
+	 * articles without re-walking the gen_log table. See
+	 * core/class-research-reaper.php.
+	 *
 	 * @param PRAutoBlogger_Article_Idea     $idea
 	 * @param PRAutoBlogger_Editorial_Review $review
+	 * @param string|null                    $run_id Pipeline run UUID, or null in legacy paths.
 	 * @return array<string, mixed>
 	 */
 	private function build_meta(
 		PRAutoBlogger_Article_Idea $idea,
-		PRAutoBlogger_Editorial_Review $review
+		PRAutoBlogger_Editorial_Review $review,
+		?string $run_id = null
 	): array {
-		return [
+		$meta = [
 			'_prautoblogger_generated'       => '1',
 			'_prautoblogger_analysis_id'     => $idea->get_analysis_id(),
 			'_prautoblogger_source_ids'      => wp_json_encode( $idea->get_source_ids() ),
@@ -143,5 +150,9 @@ class PRAutoBlogger_Publisher {
 			'_prautoblogger_article_type'    => $idea->get_article_type(),
 			'_prautoblogger_target_keywords' => wp_json_encode( $idea->get_target_keywords() ),
 		];
+		if ( null !== $run_id && '' !== $run_id ) {
+			$meta['_prautoblogger_run_id'] = $run_id;
+		}
+		return $meta;
 	}
 }
