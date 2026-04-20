@@ -257,6 +257,14 @@ class PRAutoBlogger_Settings_Fields_Extended {
 				'description' => __( 'Appended to every image prompt. Controls visual look. Changing mid-run causes visible style drift.', 'prautoblogger' ),
 			],
 			[
+				'id'          => 'prautoblogger_image_prompt_instructions',
+				'label'       => __( 'Image Prompt Instructions', 'prautoblogger' ),
+				'type'        => 'textarea',
+				'section'     => 'prautoblogger_images',
+				'default'     => PRAutoBlogger_Image_Prompt_Builder::REWRITER_SYSTEM_PROMPT,
+				'description' => __( 'System prompt given to the rewriter LLM that turns each article into a SCENE + CAPTION for the image generator. Changing this reshapes the look of all future images. Leave blank to use the default.', 'prautoblogger' ),
+			],
+			[
 				'id'          => 'prautoblogger_image_nsfw_retry',
 				'label'       => __( 'Retry NSFW-Blocked Images', 'prautoblogger' ),
 				'type'        => 'toggle',

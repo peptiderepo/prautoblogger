@@ -21,13 +21,12 @@ declare(strict_types=1);
 class PRAutoBlogger_Image_Prompt_Builder {
 
 	/**
-	 * System prompt that teaches the LLM how to write image-gen prompts.
-	 *
-	 * Why this lives here instead of in wp_options: it's engineering-level
-	 * instruction, not a user-facing setting. Changing it should require a
-	 * code review, not an admin-panel click.
+	 * Default system prompt that teaches the LLM how to write image-gen
+	 * prompts. Exposed as a `public const` so the admin-settings layer can
+	 * use it as the default value for `prautoblogger_image_prompt_instructions`.
+	 * The option, when non-empty, wins at call time (see rewrite_via_llm).
 	 */
-	private const REWRITER_SYSTEM_PROMPT = <<<'PROMPT'
+	public const REWRITER_SYSTEM_PROMPT = <<<'PROMPT'
 You are a comedy writer and single-panel cartoon creator, like Gary Larson (The Far Side) meets science humor.
 
 Given an article title and summary about peptides, supplements, or biohacking, create a SINGLE-PANEL COMIC concept. Output TWO parts separated by a blank line:
@@ -141,12 +140,13 @@ PROMPT;
 		}
 
 		try {
-			$llm   = $this->get_llm_provider();
-			$model = get_option( 'prautoblogger_analysis_model', PRAUTOBLOGGER_DEFAULT_ANALYSIS_MODEL );
+			$llm    = $this->get_llm_provider();
+			$model  = get_option( 'prautoblogger_analysis_model', PRAUTOBLOGGER_DEFAULT_ANALYSIS_MODEL );
+			$system = $this->resolve_system_prompt();
 
 			$result = $llm->send_chat_completion(
 				[
-					[ 'role' => 'system', 'content' => self::REWRITER_SYSTEM_PROMPT ],
+					[ 'role' => 'system', 'content' => $system ],
 					[ 'role' => 'user', 'content' => $user_message ],
 				],
 				$model,
@@ -283,15 +283,17 @@ PROMPT;
 		];
 	}
 
-	/**
-	 * Lazy-load the OpenRouter provider.
-	 *
-	 * @return PRAutoBlogger_OpenRouter_Provider
-	 */
+	/** Lazy-load the OpenRouter provider. */
 	private function get_llm_provider(): PRAutoBlogger_OpenRouter_Provider {
 		if ( null === $this->llm ) {
 			$this->llm = new PRAutoBlogger_OpenRouter_Provider();
 		}
 		return $this->llm;
+	}
+
+	/** Admin option wins; blank falls back to REWRITER_SYSTEM_PROMPT. */
+	private function resolve_system_prompt(): string {
+		$override = (string) get_option( 'prautoblogger_image_prompt_instructions', '' );
+		return '' !== trim( $override ) ? $override : self::REWRITER_SYSTEM_PROMPT;
 	}
 }

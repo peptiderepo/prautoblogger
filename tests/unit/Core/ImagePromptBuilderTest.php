@@ -30,6 +30,21 @@ class ImagePromptBuilderTest extends BaseTestCase {
 	}
 
 	/**
+	 * Inject a mock OpenRouter provider into the Prompt_Builder via
+	 * reflection so the rewrite path can be exercised without a real HTTP
+	 * call. Used by the system-prompt override tests below.
+	 */
+	private function inject_llm(
+		\PRAutoBlogger_Image_Prompt_Builder $builder,
+		$mock_llm
+	): void {
+		$ref  = new \ReflectionClass( \PRAutoBlogger_Image_Prompt_Builder::class );
+		$prop = $ref->getProperty( 'llm' );
+		$prop->setAccessible( true );
+		$prop->setValue( $builder, $mock_llm );
+	}
+
+	/**
 	 * Test build_article_prompt() generates a prompt from article title and content.
 	 */
 	public function test_build_article_prompt_from_content(): void {
@@ -118,5 +133,106 @@ class ImagePromptBuilderTest extends BaseTestCase {
 
 		// Prompt should be under 500 chars (concept + style suffix).
 		$this->assertLessThan( 500, strlen( $prompt ) );
+	}
+
+	/**
+	 * When `prautoblogger_image_prompt_instructions` is non-empty, the
+	 * rewriter LLM must receive that content as its system message —
+	 * NOT the hardcoded REWRITER_SYSTEM_PROMPT constant.
+	 */
+	public function test_rewrite_uses_setting_when_present(): void {
+		$custom_system = 'CUSTOM-OVERRIDE: tell the LLM a very different thing.';
+
+		Functions\when( 'get_option' )->alias( function ( $key, $default = false ) use ( $custom_system ) {
+			if ( 'prautoblogger_image_prompt_instructions' === $key ) {
+				return $custom_system;
+			}
+			if ( 'prautoblogger_image_style_suffix' === $key ) {
+				return 'Style: x';
+			}
+			return $default;
+		} );
+
+		$captured_messages = [];
+		$mock_llm          = $this->createMock( \PRAutoBlogger_OpenRouter_Provider::class );
+		$mock_llm->method( 'send_chat_completion' )->willReturnCallback(
+			function ( $messages ) use ( &$captured_messages ) {
+				$captured_messages = $messages;
+				return [
+					'content'           => "A scene.\n\n\"A caption.\"",
+					'prompt_tokens'     => 10,
+					'completion_tokens' => 10,
+				];
+			}
+		);
+		$mock_llm->method( 'estimate_cost' )->willReturn( 0.0 );
+
+		// Stub $wpdb so Cost_Tracker::log_api_call inside rewrite_via_llm
+		// can insert without blowing up.
+		$mock_wpdb            = $this->create_mock_wpdb();
+		$mock_wpdb->insert_id = 1;
+		$mock_wpdb->method( 'insert' )->willReturn( 1 );
+		$GLOBALS['wpdb'] = $mock_wpdb;
+
+		$builder = new \PRAutoBlogger_Image_Prompt_Builder();
+		$this->inject_llm( $builder, $mock_llm );
+
+		$builder->build_article_prompt( [ 'post_title' => 'Test', 'post_content' => '<p>Body.</p>' ] );
+
+		unset( $GLOBALS['wpdb'] );
+
+		$this->assertNotEmpty( $captured_messages, 'Rewriter LLM was not called.' );
+		$this->assertSame( 'system', $captured_messages[0]['role'] ?? '' );
+		$this->assertSame( $custom_system, $captured_messages[0]['content'] ?? '' );
+	}
+
+	/**
+	 * When the option is empty (or whitespace-only), the rewriter must
+	 * fall back to REWRITER_SYSTEM_PROMPT — belt-and-braces so a blank
+	 * save from the admin UI cannot brick image generation.
+	 */
+	public function test_rewrite_falls_back_to_default_when_setting_empty(): void {
+		Functions\when( 'get_option' )->alias( function ( $key, $default = false ) {
+			if ( 'prautoblogger_image_prompt_instructions' === $key ) {
+				return '   '; // whitespace — should trigger fallback.
+			}
+			if ( 'prautoblogger_image_style_suffix' === $key ) {
+				return 'Style: x';
+			}
+			return $default;
+		} );
+
+		$captured_messages = [];
+		$mock_llm          = $this->createMock( \PRAutoBlogger_OpenRouter_Provider::class );
+		$mock_llm->method( 'send_chat_completion' )->willReturnCallback(
+			function ( $messages ) use ( &$captured_messages ) {
+				$captured_messages = $messages;
+				return [
+					'content'           => "A scene.\n\n\"A caption.\"",
+					'prompt_tokens'     => 10,
+					'completion_tokens' => 10,
+				];
+			}
+		);
+		$mock_llm->method( 'estimate_cost' )->willReturn( 0.0 );
+
+		// Stub $wpdb so Cost_Tracker::log_api_call inside rewrite_via_llm
+		// can insert without blowing up.
+		$mock_wpdb            = $this->create_mock_wpdb();
+		$mock_wpdb->insert_id = 1;
+		$mock_wpdb->method( 'insert' )->willReturn( 1 );
+		$GLOBALS['wpdb'] = $mock_wpdb;
+
+		$builder = new \PRAutoBlogger_Image_Prompt_Builder();
+		$this->inject_llm( $builder, $mock_llm );
+
+		$builder->build_article_prompt( [ 'post_title' => 'Test', 'post_content' => '<p>Body.</p>' ] );
+
+		unset( $GLOBALS['wpdb'] );
+
+		$this->assertSame(
+			\PRAutoBlogger_Image_Prompt_Builder::REWRITER_SYSTEM_PROMPT,
+			$captured_messages[0]['content'] ?? ''
+		);
 	}
 }
