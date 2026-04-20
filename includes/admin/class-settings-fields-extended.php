@@ -211,25 +211,13 @@ class PRAutoBlogger_Settings_Fields_Extended {
 				'description' => __( 'Generate a second image from source data for A/B testing. Disabling saves one image generation + one LLM prompt rewrite per article.', 'prautoblogger' ),
 			],
 			[
-				'id'      => 'prautoblogger_image_provider',
-				'label'   => __( 'Image Provider', 'prautoblogger' ),
-				'type'    => 'select',
-				'section' => 'prautoblogger_images',
-				'default' => 'openrouter',
-				'options' => [
-					'openrouter' => __( 'OpenRouter (multiple models available)', 'prautoblogger' ),
-					'cloudflare' => __( 'Cloudflare Workers AI', 'prautoblogger' ),
-				],
-				'description' => __( 'OpenRouter reuses your existing API key and offers higher-quality models. Cloudflare is cheaper but lower quality.', 'prautoblogger' ),
-			],
-			[
 				'id'          => 'prautoblogger_image_model',
 				'label'       => __( 'Image Model', 'prautoblogger' ),
 				'type'        => 'model_select',
 				'section'     => 'prautoblogger_images',
 				'default'     => PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL,
 				'capability'  => 'image_generation',
-				'description' => __( 'Pick a model from your selected provider.', 'prautoblogger' ),
+				'description' => __( 'Pick an image model. The provider (OpenRouter or Cloudflare Workers AI) is derived from the model registry on save, so mismatched pairs are no longer possible.', 'prautoblogger' ),
 				'badge'       => __( 'Quality', 'prautoblogger' ),
 			],
 			[

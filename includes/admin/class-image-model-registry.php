@@ -80,4 +80,20 @@ class PRAutoBlogger_Image_Model_Registry {
 			],
 		];
 	}
+
+	/**
+	 * Return the provider id for a known model, or empty string if the
+	 * model id is not in the registry.
+	 *
+	 * @param string $model_id Model slug from the admin UI.
+	 * @return string Provider id ('openrouter' | 'cloudflare' | '').
+	 */
+	public static function provider_for( string $model_id ): string {
+		foreach ( self::get_models() as $model ) {
+			if ( ( $model['id'] ?? '' ) === $model_id ) {
+				return (string) ( $model['provider'] ?? '' );
+			}
+		}
+		return '';
+	}
 }

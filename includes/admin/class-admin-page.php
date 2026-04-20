@@ -279,7 +279,21 @@ class PRAutoBlogger_Admin_Page {
 		if ( in_array( $option_name, $numeric, true ) ) {
 			return is_numeric( $value ) ? $value : 0;
 		}
-
+		if ( 'prautoblogger_image_model' === $option_name ) {
+			return $this->sanitize_image_model( (string) $value );
+		}
 		return sanitize_text_field( (string) $value );
+	}
+
+	/** Validate model id against the registry and persist the derived provider. */
+	private function sanitize_image_model( string $value ): string {
+		$candidate = sanitize_text_field( $value );
+		$provider  = PRAutoBlogger_Image_Model_Registry::provider_for( $candidate );
+		if ( '' !== $provider ) {
+			update_option( 'prautoblogger_image_provider', $provider );
+			return $candidate;
+		}
+		add_settings_error( 'prautoblogger_image_model', 'prautoblogger_image_model_unknown', sprintf( esc_html__( 'Image model "%s" is not in the registry. Keeping the previous selection.', 'prautoblogger' ), esc_html( $candidate ) ) );
+		return (string) get_option( 'prautoblogger_image_model', PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL );
 	}
 }
