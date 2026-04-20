@@ -65,7 +65,9 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} \
             ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} \
-            "cd ~/domains/peptiderepo.com/public_html && find wp-content/litespeed/ -type f -delete 2>/dev/null; touch .lscache_purge 2>/dev/null || true"
+            "cd ~/domains/peptiderepo.com/public_html && \
+             wp litespeed-purge all 2>/dev/null || \
+             (find wp-content/litespeed/ -type f -delete 2>/dev/null; touch .lscache_purge 2>/dev/null) || true"
 
       - name: Health check
         run: |
