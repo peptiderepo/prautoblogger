@@ -46,6 +46,10 @@ class ImagePromptBuilderTest extends BaseTestCase {
 
 	/**
 	 * Test build_article_prompt() generates a prompt from article title and content.
+	 *
+	 * `build_article_prompt()` has returned `array{prompt: string, caption: string}`
+	 * since v0.4.x. Destructure on receipt so the assertions run against the
+	 * scene string, not the envelope.
 	 */
 	public function test_build_article_prompt_from_content(): void {
 		$builder = new \PRAutoBlogger_Image_Prompt_Builder();
@@ -55,13 +59,14 @@ class ImagePromptBuilderTest extends BaseTestCase {
 			'post_content' => '<p>Dragons are fascinating creatures. Learn the secrets.</p>',
 		];
 
-		$prompt = $builder->build_article_prompt( $article_data );
+		[ 'prompt' => $scene, 'caption' => $caption ] = $builder->build_article_prompt( $article_data );
 
-		$this->assertStringContainsString( 'How to Train Your Dragon', $prompt );
-		$this->assertStringContainsString( 'Dragons are fascinating', $prompt );
+		$this->assertStringContainsString( 'How to Train Your Dragon', $scene );
+		$this->assertStringContainsString( 'Dragons are fascinating', $scene );
 		// Style suffix should be appended.
-		$this->assertNotEmpty( $prompt );
-		$this->assertGreaterThan( 50, strlen( $prompt ) );
+		$this->assertNotEmpty( $scene );
+		$this->assertGreaterThan( 50, strlen( $scene ) );
+		$this->assertIsString( $caption );
 	}
 
 	/**
@@ -74,10 +79,11 @@ class ImagePromptBuilderTest extends BaseTestCase {
 			'post_title' => 'Minimal Article',
 		];
 
-		$prompt = $builder->build_article_prompt( $article_data );
+		[ 'prompt' => $scene, 'caption' => $caption ] = $builder->build_article_prompt( $article_data );
 
-		$this->assertStringContainsString( 'Minimal Article', $prompt );
-		$this->assertNotEmpty( $prompt );
+		$this->assertStringContainsString( 'Minimal Article', $scene );
+		$this->assertNotEmpty( $scene );
+		$this->assertIsString( $caption );
 	}
 
 	/**
@@ -94,11 +100,12 @@ class ImagePromptBuilderTest extends BaseTestCase {
 			],
 		];
 
-		$prompt = $builder->build_source_prompt( $source_data );
+		[ 'prompt' => $scene, 'caption' => $caption ] = $builder->build_source_prompt( $source_data );
 
-		$this->assertStringContainsString( 'Robot', $prompt );
-		$this->assertStringContainsString( 'Dancing', $prompt );
-		$this->assertNotEmpty( $prompt );
+		$this->assertStringContainsString( 'Robot', $scene );
+		$this->assertStringContainsString( 'Dancing', $scene );
+		$this->assertNotEmpty( $scene );
+		$this->assertIsString( $caption );
 	}
 
 	/**
@@ -111,14 +118,18 @@ class ImagePromptBuilderTest extends BaseTestCase {
 			'title' => 'Standalone Title',
 		];
 
-		$prompt = $builder->build_source_prompt( $source_data );
+		[ 'prompt' => $scene, 'caption' => $caption ] = $builder->build_source_prompt( $source_data );
 
-		$this->assertStringContainsString( 'Standalone Title', $prompt );
-		$this->assertNotEmpty( $prompt );
+		$this->assertStringContainsString( 'Standalone Title', $scene );
+		$this->assertNotEmpty( $scene );
+		$this->assertIsString( $caption );
 	}
 
 	/**
 	 * Test that prompts don't exceed reasonable length.
+	 *
+	 * The 500-char cap applies to the scene + style suffix (the `prompt`
+	 * field), not the full array envelope.
 	 */
 	public function test_prompts_are_reasonably_sized(): void {
 		$builder = new \PRAutoBlogger_Image_Prompt_Builder();
@@ -129,10 +140,10 @@ class ImagePromptBuilderTest extends BaseTestCase {
 			'post_content' => $long_content,
 		];
 
-		$prompt = $builder->build_article_prompt( $article_data );
+		[ 'prompt' => $scene ] = $builder->build_article_prompt( $article_data );
 
-		// Prompt should be under 500 chars (concept + style suffix).
-		$this->assertLessThan( 500, strlen( $prompt ) );
+		// Scene + style suffix should be under 500 chars.
+		$this->assertLessThan( 500, strlen( $scene ) );
 	}
 
 	/**
