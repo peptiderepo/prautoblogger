@@ -5,6 +5,17 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.7.2] — 2026-04-20
+
+### Fixed
+- **Bullet points missing in articles.** Theme's global CSS reset strips
+  `list-style` from all `ul`/`ol`. Typography CSS now restores disc/decimal
+  bullets with proper padding inside `.entry-content`.
+- **Tables break on mobile.** Tables now wrapped in a horizontally
+  scrollable container (`prab-table-wrap`) via `the_content` filter.
+  Added responsive media query for tighter padding and smaller font at
+  narrow viewports.
+
 ## [0.7.1] — 2026-04-20
 
 ### Fixed

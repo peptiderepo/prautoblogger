@@ -92,6 +92,7 @@ class PRAutoBlogger {
 		$typography = new PRAutoBlogger_Article_Typography();
 		add_action( 'wp_head', [ $typography, 'on_wp_head' ] );
 		add_action( 'wp_enqueue_scripts', [ $typography, 'on_enqueue_fonts' ] );
+		add_filter( 'the_content', [ $typography, 'on_wrap_tables' ], 99 );
 	}
 
 	/** Register cron-triggered hooks for scheduled generation and metrics. */

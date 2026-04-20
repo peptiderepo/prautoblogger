@@ -81,13 +81,38 @@ class PRAutoBlogger_Article_Typography {
 			);
 		}
 
+		// Restore bullet points — the theme's global reset strips
+		// list-style from all ul/ol, which removes bullets from article
+		// content. This re-applies them inside .entry-content only.
+		$rules[] = implode( "\n", [
+			'.entry-content ul {',
+			"\tlist-style: disc;",
+			"\tpadding-left: 1.5em;",
+			"\tmargin: 1em 0;",
+			'}',
+			'.entry-content ol {',
+			"\tlist-style: decimal;",
+			"\tpadding-left: 1.5em;",
+			"\tmargin: 1em 0;",
+			'}',
+			'.entry-content li {',
+			"\tmargin-bottom: 0.4em;",
+			'}',
+		] );
+
 		$table_borders = get_option( self::OPT_TABLE_BORDERS, '1' );
 		if ( '1' === $table_borders ) {
 			$rules[] = implode( "\n", [
+				// Wrapper for horizontal scroll on narrow viewports.
+				'.entry-content .prab-table-wrap {',
+				"\toverflow-x: auto;",
+				"\t-webkit-overflow-scrolling: touch;",
+				"\tmargin: 1.5em 0;",
+				'}',
 				'.entry-content table {',
 				"\tborder-collapse: collapse;",
 				"\twidth: 100%;",
-				"\tmargin: 1.5em 0;",
+				"\tmin-width: 480px;",
 				'}',
 				'.entry-content th,',
 				'.entry-content td {',
@@ -101,6 +126,14 @@ class PRAutoBlogger_Article_Typography {
 				'}',
 				'.entry-content tbody tr:nth-child(even) {',
 				"\tbackground: #f9fafb;",
+				'}',
+				// Mobile: tighter padding, smaller text for tables.
+				'@media (max-width: 600px) {',
+				"\t.entry-content th,",
+				"\t.entry-content td {",
+				"\t\tpadding: 0.4em 0.6em;",
+				"\t\tfont-size: 14px;",
+				"\t}",
 				'}',
 			] );
 		}
@@ -182,5 +215,40 @@ class PRAutoBlogger_Article_Typography {
 				null // No version for external CDN URLs.
 			);
 		}
+	}
+
+	/**
+	 * Wrap bare <table> elements in a scrollable container for mobile.
+	 *
+	 * Tables wider than the viewport break mobile layouts. This wraps
+	 * each <table> not already inside a wrapper in a
+	 * <div class="prab-table-wrap"> that enables horizontal scrolling.
+	 *
+	 * Only runs on singular post pages.
+	 *
+	 * Side effects: modifies post HTML content via the_content filter.
+	 *
+	 * @param string $content Post HTML content.
+	 * @return string Modified content with tables wrapped.
+	 */
+	public function on_wrap_tables( string $content ): string {
+		if ( ! is_singular( 'post' ) ) {
+			return $content;
+		}
+
+		if ( '1' !== get_option( self::OPT_TABLE_BORDERS, '1' ) ) {
+			return $content;
+		}
+
+		// Wrap <table> elements not already inside a .prab-table-wrap.
+		return (string) preg_replace(
+			'/(?<!prab-table-wrap">)\s*(<table[\s>])/i',
+			'<div class="prab-table-wrap">$1',
+			(string) preg_replace(
+				'/<\/table>\s*/i',
+				'</table></div>',
+				$content
+			)
+		);
 	}
 }
