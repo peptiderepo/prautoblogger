@@ -5,6 +5,15 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.7.1] — 2026-04-20
+
+### Fixed
+- **Typography CSS not applying.** Two bugs: CSS targeted `.post-content`
+  but the theme template uses `.entry-content`, and the
+  `_prautoblogger_generated` meta gate excluded posts that predate the
+  meta flag. Display settings now apply to all single post pages and
+  target the correct `.entry-content` selector.
+
 ## [0.7.0] — 2026-04-20
 
 ### Added
