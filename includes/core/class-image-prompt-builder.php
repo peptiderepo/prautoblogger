@@ -21,13 +21,12 @@ declare(strict_types=1);
 class PRAutoBlogger_Image_Prompt_Builder {
 
 	/**
-	 * System prompt that teaches the LLM how to write image-gen prompts.
-	 *
-	 * Why this lives here instead of in wp_options: it's engineering-level
-	 * instruction, not a user-facing setting. Changing it should require a
-	 * code review, not an admin-panel click.
+	 * Default system prompt that teaches the LLM how to write image-gen
+	 * prompts. Exposed as a `public const` so the admin-settings layer can
+	 * use it as the default value for `prautoblogger_image_prompt_instructions`.
+	 * The option, when non-empty, wins at call time (see rewrite_via_llm).
 	 */
-	private const REWRITER_SYSTEM_PROMPT = <<<'PROMPT'
+	public const REWRITER_SYSTEM_PROMPT = <<<'PROMPT'
 You are a comedy writer and single-panel cartoon creator, like Gary Larson (The Far Side) meets science humor.
 
 Given an article title and summary about peptides, supplements, or biohacking, create a SINGLE-PANEL COMIC concept. Output TWO parts separated by a blank line:
@@ -66,18 +65,12 @@ PROMPT;
 	/**
 	 * Build a visual prompt from finished article content.
 	 *
-	 * Tries LLM rewriting first; falls back to rule-based synthesis on failure.
-	 * Separates the scene description (for image gen) from the caption text
-	 * (for insertion below the image as HTML). Appends style suffix to the
-	 * scene-only prompt so no text is rendered inside the image.
+	 * Tries LLM rewriting first; falls back to rule-based synthesis on
+	 * failure. Splits scene (for image gen) from caption (HTML below the
+	 * image) and appends the style suffix.
 	 *
-	 * @param array{
-	 *     post_title?: string,
-	 *     post_content?: string,
-	 *     suggested_title?: string,
-	 * } $article_data Article data with title and HTML content.
-	 *
-	 * @return array{prompt: string, caption: string} Image prompt (scene + style) and caption text.
+	 * @param array{post_title?: string, post_content?: string, suggested_title?: string} $article_data
+	 * @return array{prompt: string, caption: string}
 	 */
 	public function build_article_prompt( array $article_data ): array {
 		$title      = $article_data['post_title'] ?? $article_data['suggested_title'] ?? 'Product';
@@ -95,18 +88,11 @@ PROMPT;
 	}
 
 	/**
-	 * Build a visual prompt from source Reddit thread data.
+	 * Build a visual prompt from source Reddit thread data. Tries LLM
+	 * rewriting first; falls back to rule-based synthesis on failure.
 	 *
-	 * Tries LLM rewriting first; falls back to rule-based synthesis on failure.
-	 * Appends the style suffix from plugin options.
-	 *
-	 * @param array{
-	 *     title?: string,
-	 *     selftext?: string,
-	 *     comments?: string[],
-	 * } $source_data Reddit source data with title and comments.
-	 *
-	 * @return array{prompt: string, caption: string} Image prompt (scene + style) and caption text.
+	 * @param array{title?: string, selftext?: string, comments?: string[]} $source_data
+	 * @return array{prompt: string, caption: string}
 	 */
 	public function build_source_prompt( array $source_data ): array {
 		$title    = $source_data['title'] ?? 'Reddit Discussion';
@@ -154,12 +140,13 @@ PROMPT;
 		}
 
 		try {
-			$llm   = $this->get_llm_provider();
-			$model = get_option( 'prautoblogger_analysis_model', PRAUTOBLOGGER_DEFAULT_ANALYSIS_MODEL );
+			$llm    = $this->get_llm_provider();
+			$model  = get_option( 'prautoblogger_analysis_model', PRAUTOBLOGGER_DEFAULT_ANALYSIS_MODEL );
+			$system = $this->resolve_system_prompt();
 
 			$result = $llm->send_chat_completion(
 				[
-					[ 'role' => 'system', 'content' => self::REWRITER_SYSTEM_PROMPT ],
+					[ 'role' => 'system', 'content' => $system ],
 					[ 'role' => 'user', 'content' => $user_message ],
 				],
 				$model,
@@ -258,6 +245,23 @@ PROMPT;
 	}
 
 	/**
+	 * Public entry into the rule-based fallback, used by NSFW retry to
+	 * rebuild a provider-safe prompt from just the article title. Matches
+	 * the return shape of build_article_prompt() / build_source_prompt().
+	 *
+	 * @param string $title Article or source title.
+	 * @return array{prompt: string, caption: string}
+	 */
+	public function build_fallback_prompt( string $title ): array {
+		$parsed       = $this->synthesize_visual_concepts_fallback( $title, '' );
+		$style_suffix = get_option( 'prautoblogger_image_style_suffix', PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX );
+		return [
+			'prompt'  => trim( $parsed['scene'] . ' ' . $style_suffix ),
+			'caption' => $parsed['caption'],
+		];
+	}
+
+	/**
 	 * Rule-based fallback when LLM rewriting is unavailable.
 	 *
 	 * Kept deliberately simple — this only runs if OpenRouter is down.
@@ -279,15 +283,17 @@ PROMPT;
 		];
 	}
 
-	/**
-	 * Lazy-load the OpenRouter provider.
-	 *
-	 * @return PRAutoBlogger_OpenRouter_Provider
-	 */
+	/** Lazy-load the OpenRouter provider. */
 	private function get_llm_provider(): PRAutoBlogger_OpenRouter_Provider {
 		if ( null === $this->llm ) {
 			$this->llm = new PRAutoBlogger_OpenRouter_Provider();
 		}
 		return $this->llm;
+	}
+
+	/** Admin option wins; blank falls back to REWRITER_SYSTEM_PROMPT. */
+	private function resolve_system_prompt(): string {
+		$override = (string) get_option( 'prautoblogger_image_prompt_instructions', '' );
+		return '' !== trim( $override ) ? $override : self::REWRITER_SYSTEM_PROMPT;
 	}
 }

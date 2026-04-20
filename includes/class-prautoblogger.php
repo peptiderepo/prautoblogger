@@ -160,6 +160,20 @@ class PRAutoBlogger {
 			update_option( 'prautoblogger_migrated_gemini_flash_lite', '1' );
 		}
 
+		// One-time migration (v0.8.0): the admin no longer has an independent
+		// Image Provider dropdown; provider is derived from the image model on
+		// save. Auto-heal any existing site where the saved provider doesn't
+		// match the saved model's provider (the root cause of posts 650/657
+		// silently missing their featured image on 2026-04-20). Runs once.
+		if ( ! get_option( 'prautoblogger_migrated_image_provider_v080' ) ) {
+			$saved_model = (string) get_option( 'prautoblogger_image_model', '' );
+			$provider    = PRAutoBlogger_Image_Model_Registry::provider_for( $saved_model );
+			if ( '' !== $provider ) {
+				update_option( 'prautoblogger_image_provider', $provider );
+			}
+			update_option( 'prautoblogger_migrated_image_provider_v080', '1' );
+		}
+
 		// One-time migration (v3): switch to single-panel newspaper comic style.
 		// Replaces both the old infomercial pastiche and the short-lived premium
 		// photography style. Force-update unless the user has a truly custom value.

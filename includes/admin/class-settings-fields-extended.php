@@ -211,25 +211,13 @@ class PRAutoBlogger_Settings_Fields_Extended {
 				'description' => __( 'Generate a second image from source data for A/B testing. Disabling saves one image generation + one LLM prompt rewrite per article.', 'prautoblogger' ),
 			],
 			[
-				'id'      => 'prautoblogger_image_provider',
-				'label'   => __( 'Image Provider', 'prautoblogger' ),
-				'type'    => 'select',
-				'section' => 'prautoblogger_images',
-				'default' => 'openrouter',
-				'options' => [
-					'openrouter' => __( 'OpenRouter (multiple models available)', 'prautoblogger' ),
-					'cloudflare' => __( 'Cloudflare Workers AI', 'prautoblogger' ),
-				],
-				'description' => __( 'OpenRouter reuses your existing API key and offers higher-quality models. Cloudflare is cheaper but lower quality.', 'prautoblogger' ),
-			],
-			[
 				'id'          => 'prautoblogger_image_model',
 				'label'       => __( 'Image Model', 'prautoblogger' ),
 				'type'        => 'model_select',
 				'section'     => 'prautoblogger_images',
 				'default'     => PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL,
 				'capability'  => 'image_generation',
-				'description' => __( 'Pick a model from your selected provider.', 'prautoblogger' ),
+				'description' => __( 'Pick an image model. The provider (OpenRouter or Cloudflare Workers AI) is derived from the model registry on save, so mismatched pairs are no longer possible.', 'prautoblogger' ),
 				'badge'       => __( 'Quality', 'prautoblogger' ),
 			],
 			[
@@ -255,6 +243,22 @@ class PRAutoBlogger_Settings_Fields_Extended {
 				'section'     => 'prautoblogger_images',
 				'default'     => PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX,
 				'description' => __( 'Appended to every image prompt. Controls visual look. Changing mid-run causes visible style drift.', 'prautoblogger' ),
+			],
+			[
+				'id'          => 'prautoblogger_image_prompt_instructions',
+				'label'       => __( 'Image Prompt Instructions', 'prautoblogger' ),
+				'type'        => 'textarea',
+				'section'     => 'prautoblogger_images',
+				'default'     => PRAutoBlogger_Image_Prompt_Builder::REWRITER_SYSTEM_PROMPT,
+				'description' => __( 'System prompt given to the rewriter LLM that turns each article into a SCENE + CAPTION for the image generator. Changing this reshapes the look of all future images. Leave blank to use the default.', 'prautoblogger' ),
+			],
+			[
+				'id'          => 'prautoblogger_image_nsfw_retry',
+				'label'       => __( 'Retry NSFW-Blocked Images', 'prautoblogger' ),
+				'type'        => 'toggle',
+				'section'     => 'prautoblogger_images',
+				'default'     => '1',
+				'description' => __( 'When the provider rejects an image prompt as NSFW (e.g. Cloudflare code 3030), retry once with a generic fallback scene built from the article title. Disable to fail fast if the filter gets trigger-happy.', 'prautoblogger' ),
 			],
 		];
 	}

@@ -212,6 +212,141 @@ class ImagePipelineTest extends BaseTestCase {
 	}
 
 	/**
+	 * Test that a Logger::warning row is persisted when image_data carries an error.
+	 *
+	 * Covers Issue 2 from the image-mime-bug thread: previously the pipeline
+	 * pushed the error into $result['errors'] silently, with no WARNING-level
+	 * event_log row visible to ops. This regression-guards that a WARNING row
+	 * now fires whether or not the outer catch in the caller triggers.
+	 */
+	public function test_partial_batch_failure_emits_warning_log_row(): void {
+		// Seed Logger's log_level so warnings actually get written.
+		Functions\when( 'get_option' )->alias( function ( $key, $default = false ) {
+			static $options = [
+				'prautoblogger_image_enabled' => '1',
+				'prautoblogger_log_level'     => 'info',
+			];
+			return $options[ $key ] ?? $default;
+		} );
+
+		$mock_wpdb     = $this->create_mock_wpdb();
+		$captured_rows = [];
+		$mock_wpdb->method( 'insert' )->willReturnCallback(
+			function ( $table, $row ) use ( &$captured_rows ) {
+				$captured_rows[] = $row;
+				return 1;
+			}
+		);
+		$GLOBALS['wpdb'] = $mock_wpdb;
+
+		$provider = $this->createMock( \PRAutoBlogger_Image_Provider_Interface::class );
+		$provider->method( 'estimate_cost' )->willReturn( 0.05 );
+		$provider->method( 'generate_image_batch' )->willReturn( [
+			'image_a' => [ 'error' => 'HTTP 400: flux-1-schnell is not a valid model ID' ],
+		] );
+
+		$cost_tracker = $this->createMock( \PRAutoBlogger_Cost_Tracker::class );
+		$cost_tracker->method( 'would_exceed_budget' )->willReturn( false );
+
+		$pipeline = new \PRAutoBlogger_Image_Pipeline( $provider, $cost_tracker );
+		$pipeline->generate_and_attach_images( 1, [ 'post_title' => 'Test' ], null );
+
+		$warning_rows = array_filter(
+			$captured_rows,
+			static fn( $row ) => ( $row['level'] ?? '' ) === 'warning'
+				&& ( $row['context'] ?? '' ) === 'image_pipeline'
+		);
+		$this->assertNotEmpty(
+			$warning_rows,
+			'Expected at least one image_pipeline WARNING row when image_data has an error key.'
+		);
+
+		unset( $GLOBALS['wpdb'] );
+	}
+
+	/**
+	 * NSFW-blocked slots should be retried once with a sanitized fallback
+	 * prompt. Retry success replaces the error entry with a real image.
+	 */
+	public function test_nsfw_blocked_slot_is_retried_with_fallback_prompt(): void {
+		// NSFW retry is default on; explicit for clarity.
+		Functions\when( 'get_option' )->alias( function ( $key, $default = false ) {
+			static $options = [
+				'prautoblogger_image_enabled'          => '1',
+				'prautoblogger_image_nsfw_retry'       => '1',
+				'prautoblogger_image_style_suffix'     => 'Style: test suffix',
+				'prautoblogger_log_level'              => 'info',
+			];
+			return $options[ $key ] ?? $default;
+		} );
+
+		$success_result = [
+			'bytes'      => 'fake_image_bytes',
+			'mime_type'  => 'image/png',
+			'width'      => 1200,
+			'height'     => 632,
+			'model'      => 'flux-1-schnell',
+			'cost_usd'   => 0.000834,
+			'latency_ms' => 1500,
+		];
+
+		$provider = $this->createMock( \PRAutoBlogger_Image_Provider_Interface::class );
+		$provider->method( 'estimate_cost' )->willReturn( 0.001 );
+		// First batch: NSFW. Second batch (retry for image_a): success.
+		$provider->expects( $this->exactly( 2 ) )
+			->method( 'generate_image_batch' )
+			->willReturnOnConsecutiveCalls(
+				[ 'image_a' => [ 'error' => 'NSFW', 'error_type' => 'nsfw_blocked' ] ],
+				[ 'image_a' => $success_result ]
+			);
+
+		$cost_tracker = $this->createMock( \PRAutoBlogger_Cost_Tracker::class );
+		$cost_tracker->method( 'would_exceed_budget' )->willReturn( false );
+
+		Functions\when( 'get_temp_dir' )->justReturn( '/tmp/' );
+		Functions\when( 'media_handle_sideload' )->justReturn( 42 );
+
+		$pipeline = new \PRAutoBlogger_Image_Pipeline( $provider, $cost_tracker );
+		$result   = $pipeline->generate_and_attach_images( 1, [ 'post_title' => 'Test Article' ] );
+
+		// Retry succeeded — image_a_id set, no errors.
+		$this->assertArrayHasKey( 'image_a_id', $result );
+		$this->assertEmpty( $result['errors'] );
+	}
+
+	/**
+	 * When `prautoblogger_image_nsfw_retry` is off, blocked slots stay
+	 * blocked — no second HTTP call, pipeline publishes without that
+	 * image. Failsafe for when the filter gets trigger-happy.
+	 */
+	public function test_nsfw_retry_skipped_when_setting_disabled(): void {
+		Functions\when( 'get_option' )->alias( function ( $key, $default = false ) {
+			static $options = [
+				'prautoblogger_image_enabled'    => '1',
+				'prautoblogger_image_nsfw_retry' => '0',
+			];
+			return $options[ $key ] ?? $default;
+		} );
+
+		$provider = $this->createMock( \PRAutoBlogger_Image_Provider_Interface::class );
+		$provider->method( 'estimate_cost' )->willReturn( 0.001 );
+		$provider->expects( $this->exactly( 1 ) )
+			->method( 'generate_image_batch' )
+			->willReturn( [
+				'image_a' => [ 'error' => 'NSFW', 'error_type' => 'nsfw_blocked' ],
+			] );
+
+		$cost_tracker = $this->createMock( \PRAutoBlogger_Cost_Tracker::class );
+		$cost_tracker->method( 'would_exceed_budget' )->willReturn( false );
+
+		$pipeline = new \PRAutoBlogger_Image_Pipeline( $provider, $cost_tracker );
+		$result   = $pipeline->generate_and_attach_images( 1, [ 'post_title' => 'Test Article' ] );
+
+		$this->assertArrayNotHasKey( 'image_a_id', $result );
+		$this->assertNotEmpty( $result['errors'] );
+	}
+
+	/**
 	 * Test graceful handling when one image in the batch returns an error.
 	 */
 	public function test_partial_batch_failure_handled_gracefully(): void {

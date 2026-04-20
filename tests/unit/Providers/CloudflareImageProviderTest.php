@@ -190,6 +190,57 @@ class CloudflareImageProviderTest extends BaseTestCase {
 	}
 
 	/**
+	 * A 400 carrying Cloudflare's NSFW code (3030) must throw the typed
+	 * PRAutoBlogger_Image_NSFW_Blocked exception, not a generic
+	 * RuntimeException. Image_NSFW_Retry keys off the typed exception to
+	 * decide whether to rebuild the prompt and retry.
+	 */
+	public function test_generate_image_throws_nsfw_blocked_on_code_3030(): void {
+		$this->with_token( 'test-token' );
+
+		$nsfw_body = '{"errors":[{"message":"AiError: Input prompt contains NSFW content.","code":3030}]}';
+
+		Functions\when( 'wp_remote_post' )->justReturn( [
+			'body'     => $nsfw_body,
+			'response' => [ 'code' => 400 ],
+			'headers'  => [],
+		] );
+		Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 400 );
+		Functions\when( 'wp_remote_retrieve_body' )->justReturn( $nsfw_body );
+
+		$provider = new \PRAutoBlogger_Cloudflare_Image_Provider();
+		$this->expectException( \PRAutoBlogger_Image_NSFW_Blocked::class );
+		$provider->generate_image( 'some peptide prompt', 1080, 1080 );
+	}
+
+	/**
+	 * A non-3030 4xx (e.g. 401 bad token) must NOT be tagged NSFW — the
+	 * retry path would be wasted work there.
+	 */
+	public function test_generate_image_batch_tags_nsfw_errors_distinctly(): void {
+		$this->with_token( 'test-token' );
+
+		$nsfw_body = '{"errors":[{"message":"AiError: Input prompt contains NSFW content.","code":3030}]}';
+
+		Functions\when( 'wp_remote_post' )->justReturn( [
+			'body'     => $nsfw_body,
+			'response' => [ 'code' => 400 ],
+			'headers'  => [],
+		] );
+		Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 400 );
+		Functions\when( 'wp_remote_retrieve_body' )->justReturn( $nsfw_body );
+
+		$provider = new \PRAutoBlogger_Cloudflare_Image_Provider();
+		$results  = $provider->generate_image_batch( [
+			'image_a' => [ 'prompt' => 'some prompt', 'width' => 1080, 'height' => 1080 ],
+		] );
+
+		$this->assertArrayHasKey( 'image_a', $results );
+		$this->assertSame( 'nsfw_blocked', $results['image_a']['error_type'] ?? null );
+		$this->assertArrayHasKey( 'error', $results['image_a'] );
+	}
+
+	/**
 	 * Response shape must be one of: image/* bytes OR JSON envelope with
 	 * base64 image. Anything else is a contract breach — fail loudly.
 	 */
