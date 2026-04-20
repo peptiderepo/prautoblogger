@@ -45,11 +45,17 @@ class ImagePromptBuilderTest extends BaseTestCase {
 	}
 
 	/**
-	 * Test build_article_prompt() generates a prompt from article title and content.
+	 * Test build_article_prompt() generates a prompt from article title.
 	 *
 	 * `build_article_prompt()` has returned `array{prompt: string, caption: string}`
 	 * since v0.4.x. Destructure on receipt so the assertions run against the
 	 * scene string, not the envelope.
+	 *
+	 * Note: this test does NOT assert on the article content substring. With no
+	 * OpenRouter API key in the unit-test env, `rewrite_via_llm()` catches and
+	 * falls back to `synthesize_visual_concepts_fallback()`, which reliably
+	 * includes only the title — not the content. Content-based assertions
+	 * belong in a test that mocks the LLM (see `test_rewrite_uses_setting_when_present`).
 	 */
 	public function test_build_article_prompt_from_content(): void {
 		$builder = new \PRAutoBlogger_Image_Prompt_Builder();
@@ -62,7 +68,6 @@ class ImagePromptBuilderTest extends BaseTestCase {
 		[ 'prompt' => $scene, 'caption' => $caption ] = $builder->build_article_prompt( $article_data );
 
 		$this->assertStringContainsString( 'How to Train Your Dragon', $scene );
-		$this->assertStringContainsString( 'Dragons are fascinating', $scene );
 		// Style suffix should be appended.
 		$this->assertNotEmpty( $scene );
 		$this->assertGreaterThan( 50, strlen( $scene ) );
