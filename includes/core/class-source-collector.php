@@ -46,7 +46,10 @@ class PRAutoBlogger_Source_Collector {
 	 * @return int Total number of new records inserted.
 	 */
 	public function collect_from_all_sources(): int {
-		$enabled = json_decode( get_option( 'prautoblogger_enabled_sources', '["reddit"]' ), true );
+		$raw     = get_option( 'prautoblogger_enabled_sources', '["reddit"]' );
+		$enabled = json_decode( (string) $raw, true );
+		// Only fall back to reddit if the option is corrupt (non-JSON).
+		// An empty array '[]' is a valid choice — the user disabled all sources.
 		if ( ! is_array( $enabled ) ) {
 			$enabled = [ 'reddit' ];
 		}

@@ -156,7 +156,10 @@ class PRAutoBlogger_Pipeline_Runner {
 	private function orchestrate( PRAutoBlogger_Cost_Tracker $cost_tracker ): array {
 		$target = absint( get_option( 'prautoblogger_daily_article_target', 1 ) );
 
-		$this->broadcast_stage( __( 'Collecting sources from Reddit…', 'prautoblogger' ) );
+		$enabled = json_decode( get_option( 'prautoblogger_enabled_sources', '["reddit"]' ), true );
+		$source_labels = is_array( $enabled ) ? implode( ', ', $enabled ) : 'reddit';
+		/* translators: %s is a comma-separated list of enabled source names, e.g. "reddit, llm_research". */
+		$this->broadcast_stage( sprintf( __( 'Collecting sources from %s…', 'prautoblogger' ), $source_labels ) );
 		( new PRAutoBlogger_Source_Collector() )
 			->set_cost_tracker( $cost_tracker )
 			->collect_from_all_sources();

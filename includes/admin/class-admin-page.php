@@ -158,6 +158,11 @@ class PRAutoBlogger_Admin_Page {
 
 			case 'checkboxes':
 				$current = json_decode( (string) $value, true ) ?: [];
+				// Hidden input ensures an empty value is POSTed when all boxes
+				// are unchecked — without this, the browser omits the field
+				// entirely, so WordPress never fires the sanitize callback and
+				// the old value persists in wp_options.
+				printf( '<input type="hidden" name="%s" value="" />', $id );
 				foreach ( ( $args['options'] ?? [] ) as $v => $label ) {
 					$is_checked = in_array( $v, $current, true );
 					$disabled   = strpos( $label, 'coming soon' ) !== false ? ' disabled' : '';

@@ -5,6 +5,17 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.6.3] — 2026-04-20
+
+### Fixed
+- **Unchecking all sources still used Reddit.** Browser omits checkbox fields
+  from POST when none are checked, so the `prautoblogger_enabled_sources`
+  option never updated. Added a hidden input so an empty value is always
+  submitted — unchecking all sources now correctly saves `[]`.
+- **Pipeline status hardcoded "Reddit".** The "Collecting sources…" stage
+  message now reflects the actually-enabled sources instead of always
+  saying "Reddit".
+
 ## [0.6.2] — 2026-04-20
 
 ### Added
