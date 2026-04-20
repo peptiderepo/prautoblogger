@@ -5,6 +5,46 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.8.0] — 2026-04-21
+
+### Changed
+
+- **Single Image Model dropdown in admin → Images.** The separate Image
+  Provider select has been removed. The provider (OpenRouter or
+  Cloudflare Workers AI) is now derived from the chosen model's entry
+  in `PRAutoBlogger_Image_Model_Registry` on save, so mismatched
+  provider/model pairs — the root cause of posts 650 and 657 silently
+  missing their featured image on 2026-04-20 — are no longer possible.
+  A one-shot migration runs on first admin_init after upgrade and
+  auto-heals any existing site where the saved provider and model
+  disagreed. The `prautoblogger_image_provider` option key is
+  preserved; all existing reads in the pipeline continue to work.
+
+### Added
+
+- **Image Prompt Instructions setting.** The system prompt used to
+  rewrite articles into SCENE + CAPTION is now editable from admin →
+  Images. Default preserves prior behavior; edit to reshape the
+  creative direction without a code change.
+- **Retry NSFW-Blocked Images setting** (default on). When the image
+  provider rejects a prompt as NSFW — Cloudflare Workers AI returns
+  HTTP 400 with `errors[].code === 3030` on FLUX.1 schnell —
+  PRAutoBlogger now retries the slot once with a rule-based fallback
+  prompt (article title + style suffix, no LLM rewrite). On a second
+  block it logs a WARNING and publishes without that image, matching
+  existing behaviour for any unrecoverable image failure.
+
+### Fixed
+
+- **Silent per-image failures in the event log.** The OpenRouter batch
+  provider now emits `Logger::error` with the request key for every
+  per-slot HTTP/cURL/parse failure (previously logged the error but
+  not which slot it was), and `Image_Pipeline::process_image_a/_b`
+  emit `Logger::warning` on `['error' => …]` results whether or not
+  the outer catch fires. Operators can now see NSFW blocks, 4xx
+  bodies, and timeouts in the admin Event Log without cross-
+  referencing PHP error_log timestamps.
+
 ## [0.7.3] — 2026-04-20
 
 ### Fixed

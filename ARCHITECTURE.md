@@ -66,10 +66,16 @@ PRAutoBlogger is a WordPress plugin that monitors social media (starting with Re
              │
              ▼
 ┌─────────────────────────┐
-│  6b. Image Pipeline     │  (commit 1b) Generates two A/B images:
+│  6b. Image Pipeline     │  Generates two A/B images in parallel:
 │  (optional, if enabled) │  - Image A: article-driven (featured)
 │                         │  - Image B: source-driven (post meta)
-│                         │  Sideloads to media library, logs costs
+│                         │  Provider derived from the saved Image Model
+│                         │  via Image_Model_Registry::provider_for().
+│                         │  NSFW-blocked slots (CF error code 3030) are
+│                         │  retried once with a rule-based fallback
+│                         │  prompt via Image_NSFW_Retry; a second block
+│                         │  logs WARNING and publishes without that image.
+│                         │  Sideloads to media library, logs costs.
 └────────────┬────────────┘
              │
              ▼
@@ -431,7 +437,11 @@ All prefixed with `prautoblogger_`:
 | `prautoblogger_schedule_time`          | Daily generation time (HH:MM, default: '03:00')       |
 | `prautoblogger_cloudflare_ai_token`    | Encrypted Cloudflare Workers AI API token             |
 | `prautoblogger_cloudflare_account_id`  | Cloudflare account UUID (plaintext — identifier, not secret) |
-| `prautoblogger_image_model`            | Image model alias: `flux-1-schnell` (default) or `flux-1-dev` |
+| `prautoblogger_image_model`            | Image model slug from `Image_Model_Registry::get_models()`; provider is derived from this on save |
+| `prautoblogger_image_provider`         | Derived from the chosen model on save (v0.8.0+); not editable in admin UI |
+| `prautoblogger_image_prompt_instructions` | System prompt given to the image rewriter LLM (v0.8.0+); falls back to `Image_Prompt_Builder::REWRITER_SYSTEM_PROMPT` when empty |
+| `prautoblogger_image_nsfw_retry`       | Toggle: retry NSFW-blocked image slots with a rule-based fallback prompt (default: '1') |
+| `prautoblogger_migrated_image_provider_v080` | One-shot migration flag — auto-heals mismatched provider/model pairs on first admin_init after v0.8.0 upgrade |
 | `prautoblogger_article_font_family`    | Font family key: 'default', 'inter', 'georgia', 'merriweather', 'lora', 'open_sans', 'roboto', 'system' |
 | `prautoblogger_article_font_size`     | Body font size in px (0 = theme default). Recommended: 16–18. |
 | `prautoblogger_table_borders`         | Toggle: add borders/padding/striping to tables (default: '1') |
