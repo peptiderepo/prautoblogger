@@ -116,6 +116,24 @@ class PRAutoBlogger {
 
 		// Single-idea generation from the Ideas browser page.
 		add_action( 'prautoblogger_generate_from_idea', [ 'PRAutoBlogger_Ideas_Browser', 'on_cron_generate_from_idea' ] );
+
+		// v0.8.1: daily reaper for orphan `llm_research` rows (when a
+		// pipeline dies before amortize_research_costs runs).
+		add_action( 'prautoblogger_reap_orphan_research_rows', [ 'PRAutoBlogger_Research_Reaper', 'on_cron' ] );
+
+		// v0.8.1: WP-CLI manual trigger for the reaper. Only registers when
+		// WP-CLI is present; no-op in normal HTTP requests.
+		if ( defined( 'WP_CLI' ) && WP_CLI ) {
+			\WP_CLI::add_command( 'prautoblogger reap-research', static function (): void {
+				$stats = PRAutoBlogger_Research_Reaper::reap();
+				\WP_CLI::success( sprintf(
+					'Reaped %d, deleted %d (stale), skipped %d.',
+					(int) $stats['reaped'],
+					(int) $stats['deleted'],
+					(int) $stats['skipped']
+				) );
+			} );
+		}
 	}
 
 	/** Register AJAX handlers for admin actions. */
