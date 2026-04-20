@@ -136,6 +136,7 @@ class PRAutoBlogger_Cloudflare_Image_Provider implements PRAutoBlogger_Image_Pro
 
 			if ( $status >= 400 ) {
 				$this->support->log_client_error( $status, $api_token, $account_id, $raw );
+				$this->support->throw_if_nsfw( $raw );
 				throw new \RuntimeException(
 					sprintf(
 						/* translators: %1$d: HTTP status, %2$s: error body. */
@@ -183,12 +184,10 @@ class PRAutoBlogger_Cloudflare_Image_Provider implements PRAutoBlogger_Image_Pro
 		$results = [];
 		foreach ( $requests as $key => $req ) {
 			try {
-				$results[ $key ] = $this->generate_image(
-					$req['prompt'],
-					$req['width'],
-					$req['height'],
-					$req['options'] ?? []
-				);
+				$results[ $key ] = $this->generate_image( $req['prompt'], $req['width'], $req['height'], $req['options'] ?? [] );
+			} catch ( PRAutoBlogger_Image_NSFW_Blocked $e ) {
+				// Tag NSFW so the pipeline's retry layer can rebuild the prompt.
+				$results[ $key ] = [ 'error' => $e->getMessage(), 'error_type' => 'nsfw_blocked' ];
 			} catch ( \Throwable $e ) {
 				$results[ $key ] = [ 'error' => $e->getMessage() ];
 			}

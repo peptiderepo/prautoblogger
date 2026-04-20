@@ -138,6 +138,12 @@ class PRAutoBlogger_Image_Pipeline {
 			return $result;
 		}
 
+		// Single-shot retry for any slot the provider flagged as NSFW-blocked.
+		if ( PRAutoBlogger_Image_NSFW_Retry::is_enabled() ) {
+			( new PRAutoBlogger_Image_NSFW_Retry( $this->provider, $this->prompt_builder ) )
+				->retry_blocked_slots( $post_id, $batch_requests, $batch_results, $captions, $article_data, $source_data );
+		}
+
 		// Process Image A result.
 		$this->process_image_a( $post_id, $batch_results, $captions, $result );
 

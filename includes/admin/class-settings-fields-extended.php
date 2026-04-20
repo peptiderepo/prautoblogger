@@ -256,6 +256,14 @@ class PRAutoBlogger_Settings_Fields_Extended {
 				'default'     => PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX,
 				'description' => __( 'Appended to every image prompt. Controls visual look. Changing mid-run causes visible style drift.', 'prautoblogger' ),
 			],
+			[
+				'id'          => 'prautoblogger_image_nsfw_retry',
+				'label'       => __( 'Retry NSFW-Blocked Images', 'prautoblogger' ),
+				'type'        => 'toggle',
+				'section'     => 'prautoblogger_images',
+				'default'     => '1',
+				'description' => __( 'When the provider rejects an image prompt as NSFW (e.g. Cloudflare code 3030), retry once with a generic fallback scene built from the article title. Disable to fail fast if the filter gets trigger-happy.', 'prautoblogger' ),
+			],
 		];
 	}
 }

@@ -66,18 +66,12 @@ PROMPT;
 	/**
 	 * Build a visual prompt from finished article content.
 	 *
-	 * Tries LLM rewriting first; falls back to rule-based synthesis on failure.
-	 * Separates the scene description (for image gen) from the caption text
-	 * (for insertion below the image as HTML). Appends style suffix to the
-	 * scene-only prompt so no text is rendered inside the image.
+	 * Tries LLM rewriting first; falls back to rule-based synthesis on
+	 * failure. Splits scene (for image gen) from caption (HTML below the
+	 * image) and appends the style suffix.
 	 *
-	 * @param array{
-	 *     post_title?: string,
-	 *     post_content?: string,
-	 *     suggested_title?: string,
-	 * } $article_data Article data with title and HTML content.
-	 *
-	 * @return array{prompt: string, caption: string} Image prompt (scene + style) and caption text.
+	 * @param array{post_title?: string, post_content?: string, suggested_title?: string} $article_data
+	 * @return array{prompt: string, caption: string}
 	 */
 	public function build_article_prompt( array $article_data ): array {
 		$title      = $article_data['post_title'] ?? $article_data['suggested_title'] ?? 'Product';
@@ -95,18 +89,11 @@ PROMPT;
 	}
 
 	/**
-	 * Build a visual prompt from source Reddit thread data.
+	 * Build a visual prompt from source Reddit thread data. Tries LLM
+	 * rewriting first; falls back to rule-based synthesis on failure.
 	 *
-	 * Tries LLM rewriting first; falls back to rule-based synthesis on failure.
-	 * Appends the style suffix from plugin options.
-	 *
-	 * @param array{
-	 *     title?: string,
-	 *     selftext?: string,
-	 *     comments?: string[],
-	 * } $source_data Reddit source data with title and comments.
-	 *
-	 * @return array{prompt: string, caption: string} Image prompt (scene + style) and caption text.
+	 * @param array{title?: string, selftext?: string, comments?: string[]} $source_data
+	 * @return array{prompt: string, caption: string}
 	 */
 	public function build_source_prompt( array $source_data ): array {
 		$title    = $source_data['title'] ?? 'Reddit Discussion';
@@ -255,6 +242,23 @@ PROMPT;
 		}
 
 		return $para;
+	}
+
+	/**
+	 * Public entry into the rule-based fallback, used by NSFW retry to
+	 * rebuild a provider-safe prompt from just the article title. Matches
+	 * the return shape of build_article_prompt() / build_source_prompt().
+	 *
+	 * @param string $title Article or source title.
+	 * @return array{prompt: string, caption: string}
+	 */
+	public function build_fallback_prompt( string $title ): array {
+		$parsed       = $this->synthesize_visual_concepts_fallback( $title, '' );
+		$style_suffix = get_option( 'prautoblogger_image_style_suffix', PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX );
+		return [
+			'prompt'  => trim( $parsed['scene'] . ' ' . $style_suffix ),
+			'caption' => $parsed['caption'],
+		];
 	}
 
 	/**

@@ -111,4 +111,62 @@ class PRAutoBlogger_Cloudflare_Image_Support {
 			'cloudflare-image'
 		);
 	}
+
+	/**
+	 * Cloudflare Workers AI error code for NSFW content rejection.
+	 *
+	 * Observed on FLUX.1 schnell on 2026-04-20 when backfilling the post
+	 * "Semaglutide vs Tirzepatide". Documented upstream as
+	 * `AiError: Input prompt contains NSFW content.`
+	 */
+	public const ERROR_CODE_NSFW = 3030;
+
+	/**
+	 * Return true when the Cloudflare response body contains the NSFW
+	 * content-filter error code (3030).
+	 *
+	 * The body shape is `{"errors":[{"code":3030,"message":"..."}],...}`.
+	 * Parsing is tolerant: any JSON decode failure or missing key returns
+	 * false, so a malformed 4xx never masquerades as NSFW.
+	 *
+	 * @param string $raw Raw response body from Cloudflare.
+	 * @return bool True when at least one error entry carries code 3030.
+	 */
+	public function is_nsfw_error( string $raw ): bool {
+		$decoded = json_decode( $raw, true );
+		if ( ! is_array( $decoded ) || empty( $decoded['errors'] ) || ! is_array( $decoded['errors'] ) ) {
+			return false;
+		}
+		foreach ( $decoded['errors'] as $err ) {
+			if ( is_array( $err ) && (int) ( $err['code'] ?? 0 ) === self::ERROR_CODE_NSFW ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Throw a typed NSFW exception when the response body signals CF's
+	 * content-filter rejection (code 3030). No-op otherwise.
+	 *
+	 * Centralised so callers stay at one line at the call site and so the
+	 * exception-construction shape can't drift between call sites.
+	 *
+	 * @param string $raw Raw response body.
+	 * @return void
+	 * @throws PRAutoBlogger_Image_NSFW_Blocked When the body contains code 3030.
+	 */
+	public function throw_if_nsfw( string $raw ): void {
+		if ( ! $this->is_nsfw_error( $raw ) ) {
+			return;
+		}
+		throw new PRAutoBlogger_Image_NSFW_Blocked(
+			sprintf(
+				/* translators: %s: truncated error body. */
+				esc_html__( 'Cloudflare Workers AI rejected the prompt as NSFW: %s', 'prautoblogger' ),
+				esc_html( substr( $raw, 0, 300 ) )
+			),
+			$raw
+		);
+	}
 }
