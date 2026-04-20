@@ -102,8 +102,10 @@ class PRAutoBlogger_Article_Typography {
 
 		$table_borders = get_option( self::OPT_TABLE_BORDERS, '1' );
 		if ( '1' === $table_borders ) {
+			// Uses theme CSS custom properties for dark mode compatibility.
+			// --color-border-default, --color-bg-secondary, --color-bg-primary,
+			// --color-text-primary are set by PR Theme for both light and dark.
 			$rules[] = implode( "\n", [
-				// Wrapper for horizontal scroll on narrow viewports.
 				'.entry-content .prab-table-wrap {',
 				"\toverflow-x: auto;",
 				"\t-webkit-overflow-scrolling: touch;",
@@ -116,18 +118,18 @@ class PRAutoBlogger_Article_Typography {
 				'}',
 				'.entry-content th,',
 				'.entry-content td {',
-				"\tborder: 1px solid #d1d5db;",
+				"\tborder: 1px solid var(--color-border-default, #d1d5db);",
 				"\tpadding: 0.6em 1em;",
 				"\ttext-align: left;",
+				"\tcolor: var(--color-text-primary, #111827);",
 				'}',
 				'.entry-content thead th {',
-				"\tbackground: #f3f4f6;",
+				"\tbackground: var(--color-bg-secondary, #f3f4f6);",
 				"\tfont-weight: 600;",
 				'}',
 				'.entry-content tbody tr:nth-child(even) {',
-				"\tbackground: #f9fafb;",
+				"\tbackground: var(--color-bg-secondary, #f9fafb);",
 				'}',
-				// Mobile: tighter padding, smaller text for tables.
 				'@media (max-width: 600px) {',
 				"\t.entry-content th,",
 				"\t.entry-content td {",

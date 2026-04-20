@@ -5,6 +5,14 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.7.3] — 2026-04-20
+
+### Fixed
+- **Table colors broken in dark mode.** Replaced hardcoded hex colors
+  with theme CSS custom properties (`--color-border-default`,
+  `--color-bg-secondary`, `--color-text-primary`) so table borders,
+  header backgrounds, and text adapt to light/dark mode automatically.
+
 ## [0.7.2] — 2026-04-20
 
 ### Fixed
