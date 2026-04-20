@@ -212,6 +212,59 @@ class ImagePipelineTest extends BaseTestCase {
 	}
 
 	/**
+	 * Test that a Logger::warning row is persisted when image_data carries an error.
+	 *
+	 * Covers Issue 2 from the image-mime-bug thread: previously the pipeline
+	 * pushed the error into $result['errors'] silently, with no WARNING-level
+	 * event_log row visible to ops. This regression-guards that a WARNING row
+	 * now fires whether or not the outer catch in the caller triggers.
+	 */
+	public function test_partial_batch_failure_emits_warning_log_row(): void {
+		// Seed Logger's log_level so warnings actually get written.
+		Functions\when( 'get_option' )->alias( function ( $key, $default = false ) {
+			static $options = [
+				'prautoblogger_image_enabled' => '1',
+				'prautoblogger_log_level'     => 'info',
+			];
+			return $options[ $key ] ?? $default;
+		} );
+
+		$mock_wpdb     = $this->create_mock_wpdb();
+		$captured_rows = [];
+		$mock_wpdb->method( 'insert' )->willReturnCallback(
+			function ( $table, $row ) use ( &$captured_rows ) {
+				$captured_rows[] = $row;
+				return 1;
+			}
+		);
+		$GLOBALS['wpdb'] = $mock_wpdb;
+
+		$provider = $this->createMock( \PRAutoBlogger_Image_Provider_Interface::class );
+		$provider->method( 'estimate_cost' )->willReturn( 0.05 );
+		$provider->method( 'generate_image_batch' )->willReturn( [
+			'image_a' => [ 'error' => 'HTTP 400: flux-1-schnell is not a valid model ID' ],
+		] );
+
+		$cost_tracker = $this->createMock( \PRAutoBlogger_Cost_Tracker::class );
+		$cost_tracker->method( 'would_exceed_budget' )->willReturn( false );
+
+		$pipeline = new \PRAutoBlogger_Image_Pipeline( $provider, $cost_tracker );
+		$pipeline->generate_and_attach_images( 1, [ 'post_title' => 'Test' ], null );
+
+		$warning_rows = array_filter(
+			$captured_rows,
+			static fn( $row ) => ( $row['level'] ?? '' ) === 'warning'
+				&& ( $row['context'] ?? '' ) === 'image_pipeline'
+		);
+		$this->assertNotEmpty(
+			$warning_rows,
+			'Expected at least one image_pipeline WARNING row when image_data has an error key.'
+		);
+
+		unset( $GLOBALS['wpdb'] );
+	}
+
+	/**
 	 * Test graceful handling when one image in the batch returns an error.
 	 */
 	public function test_partial_batch_failure_handled_gracefully(): void {

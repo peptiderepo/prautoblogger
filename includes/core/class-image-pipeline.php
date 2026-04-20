@@ -165,7 +165,14 @@ class PRAutoBlogger_Image_Pipeline {
 	private function process_image_a( int $post_id, array $batch_results, array $captions, array &$result ): void {
 		$image_data = $batch_results['image_a'] ?? null;
 		if ( ! $image_data || isset( $image_data['error'] ) ) {
-			$result['errors'][] = $image_data['error'] ?? 'Image A missing from batch results.';
+			$err_msg            = $image_data['error'] ?? 'Image A missing from batch results.';
+			$result['errors'][] = $err_msg;
+			// Log at WARNING so the path is visible even if the outer catch in the
+			// caller doesn't fire. See thread image-mime-bug Issue 2.
+			PRAutoBlogger_Logger::instance()->warning(
+				sprintf( 'Image A generation failed for post %d: %s', $post_id, $err_msg ),
+				'image_pipeline'
+			);
 			return;
 		}
 
@@ -196,7 +203,14 @@ class PRAutoBlogger_Image_Pipeline {
 	private function process_image_b( int $post_id, array $batch_results, array $captions, array &$result ): void {
 		$image_data = $batch_results['image_b'] ?? null;
 		if ( ! $image_data || isset( $image_data['error'] ) ) {
-			$result['errors'][] = $image_data['error'] ?? 'Image B missing from batch results.';
+			$err_msg            = $image_data['error'] ?? 'Image B missing from batch results.';
+			$result['errors'][] = $err_msg;
+			// Log at WARNING so the path is visible even if the outer catch in the
+			// caller doesn't fire. See thread image-mime-bug Issue 2.
+			PRAutoBlogger_Logger::instance()->warning(
+				sprintf( 'Image B generation failed for post %d: %s', $post_id, $err_msg ),
+				'image_pipeline'
+			);
 			return;
 		}
 

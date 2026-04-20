@@ -130,6 +130,7 @@ class PRAutoBlogger_OpenRouter_Image_Batch {
 		$results = [];
 		foreach ( $handles as $key => $entry ) {
 			$results[ $key ] = $this->collect_result(
+				(string) $key,
 				$entry['handle'],
 				$entry['model'],
 				$entry['req'],
@@ -169,21 +170,35 @@ class PRAutoBlogger_OpenRouter_Image_Batch {
 	/**
 	 * Parse the result of one cURL handle into image data or error.
 	 *
+	 * All failure paths emit `Logger::error` at the point they fold the
+	 * request into an `['error' => ...]` array — tagged with the request
+	 * `$key` so the pipeline can attribute which of the parallel images
+	 * failed (image_a vs image_b) without cross-referencing timestamps.
+	 *
+	 * @param string      $key    Request key from the batch map (e.g. "image_a").
 	 * @param \CurlHandle $ch     Individual cURL handle (completed).
 	 * @param string      $model  Resolved model id.
 	 * @param array       $req    Original request array.
 	 * @param float       $start  Microtime when this handle was created.
 	 *
 	 * @return array Image data array or `{error: string}`.
+	 *
+	 * Side effects: writes `Logger::error` on any failure path.
 	 */
-	private function collect_result( $ch, string $model, array $req, float $start ): array {
+	private function collect_result( string $key, $ch, string $model, array $req, float $start ): array {
 		$latency_ms = (int) ( ( microtime( true ) - $start ) * 1000 );
 
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_errno
 		$curl_errno = curl_errno( $ch );
 		if ( 0 !== $curl_errno ) {
 			// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_error
-			$msg = sprintf( 'cURL error %d: %s', $curl_errno, curl_error( $ch ) );
+			$detail = curl_error( $ch );
+			$msg    = sprintf(
+				'OpenRouter batch image gen cURL error %d for key "%s": %s',
+				$curl_errno,
+				$key,
+				$detail
+			);
 			PRAutoBlogger_Logger::instance()->error( $msg, 'openrouter-image-batch' );
 			return [ 'error' => $msg ];
 		}
@@ -194,7 +209,12 @@ class PRAutoBlogger_OpenRouter_Image_Batch {
 		$raw = (string) curl_multi_getcontent( $ch );
 
 		if ( $http_code >= 400 ) {
-			$msg = sprintf( 'HTTP %d: %s', $http_code, substr( $raw, 0, 300 ) );
+			$msg = sprintf(
+				'OpenRouter batch image gen HTTP %d for key "%s": %s',
+				$http_code,
+				$key,
+				substr( $raw, 0, 300 )
+			);
 			PRAutoBlogger_Logger::instance()->error( $msg, 'openrouter-image-batch' );
 			return [ 'error' => $msg ];
 		}
@@ -202,11 +222,13 @@ class PRAutoBlogger_OpenRouter_Image_Batch {
 		try {
 			$image_bytes = $this->support->extract_image_bytes( $raw );
 		} catch ( \Throwable $e ) {
-			PRAutoBlogger_Logger::instance()->error(
-				'Batch parse error: ' . $e->getMessage(),
-				'openrouter-image-batch'
+			$msg = sprintf(
+				'OpenRouter batch image gen parse error for key "%s": %s',
+				$key,
+				$e->getMessage()
 			);
-			return [ 'error' => $e->getMessage() ];
+			PRAutoBlogger_Logger::instance()->error( $msg, 'openrouter-image-batch' );
+			return [ 'error' => $msg ];
 		}
 
 		return [
