@@ -5,9 +5,9 @@ declare(strict_types=1);
  * Contract for a provider-specific AI model registry.
  *
  * Phase 1 (v1): single implementation for OpenRouter (`class-open-router-model-registry.php`).
- * Phase 3: a second implementation wraps Cloudflare Workers AI model data. A
- * higher-level dispatcher iterates registered registries, calls each with the same
- * capability, and unions the results — the per-registry interface stays unchanged.
+ * Phase 3: a second implementation wraps Runware model data. A higher-level
+ * dispatcher iterates registered registries, calls each with the same capability,
+ * and unions the results — the per-registry interface stays unchanged.
  *
  * Implementations MUST:
  *   - Store the normalized registry as a WP option + transient cache layer.
@@ -86,7 +86,7 @@ interface PRAutoBlogger_Model_Registry_Interface {
 	public function get_fetched_at(): int;
 
 	/**
-	 * Machine-readable provider identifier (e.g. 'openrouter', 'cloudflare_workers_ai').
+	 * Machine-readable provider identifier (e.g. 'openrouter', 'runware').
 	 *
 	 * @return string
 	 */

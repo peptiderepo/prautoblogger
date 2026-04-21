@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * Contract for any image generation provider (Cloudflare Workers AI, DALL-E, etc.).
+ * Contract for any image generation provider (Runware FLUX, OpenRouter Gemini, etc.).
  *
  * Consumers depend on this interface, never on a concrete provider — swapping
  * providers means writing one new class, not refactoring the pipeline. This
@@ -13,7 +13,8 @@ declare(strict_types=1);
  *               content generation run, after editorial review, before publish.
  * Dependencies: None at interface level — implementations wrap a specific HTTP API.
  *
- * @see class-cloudflare-image-provider.php — Cloudflare Workers AI implementation.
+ * @see class-runware-image-provider.php    — Runware FLUX implementation (default).
+ * @see class-open-router-image-provider.php — OpenRouter image implementation.
  * @see interface-llm-provider.php          — Parallel pattern for LLM providers.
  * @see ARCHITECTURE.md                     — External API Integrations table.
  */
@@ -79,7 +80,7 @@ interface PRAutoBlogger_Image_Provider_Interface {
 	/**
 	 * Machine-readable provider identifier used in logs and settings.
 	 *
-	 * @return string Lowercase identifier, e.g. 'cloudflare_workers_ai'.
+	 * @return string Lowercase identifier, e.g. 'runware' or 'openrouter'.
 	 */
 	public function get_provider_name(): string;
 

@@ -175,17 +175,13 @@ prautoblogger/
 │   │   ├── class-runware-image-pricing.php      # FLUX schnell/dev cost table + resolver
 │   │   ├── class-runware-image-support.php      # Key, response parsing, retry, dimension snap
 │   │   ├── class-runware-image-batch.php        # True parallel curl_multi batch dispatcher
-│   │   ├── class-cloudflare-image-provider.php   # Cloudflare Workers AI (sequential batch fallback)
-│   │   ├── class-cloudflare-image-pricing.php    # Model alias + per-MP cost estimation
-│   │   ├── class-cloudflare-image-validator.php  # Non-destructive credential + connectivity check
-│   │   ├── class-cloudflare-image-support.php    # Token, account, URL, and log helpers for CF provider
 │   │   └── (new providers go here — see CONVENTIONS.md)
 │   │
 │   ├── services/
 │   │   ├── interface-model-registry.php           # Contract for provider-specific model registries
 │   │   ├── class-open-router-model-registry.php    # Fetches, caches, queries the OpenRouter model list
 │   │   ├── class-open-router-model-normalizer.php  # Maps raw OpenRouter data → standardized record shape
-│   │   └── (Phase 3: class-cloudflare-workers-ai-model-registry.php)
+│   │   └── (Phase 3: class-runware-model-registry.php)
 │   │
 │   ├── frontend/
 │   │   ├── class-article-typography.php # Inline CSS for font, size, table borders on generated posts
@@ -439,8 +435,6 @@ All prefixed with `prautoblogger_`:
 | `prautoblogger_log_level`              | Logging threshold: error/warning/info/debug           |
 | `prautoblogger_db_version`             | Schema version for migrations                         |
 | `prautoblogger_schedule_time`          | Daily generation time (HH:MM, default: '03:00')       |
-| `prautoblogger_cloudflare_ai_token`    | Encrypted Cloudflare Workers AI API token             |
-| `prautoblogger_cloudflare_account_id`  | Cloudflare account UUID (plaintext — identifier, not secret) |
 | `prautoblogger_image_model`            | Image model slug from `Image_Model_Registry::get_models()`; provider is derived from this on save |
 | `prautoblogger_image_provider`         | Derived from the chosen model on save (v0.8.0+); not editable in admin UI |
 | `prautoblogger_image_prompt_instructions` | System prompt given to the image rewriter LLM (v0.8.0+); falls back to `Image_Prompt_Builder::REWRITER_SYSTEM_PROMPT` when empty |
@@ -482,7 +476,6 @@ Stored on every PRAutoBlogger-generated post:
 | Reddit RSS | Primary Reddit data source — Atom feeds for subreddit hot posts | None (unauthenticated) | No known rate limit; reliable from datacenter IPs | `providers/class-reddit-json-client.php` |
 | Reddit .json | Fallback for posts + only source for comments | None (unauthenticated) | ~10 req/min (datacenter IPs often blocked) | `providers/class-reddit-json-client.php` |
 | Google Analytics 4 | Post performance metrics | OAuth2 service account | Standard GA4 limits | `core/class-ga4-client.php`, `core/class-metrics-collector.php` |
-| Cloudflare Workers AI | Image generation (FLUX.1 schnell / dev) for article hero, thumbnail, and IG placements | API token (encrypted in wp_options) + account ID | Workers AI per-account quotas | `providers/class-cloudflare-image-provider.php`, `providers/class-cloudflare-image-pricing.php`, `providers/class-cloudflare-image-validator.php` |
 | Runware (FLUX.1 via runware.ai) | **Default** image backend (v0.9.0+): schnell ~$0.0006/image, dev ~$0.02/image. True parallel generation via curl_multi. | API key (encrypted in wp_options) | Account-level quotas | `providers/class-runware-image-provider.php`, `providers/class-runware-image-pricing.php`, `providers/class-runware-image-support.php`, `providers/class-runware-image-batch.php` |
 
 ---
@@ -540,10 +533,11 @@ The admin model picker (v1) needs to list OpenRouter models with pricing and cap
 
 ### #17: Runware as default image backend (v0.9.0, Apr 2026)
 
-After a comic-style A/B round in Apr 2026, FLUX.1 schnell via Runware was chosen as the default image backend. Cost is ~$0.0006/image vs ~$0.039/image for Gemini 2.5 Flash Image via OpenRouter (≈65× cheaper), and the looser schnell fidelity reads as editorial-cartoon style — a feature, not a bug, for our single-panel comic aesthetic. FLUX.1 dev (~$0.02/image, 28 steps) remains available as an opt-in for higher-fidelity runs. The Runware layer mirrors the OpenRouter split (interface + provider + support + pricing + batch), all under the 300-line cap. The batch class dispatches `imageInference` POSTs via `curl_multi_init/exec/select` — wall-clock time for the A/B pair drops to ≈ the slowest single image. A v0.9.0 one-time migration (`prautoblogger_migrated_default_image_v090`) flips sites still on the legacy default; explicit user selections are preserved. Cloudflare Workers AI remains as a legacy fallback in the registry.
+After a comic-style A/B round in Apr 2026, FLUX.1 schnell via Runware was chosen as the default image backend. Cost is ~$0.0006/image vs ~$0.039/image for Gemini 2.5 Flash Image via OpenRouter (≈65× cheaper), and the looser schnell fidelity reads as editorial-cartoon style — a feature, not a bug, for our single-panel comic aesthetic. FLUX.1 dev (~$0.02/image, 28 steps) remains available as an opt-in for higher-fidelity runs. The Runware layer mirrors the OpenRouter split (interface + provider + support + pricing + batch), all under the 300-line cap. The batch class dispatches `imageInference` POSTs via `curl_multi_init/exec/select` — wall-clock time for the A/B pair drops to ≈ the slowest single image. A v0.9.0 one-time migration (`prautoblogger_migrated_default_image_v090`) flips sites still on the legacy default; explicit user selections are preserved. Cloudflare Workers AI was removed as an image provider in v0.10.0 (see ADR #16 note below).
 
-### #16: Image generation via Cloudflare Workers AI (FLUX.1), via AI Gateway (v0.8.2+)
-The image-generation layer uses FLUX.1 [schnell] on Cloudflare Workers AI as its default model, chosen for its ~$0.0011/MP cost and 2–3 sec latency. FLUX.1 [dev] is a ~4× cost upgrade exposed as a dropdown for specific posts that warrant it. **v0.8.2+**: calls route through the Cloudflare AI Gateway (same gateway we already use for OpenRouter — `gateway.ai.cloudflare.com/v1/{account}/{gateway}/workers-ai/@cf/black-forest-labs/...`) for response caching, unified cost/latency telemetry, and rate limiting. The 2026-04-15 regression that caused the gateway route to 403 on Workers AI has been resolved upstream; verified by direct probe on 2026-04-21. A `prautoblogger_cf_image_via_gateway` toggle (default on) falls back to the direct `api.cloudflare.com/client/v4/accounts/{id}/ai/run/...` URL if the gateway regresses again. The provider lives behind `PRAutoBlogger_Image_Provider_Interface`, so switching to a different image API (DALL-E, Replicate) is a new class implementation plus a one-line swap in the pipeline wiring.
+### #16: Image generation via Cloudflare Workers AI (FLUX.1) — SUPERSEDED v0.10.0
+Kept here for history. Until v0.8.2 the default image backend was FLUX.1 schnell on Cloudflare Workers AI, routed via the Cloudflare AI Gateway for caching + unified telemetry. In v0.9.0 (2026-04-21) Runware FLUX.1 schnell became the default (65× cheaper, see ADR #17). In v0.10.0 (2026-04-21) the Cloudflare Workers AI provider was removed entirely — classes, settings, tests, and registry entries are gone; any CF user is migrated to `runware:100@1` on upgrade via `PRAutoBlogger_Migrate_Remove_Cloudflare_V0100::run()`. The Cloudflare AI Gateway in front of OpenRouter (ADR #15) is unaffected — it is a distinct integration.
+
 
 ### #15: Optional Cloudflare AI Gateway in front of OpenRouter
 We already use Cloudflare for DNS/CDN on peptiderepo.com, so layering AI Gateway in front of OpenRouter is zero marginal infrastructure. It gives us response caching (meaningful for repeated classification/scoring calls), a unified cost/latency dashboard, rate limiting, and provider fallback — all of which we would otherwise have to build ourselves to satisfy the CTO cost-tracking rules. Kept as an opt-in URL setting (`prautoblogger_ai_gateway_base_url`) so the plugin still works unchanged out of the box and can be bypassed instantly if the gateway misbehaves. The gateway is a transparent OpenRouter-compatible proxy; no new provider class is needed, and the response parsing path (`usage`, `choices[0].message.content`) is unchanged.

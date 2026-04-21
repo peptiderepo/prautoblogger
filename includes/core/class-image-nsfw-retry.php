@@ -4,8 +4,8 @@ declare(strict_types=1);
 /**
  * Single-shot retry of NSFW-blocked image slots with a sanitized prompt.
  *
- * When an image provider (currently only Cloudflare Workers AI) rejects a
- * prompt via its content filter, its batch result carries
+ * When an image provider rejects a prompt via its content filter, its
+ * batch result carries
  * `['error_type' => 'nsfw_blocked']`. This helper reruns just the blocked
  * slot once with the rule-based fallback prompt (article title + style
  * suffix, no LLM rewrite) and merges the new result back into the batch.

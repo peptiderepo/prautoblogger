@@ -5,6 +5,69 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.10.0] — 2026-04-21
+
+### Removed
+
+- **Cloudflare Workers AI as image provider.** The four `class-cloudflare-image-*`
+  provider files are gone along with their unit tests and the three
+  CF-specific options (`prautoblogger_cloudflare_ai_token`,
+  `prautoblogger_cloudflare_account_id`, `prautoblogger_cf_image_via_gateway`).
+  Runware FLUX.1 schnell produces equivalent-quality output at ~65×
+  less cost and eliminates a duplicated settings surface. The
+  `flux-1-schnell` registry entry that mapped to the CF provider is
+  removed; the legacy slug now resolves to an empty provider (caught
+  by the migration).
+
+### Changed
+
+- **Sites on any `cloudflare` image provider auto-migrate to
+  `runware:100@1` on upgrade.** New migration
+  `PRAutoBlogger_Migrate_Remove_Cloudflare_V0100::run()` runs from
+  `admin_init` once per site. Detects three legacy shapes: registry-
+  derived provider `cloudflare`, `prautoblogger_image_provider` option
+  set to `cloudflare`, or the legacy slug `flux-1-schnell`. Sets
+  `prautoblogger_image_provider` + `prautoblogger_image_model` to the
+  Runware schnell pair and deletes the three dead CF options. Idempotent
+  via `prautoblogger_migrated_remove_cloudflare_v0100` flag — running
+  twice is a no-op and will not clobber a post-migration manual choice.
+- **Image provider dispatch fallback is now Runware, not Cloudflare.**
+  `PRAutoBlogger_Image_Pipeline::create_default_provider()` returns
+  `PRAutoBlogger_Runware_Image_Provider` for any unrecognised
+  `prautoblogger_image_provider` value. An unmigrated install still
+  gets a working pipeline instead of a fatal.
+
+### Note
+
+- **Cloudflare AI Gateway fronting OpenRouter is unaffected.** The
+  `prautoblogger_ai_gateway_base_url` + `prautoblogger_ai_gateway_cache_ttl`
+  options, their settings fields, `class-open-router-config.php`
+  gateway resolution, and `class-open-router-request-builder.php`
+  `cf-aig-cache-ttl` headers are all intentionally untouched. The AI
+  Gateway is a proxy/cache layer in front of OpenRouter and is
+  orthogonal to the CF Workers AI image provider removal. The
+  migration test asserts this invariant explicitly.
+
+### Cost impact
+
+Zero recurring spend from CF Workers AI image generation (the
+peptiderepo.com install was still on CF as recently as v0.8.2 — see
+commit `80a7e11`). No new prompt tokens, no change in model mix for
+sites already on Runware or OpenRouter.
+
+### Migration checklist (for anyone else running this plugin)
+
+1. On first admin_init after upgrade, the migration will flip
+   `prautoblogger_image_provider` to `runware` and
+   `prautoblogger_image_model` to `runware:100@1` if you were on CF.
+2. **Set `prautoblogger_runware_api_key`** in Settings → Images if you
+   hadn't already — image generation will fail until it is set.
+3. The CF API token + account ID options are deleted by the migration;
+   you don't need to do anything.
+4. If you want to switch back to OpenRouter (Gemini) instead of
+   Runware, just change the Image Model picker after the migration
+   has run.
+
 ## [0.9.0] — 2026-04-21
 
 ### Added

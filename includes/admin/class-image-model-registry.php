@@ -22,7 +22,7 @@ class PRAutoBlogger_Image_Model_Registry {
 	 * Each entry contains:
 	 * - id:             Model identifier used in API calls.
 	 * - name:           Human-readable display name.
-	 * - provider:       'runware' | 'openrouter' | 'cloudflare'.
+	 * - provider:       'runware' | 'openrouter'.
 	 * - cost_per_image: Estimated USD cost per generation.
 	 * - capabilities:   Array of capability tags.
 	 * - description:    Short description for the admin UI.
@@ -90,14 +90,6 @@ class PRAutoBlogger_Image_Model_Registry {
 				'capabilities'   => [ 'image_generation' ],
 				'description'    => __( 'OpenAI premium. Photorealistic.', 'prautoblogger' ),
 			],
-			[
-				'id'             => 'flux-1-schnell',
-				'name'           => 'FLUX.1 schnell (Cloudflare)',
-				'provider'       => 'cloudflare',
-				'cost_per_image' => 0.0007,
-				'capabilities'   => [ 'image_generation' ],
-				'description'    => __( 'Legacy Cloudflare fallback. Use Runware FLUX instead.', 'prautoblogger' ),
-			],
 		];
 	}
 
@@ -106,7 +98,7 @@ class PRAutoBlogger_Image_Model_Registry {
 	 * model id is not in the registry.
 	 *
 	 * @param string $model_id Model slug from the admin UI.
-	 * @return string Provider id ('runware' | 'openrouter' | 'cloudflare' | '').
+	 * @return string Provider id ('runware' | 'openrouter' | '').
 	 */
 	public static function provider_for( string $model_id ): string {
 		foreach ( self::get_models() as $model ) {
