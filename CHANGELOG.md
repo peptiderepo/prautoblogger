@@ -5,6 +5,32 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.8.1] — 2026-04-21
+
+### Fixed
+
+- **Orphaned LLM research costs now reaped daily.** When a pipeline died
+  between post creation and the final cost-amortization step (e.g.
+  execution-time kill on shared hosting), the `llm_research` row stayed
+  unlinked and the affected articles' cost popovers understated true spend.
+  A new daily cron (`prautoblogger_reap_orphan_research_rows`, 03:15
+  server time) retroactively amortizes orphan rows against posts from
+  the same run. Includes a one-time activator migration to back-populate
+  `_prautoblogger_run_id` post_meta for existing posts.
+- **GA4 Property ID admin description corrected.** The field description
+  previously instructed users to enter `properties/XXXXXXXXX`, but the
+  GA4 client already prepends the `properties/` URL segment internally —
+  a double-prefixed value would 404. Description now asks for the digits
+  only, matching actual code behavior.
+
+### Added
+
+- New WP-CLI command `wp prautoblogger reap-research` for manual reaping
+  and ops debugging.
+- `Publisher::build_meta()` now writes `_prautoblogger_run_id` on every
+  generated post, so the reaper has a direct meta path from run_id to
+  sibling posts without walking `wp_prautoblogger_generation_log`.
+
 ## [0.8.0] — 2026-04-21
 
 ### Changed

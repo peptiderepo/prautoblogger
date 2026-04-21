@@ -154,7 +154,7 @@ class PRAutoBlogger_Settings_Fields_Extended {
 				'label'       => __( 'GA4 Property ID', 'prautoblogger' ),
 				'type'        => 'text',
 				'section'     => 'prautoblogger_analytics',
-				'description' => __( 'Format: properties/XXXXXXXXX. Leave blank to skip GA4.', 'prautoblogger' ),
+				'description' => __( 'Your GA4 Property ID — digits only, e.g. 123456789 (the code adds the "properties/" prefix internally). Find it in GA4 → Admin → Property details. Leave blank to skip GA4.', 'prautoblogger' ),
 			],
 			[
 				'id'          => 'prautoblogger_ga4_credentials_json',
