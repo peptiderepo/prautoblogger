@@ -17,6 +17,11 @@ and this project uses [Semantic Versioning](https://semver.org/).
   server time) retroactively amortizes orphan rows against posts from
   the same run. Includes a one-time activator migration to back-populate
   `_prautoblogger_run_id` post_meta for existing posts.
+- **GA4 Property ID admin description corrected.** The field description
+  previously instructed users to enter `properties/XXXXXXXXX`, but the
+  GA4 client already prepends the `properties/` URL segment internally —
+  a double-prefixed value would 404. Description now asks for the digits
+  only, matching actual code behavior.
 
 ### Added
 
