@@ -242,4 +242,29 @@ class PRAutoBlogger_Activator {
 
 		update_option( 'prautoblogger_migrated_run_id_meta_v081', '1' );
 	}
+
+	/**
+	 * v0.9.0 migration: flip legacy default image model to Runware schnell
+	 * and re-derive provider. CEO decision 2026-04-21 — 65× cheaper than
+	 * Gemini Nano Banana. Explicit user selections are preserved.
+	 *
+	 * Side effects: may update `prautoblogger_image_model`,
+	 *               `prautoblogger_image_provider`, and sets the
+	 *               `prautoblogger_migrated_default_image_v090` flag.
+	 */
+	public static function migrate_default_image_v090(): void {
+		if ( get_option( 'prautoblogger_migrated_default_image_v090' ) ) {
+			return;
+		}
+		$curr = (string) get_option( 'prautoblogger_image_model', '' );
+		if ( in_array( $curr, [ '', 'google/gemini-2.5-flash-image' ], true ) ) {
+			update_option( 'prautoblogger_image_model', 'runware:100@1' );
+		}
+		$final = (string) get_option( 'prautoblogger_image_model', 'runware:100@1' );
+		$prov  = PRAutoBlogger_Image_Model_Registry::provider_for( $final );
+		if ( '' !== $prov ) {
+			update_option( 'prautoblogger_image_provider', $prov );
+		}
+		update_option( 'prautoblogger_migrated_default_image_v090', '1' );
+	}
 }

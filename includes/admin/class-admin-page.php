@@ -231,7 +231,7 @@ class PRAutoBlogger_Admin_Page {
 			$option_name = substr( $filter, strlen( 'sanitize_option_' ) );
 		}
 
-		$encrypted = [ 'prautoblogger_openrouter_api_key', 'prautoblogger_ga4_credentials_json', 'prautoblogger_cloudflare_ai_token' ];
+		$encrypted = [ 'prautoblogger_openrouter_api_key', 'prautoblogger_ga4_credentials_json', 'prautoblogger_cloudflare_ai_token', 'prautoblogger_runware_api_key' ];
 		if ( in_array( $option_name, $encrypted, true ) ) {
 			// Empty value means password field wasn't touched — keep existing.
 			if ( '' === $value ) {

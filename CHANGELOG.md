@@ -5,6 +5,60 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.9.0] — 2026-04-21
+
+### Added
+
+- **Runware (FLUX.1 schnell) as the default image provider.** New
+  provider at `includes/providers/class-runware-image-*` generates
+  ~$0.0006/image on FLUX.1 schnell (`runware:100@1`) — roughly 65× cheaper
+  than the previous default (Gemini 2.5 Flash Image via OpenRouter at
+  ~$0.039/image). FLUX.1 dev (`runware:101@1`, ~$0.02/image) is also
+  available for higher-fidelity runs. The provider mirrors the
+  OpenRouter split: interface + provider + support + pricing + batch,
+  all under the 300-line cap.
+- **True parallel image generation.** `PRAutoBlogger_Runware_Image_Batch`
+  uses `curl_multi_init/exec/select` to fire all imageInference POSTs
+  concurrently, then downloads the signed URLs concurrently. Wall-clock
+  for the A/B pair drops to ≈ the slowest single image instead of the
+  sum of both.
+- **v0.9.0 one-time migration.** Sites where the image model is empty
+  or still pinned to `google/gemini-2.5-flash-image` are auto-flipped
+  to `runware:100@1` on upgrade, with the provider re-derived from the
+  registry. Flag: `prautoblogger_migrated_default_image_v090`. The
+  Runware API key option (`prautoblogger_runware_api_key`) was added
+  to the `enc:`-prefix migration list so Settings writes go through
+  the same encryption-at-rest path as the other provider keys.
+
+### Changed
+
+- **Image prompt builder steered away from abstract/chemical subjects.**
+  The rewriter system prompt now explicitly refuses to personify
+  molecules, peptides, hormones, or proteins — FLUX (and most diffusion
+  image models) render "anthropomorphic peptide" as an incoherent blob.
+  Default scene guidance is now "concrete, human-scale scenes: people
+  reacting to things, doctors and patients, gym bros with vials, etc."
+  Style suffix unchanged — single-panel comic aesthetic preserved. See
+  `includes/core/class-image-prompt-builder.php::REWRITER_SYSTEM_PROMPT`.
+- **Default image model flipped to `runware:100@1` (FLUX.1 schnell).**
+  `PRAUTOBLOGGER_DEFAULT_IMAGE_PROVIDER` and
+  `PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL` constants in `prautoblogger.php`
+  updated. Cloudflare flux-1-schnell remains in the registry as a legacy
+  fallback for any operators who set it explicitly. Rationale:
+  `image-style` memory (2026-04-21) — schnell passed the comic A/B
+  round and the cost delta funds more generations for the same monthly
+  budget.
+
+### Cost impact
+
+At 50 articles/day × 2 image A/B = 100 images/day:
+
+- Before (Gemini 2.5 Flash Image via OpenRouter): ≈ $3.90/day, ≈ $117/mo
+- After (FLUX.1 schnell via Runware):             ≈ $0.06/day, ≈ $1.80/mo
+
+Net saving: ~$115/mo at current traffic, funded by a single provider
+swap with no user-visible change in article quality.
+
 ## [0.8.2] — 2026-04-21
 
 ### Fixed

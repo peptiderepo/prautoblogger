@@ -17,22 +17,19 @@ declare(strict_types=1);
 class PRAutoBlogger_Image_Pipeline {
 
 	/**
-	 * Default image dimensions (landscape).
+	 * Default image dimensions (landscape). 1200×632 is the closest
+	 * 8-aligned pair to the standard OG image size (1200×630). Some
+	 * providers require dimensions divisible by 8.
 	 */
-	// Dimensions must be divisible by 8 (required by some providers).
-	// 1200×632 is the closest 8-aligned pair to the standard OG image size (1200×630).
 	private const DEFAULT_WIDTH  = 1200;
 	private const DEFAULT_HEIGHT = 632;
 
 	/** @var PRAutoBlogger_Image_Provider_Interface Image gen provider. */
 	private PRAutoBlogger_Image_Provider_Interface $provider;
-
 	/** @var PRAutoBlogger_Image_Prompt_Builder Builds scene + caption from article data. */
 	private PRAutoBlogger_Image_Prompt_Builder $prompt_builder;
-
 	/** @var PRAutoBlogger_Image_Media_Sideloader Downloads images into WP media library. */
 	private PRAutoBlogger_Image_Media_Sideloader $sideloader;
-
 	/** @var PRAutoBlogger_Cost_Tracker Logs image generation spend. */
 	private PRAutoBlogger_Cost_Tracker $cost_tracker;
 
@@ -41,7 +38,7 @@ class PRAutoBlogger_Image_Pipeline {
 	 *
 	 * When no provider is injected, the constructor reads the
 	 * `prautoblogger_image_provider` setting and instantiates the
-	 * matching concrete class ('openrouter' or 'cloudflare').
+	 * matching concrete class ('runware', 'openrouter', or 'cloudflare').
 	 *
 	 * @param PRAutoBlogger_Image_Provider_Interface|null $provider Optional provider override.
 	 * @param PRAutoBlogger_Cost_Tracker|null             $cost_tracker Optional cost tracker.
@@ -63,6 +60,9 @@ class PRAutoBlogger_Image_Pipeline {
 	 */
 	private static function create_default_provider(): PRAutoBlogger_Image_Provider_Interface {
 		$provider_id = (string) get_option( 'prautoblogger_image_provider', PRAUTOBLOGGER_DEFAULT_IMAGE_PROVIDER );
+		if ( 'runware' === $provider_id ) {
+			return new PRAutoBlogger_Runware_Image_Provider();
+		}
 		if ( 'openrouter' === $provider_id ) {
 			return new PRAutoBlogger_OpenRouter_Image_Provider();
 		}

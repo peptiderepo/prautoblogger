@@ -8,7 +8,7 @@ declare(strict_types=1);
  * Plugin Name:       PRAutoBlogger
  * Plugin URI:        https://peptiderepo.com/prautoblogger
  * Description:       Monitors social media for trending topics, generates SEO-friendly blog posts using AI, and publishes them on a daily schedule with full cost tracking and self-improvement metrics.
- * Version:           0.8.2
+ * Version:           0.9.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            PeptideRepo
@@ -35,7 +35,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 | and limits without magic strings.
 */
 
-define( 'PRAUTOBLOGGER_VERSION', '0.8.2' );
+define( 'PRAUTOBLOGGER_VERSION', '0.9.0' );
 define( 'PRAUTOBLOGGER_DB_VERSION', '1.1.0' );
 define( 'PRAUTOBLOGGER_PLUGIN_FILE', __FILE__ );
 define( 'PRAUTOBLOGGER_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
@@ -54,11 +54,13 @@ define( 'PRAUTOBLOGGER_DEFAULT_WRITING_MODEL', 'google/gemini-2.5-flash-lite' );
 define( 'PRAUTOBLOGGER_DEFAULT_EDITOR_MODEL', 'google/gemini-2.5-flash-lite' );
 
 // Image generation defaults.
-// Default provider is OpenRouter; Cloudflare is the fallback.
-// Default model is Gemini 2.5 Flash Image ($0.005/image, good for comics).
-// User can override via Settings → Images → Image Model.
-define( 'PRAUTOBLOGGER_DEFAULT_IMAGE_PROVIDER', 'openrouter' );
-define( 'PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL', 'google/gemini-2.5-flash-image' );
+// Default provider is Runware; OpenRouter (Gemini) + Cloudflare remain as alternates.
+// Default model is FLUX.1 schnell via Runware (~$0.0006/image, ~2s). CEO
+// decision 2026-04-21 after comic A/B: schnell's looser fidelity reads as
+// editorial-cartoon style and is 65× cheaper than Nano Banana. Users can
+// override via Settings → Images → Image Model.
+define( 'PRAUTOBLOGGER_DEFAULT_IMAGE_PROVIDER', 'runware' );
+define( 'PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL', 'runware:100@1' );
 
 // Default style suffix appended to every image-gen prompt. Updated
 // 2026-04-18 v4: single-panel newspaper comic style. Caption is now

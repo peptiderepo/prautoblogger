@@ -171,6 +171,10 @@ prautoblogger/
 │   │   ├── class-open-router-image-pricing.php   # Model resolution + per-image cost estimation
 │   │   ├── class-open-router-config.php          # API base URL (direct vs AI Gateway)
 │   │   ├── class-open-router-request-builder.php # Header building + Hostinger cURL auth workaround
+│   │   ├── class-runware-image-provider.php     # Runware FLUX.1 (default v0.9.0+)
+│   │   ├── class-runware-image-pricing.php      # FLUX schnell/dev cost table + resolver
+│   │   ├── class-runware-image-support.php      # Key, response parsing, retry, dimension snap
+│   │   ├── class-runware-image-batch.php        # True parallel curl_multi batch dispatcher
 │   │   ├── class-cloudflare-image-provider.php   # Cloudflare Workers AI (sequential batch fallback)
 │   │   ├── class-cloudflare-image-pricing.php    # Model alias + per-MP cost estimation
 │   │   ├── class-cloudflare-image-validator.php  # Non-destructive credential + connectivity check
@@ -479,6 +483,7 @@ Stored on every PRAutoBlogger-generated post:
 | Reddit .json | Fallback for posts + only source for comments | None (unauthenticated) | ~10 req/min (datacenter IPs often blocked) | `providers/class-reddit-json-client.php` |
 | Google Analytics 4 | Post performance metrics | OAuth2 service account | Standard GA4 limits | `core/class-ga4-client.php`, `core/class-metrics-collector.php` |
 | Cloudflare Workers AI | Image generation (FLUX.1 schnell / dev) for article hero, thumbnail, and IG placements | API token (encrypted in wp_options) + account ID | Workers AI per-account quotas | `providers/class-cloudflare-image-provider.php`, `providers/class-cloudflare-image-pricing.php`, `providers/class-cloudflare-image-validator.php` |
+| Runware (FLUX.1 via runware.ai) | **Default** image backend (v0.9.0+): schnell ~$0.0006/image, dev ~$0.02/image. True parallel generation via curl_multi. | API key (encrypted in wp_options) | Account-level quotas | `providers/class-runware-image-provider.php`, `providers/class-runware-image-pricing.php`, `providers/class-runware-image-support.php`, `providers/class-runware-image-batch.php` |
 
 ---
 
@@ -532,6 +537,10 @@ Reddit rejected our OAuth API application (April 2026). We initially switched to
 ### #18: OpenRouter model registry — daily refresh, WP option + transient cache, zero-coupling
 
 The admin model picker (v1) needs to list OpenRouter models with pricing and capabilities. We fetch `https://openrouter.ai/api/v1/models` (free, unauthenticated) once daily and store the normalized payload in a WP option fronted by a 24h transient. On stale-and-fetch-fails, we serve last-good + surface a warning. The registry class (`class-open-router-model-registry.php`) takes all config via constructor (option name, transient name, endpoint URL) — no PRAUTOBLOGGER_* constants inside the class body. Phase 2 lifts it into a shared Composer package with zero internal edits. Phase 3 adds a parallel `Cloudflare_WorkersAI_Model_Registry` behind the same interface. Capability vocabulary: `text→text`, `text+image→text`, `text+audio→text`, `text→image`, `text→audio`, `text→video`, `text→embedding`. Cost: $0/month.
+
+### #17: Runware as default image backend (v0.9.0, Apr 2026)
+
+After a comic-style A/B round in Apr 2026, FLUX.1 schnell via Runware was chosen as the default image backend. Cost is ~$0.0006/image vs ~$0.039/image for Gemini 2.5 Flash Image via OpenRouter (≈65× cheaper), and the looser schnell fidelity reads as editorial-cartoon style — a feature, not a bug, for our single-panel comic aesthetic. FLUX.1 dev (~$0.02/image, 28 steps) remains available as an opt-in for higher-fidelity runs. The Runware layer mirrors the OpenRouter split (interface + provider + support + pricing + batch), all under the 300-line cap. The batch class dispatches `imageInference` POSTs via `curl_multi_init/exec/select` — wall-clock time for the A/B pair drops to ≈ the slowest single image. A v0.9.0 one-time migration (`prautoblogger_migrated_default_image_v090`) flips sites still on the legacy default; explicit user selections are preserved. Cloudflare Workers AI remains as a legacy fallback in the registry.
 
 ### #16: Image generation via Cloudflare Workers AI (FLUX.1), via AI Gateway (v0.8.2+)
 The image-generation layer uses FLUX.1 [schnell] on Cloudflare Workers AI as its default model, chosen for its ~$0.0011/MP cost and 2–3 sec latency. FLUX.1 [dev] is a ~4× cost upgrade exposed as a dropdown for specific posts that warrant it. **v0.8.2+**: calls route through the Cloudflare AI Gateway (same gateway we already use for OpenRouter — `gateway.ai.cloudflare.com/v1/{account}/{gateway}/workers-ai/@cf/black-forest-labs/...`) for response caching, unified cost/latency telemetry, and rate limiting. The 2026-04-15 regression that caused the gateway route to 403 on Workers AI has been resolved upstream; verified by direct probe on 2026-04-21. A `prautoblogger_cf_image_via_gateway` toggle (default on) falls back to the direct `api.cloudflare.com/client/v4/accounts/{id}/ai/run/...` URL if the gateway regresses again. The provider lives behind `PRAutoBlogger_Image_Provider_Interface`, so switching to a different image API (DALL-E, Replicate) is a new class implementation plus a one-line swap in the pipeline wiring.

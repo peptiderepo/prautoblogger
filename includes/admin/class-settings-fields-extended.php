@@ -241,6 +241,14 @@ class PRAutoBlogger_Settings_Fields_Extended {
 				'description' => __( 'Only needed if using Cloudflare provider.', 'prautoblogger' ),
 			],
 			[
+				'id'          => 'prautoblogger_runware_api_key',
+				'label'       => __( 'Runware API Key', 'prautoblogger' ),
+				'type'        => 'password',
+				'section'     => 'prautoblogger_images',
+				'description' => __( 'Required when using a Runware FLUX model. Get your key at runware.ai/signup.', 'prautoblogger' ),
+				'icon'        => '🔑',
+			],
+			[
 				'id'          => 'prautoblogger_image_style_suffix',
 				'label'       => __( 'Style Suffix', 'prautoblogger' ),
 				'type'        => 'textarea',

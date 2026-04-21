@@ -18,7 +18,7 @@ class ImageModelRegistryTest extends BaseTestCase {
 
 	/**
 	 * Every entry returned by get_models() must carry a non-empty id and
-	 * a provider of 'openrouter' or 'cloudflare'. If this breaks, the
+	 * a provider of 'runware', 'openrouter', or 'cloudflare'. If this breaks, the
 	 * admin save flow will silently drop the provider derivation.
 	 */
 	public function test_every_registry_entry_has_id_and_known_provider(): void {
@@ -31,7 +31,7 @@ class ImageModelRegistryTest extends BaseTestCase {
 			$this->assertArrayHasKey( 'provider', $model );
 			$this->assertContains(
 				$model['provider'],
-				[ 'openrouter', 'cloudflare' ],
+				[ 'runware', 'openrouter', 'cloudflare' ],
 				sprintf( 'Unexpected provider %s for model %s', (string) $model['provider'], (string) $model['id'] )
 			);
 		}
@@ -49,6 +49,22 @@ class ImageModelRegistryTest extends BaseTestCase {
 		$this->assertSame(
 			'openrouter',
 			\PRAutoBlogger_Image_Model_Registry::provider_for( 'google/gemini-2.5-flash-image' )
+		);
+	}
+
+	/**
+	 * Runware model ids (added v0.9.0) resolve to the 'runware' provider.
+	 * This test pins the v0.9.0 default flip so a registry regression
+	 * that loses the Runware entries fails CI loudly.
+	 */
+	public function test_provider_for_runware_models(): void {
+		$this->assertSame(
+			'runware',
+			\PRAutoBlogger_Image_Model_Registry::provider_for( 'runware:100@1' )
+		);
+		$this->assertSame(
+			'runware',
+			\PRAutoBlogger_Image_Model_Registry::provider_for( 'runware:101@1' )
 		);
 	}
 

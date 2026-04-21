@@ -232,9 +232,12 @@ class PRAutoBlogger {
 			update_option( 'prautoblogger_migrated_style_suffix_v4', '1' );
 		}
 
+		// v0.9.0: flip legacy default image model to Runware schnell.
+		PRAutoBlogger_Activator::migrate_default_image_v090();
+
 		// One-time migration: re-wrap existing encrypted values with "enc:" prefix.
 		if ( ! get_option( 'prautoblogger_migrated_enc_prefix' ) ) {
-			$enc_options = [ 'prautoblogger_openrouter_api_key', 'prautoblogger_ga4_credentials_json' ];
+			$enc_options = [ 'prautoblogger_openrouter_api_key', 'prautoblogger_ga4_credentials_json', 'prautoblogger_runware_api_key' ];
 			foreach ( $enc_options as $opt ) {
 				$val = get_option( $opt, '' );
 				if ( '' !== $val && ! PRAutoBlogger_Encryption::is_encrypted( $val ) ) {

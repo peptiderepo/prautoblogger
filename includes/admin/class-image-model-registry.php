@@ -6,12 +6,13 @@ declare(strict_types=1);
  *
  * What: Returns a hardcoded list of image models for the admin model picker.
  *       No API discovery — updated manually when providers add/remove models.
- * Who calls it: PRAutoBlogger_Admin_Page (model picker UI) and
- *               PRAutoBlogger_Image_Pipeline (model validation).
+ * Who calls it: PRAutoBlogger_Admin_Page (model picker UI + save-time provider
+ *               derivation) and PRAutoBlogger_Image_Pipeline (provider lookup).
  * Dependencies: None.
  *
  * @see admin/class-settings-fields-extended.php — Image settings reference this registry.
- * @see core/class-image-pipeline.php            — Validates selected model against this list.
+ * @see core/class-image-pipeline.php            — Derives provider from picked model.
+ * @see providers/class-runware-image-provider.php — Runware FLUX backend.
  */
 class PRAutoBlogger_Image_Model_Registry {
 
@@ -21,22 +22,41 @@ class PRAutoBlogger_Image_Model_Registry {
 	 * Each entry contains:
 	 * - id:             Model identifier used in API calls.
 	 * - name:           Human-readable display name.
-	 * - provider:       'openrouter' or 'cloudflare'.
+	 * - provider:       'runware' | 'openrouter' | 'cloudflare'.
 	 * - cost_per_image: Estimated USD cost per generation.
 	 * - capabilities:   Array of capability tags.
 	 * - description:    Short description for the admin UI.
+	 *
+	 * Ordered cheapest-to-most-expensive within each provider, with the
+	 * recommended default (Runware schnell) at the top.
 	 *
 	 * @return array<int, array<string, mixed>>
 	 */
 	public static function get_models(): array {
 		return [
 			[
+				'id'             => 'runware:100@1',
+				'name'           => 'FLUX.1 schnell (Runware)',
+				'provider'       => 'runware',
+				'cost_per_image' => 0.0006,
+				'capabilities'   => [ 'image_generation' ],
+				'description'    => __( 'Default. Fast, very cheap, comic-friendly fidelity.', 'prautoblogger' ),
+			],
+			[
+				'id'             => 'runware:101@1',
+				'name'           => 'FLUX.1 dev (Runware)',
+				'provider'       => 'runware',
+				'cost_per_image' => 0.02,
+				'capabilities'   => [ 'image_generation' ],
+				'description'    => __( 'Higher fidelity FLUX. ~30x schnell cost.', 'prautoblogger' ),
+			],
+			[
 				'id'             => 'google/gemini-2.5-flash-image',
 				'name'           => 'Gemini 2.5 Flash Image (Nano Banana)',
 				'provider'       => 'openrouter',
 				'cost_per_image' => 0.005,
 				'capabilities'   => [ 'image_generation' ],
-				'description'    => __( 'Good quality, low cost. Recommended.', 'prautoblogger' ),
+				'description'    => __( 'Mid-tier quality, proven.', 'prautoblogger' ),
 			],
 			[
 				'id'             => 'google/gemini-3.1-flash-image-preview',
@@ -76,7 +96,7 @@ class PRAutoBlogger_Image_Model_Registry {
 				'provider'       => 'cloudflare',
 				'cost_per_image' => 0.0007,
 				'capabilities'   => [ 'image_generation' ],
-				'description'    => __( 'Cheapest. Low quality, 4-step.', 'prautoblogger' ),
+				'description'    => __( 'Legacy Cloudflare fallback. Use Runware FLUX instead.', 'prautoblogger' ),
 			],
 		];
 	}
@@ -86,7 +106,7 @@ class PRAutoBlogger_Image_Model_Registry {
 	 * model id is not in the registry.
 	 *
 	 * @param string $model_id Model slug from the admin UI.
-	 * @return string Provider id ('openrouter' | 'cloudflare' | '').
+	 * @return string Provider id ('runware' | 'openrouter' | 'cloudflare' | '').
 	 */
 	public static function provider_for( string $model_id ): string {
 		foreach ( self::get_models() as $model ) {
