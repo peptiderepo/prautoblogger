@@ -21,16 +21,10 @@ class RunwareImageSupportTest extends BaseTestCase {
 		Functions\when( 'esc_html' )->returnArg();
 		Functions\when( 'esc_html__' )->returnArg();
 		Functions\when( '__' )->returnArg();
-
-		if ( ! class_exists( 'PRAutoBlogger_Encryption' ) ) {
-			eval( '
-				class PRAutoBlogger_Encryption {
-					public static function is_encrypted( $v ) { return 0 === strpos( $v, "enc:" ); }
-					public static function decrypt( $v ) { return "rw-test-key-123"; }
-					public static function encrypt( $v ) { return "enc:" . $v; }
-				}
-			' );
-		}
+		// Real PRAutoBlogger_Encryption uses wp_salt('auth') internally on the
+		// decrypt path. Stub it with a deterministic 32-char string so OpenSSL
+		// has a key to work with in the "enc:"-prefixed round-trip test.
+		Functions\when( 'wp_salt' )->justReturn( 'test-salt-32chars-aaaaaaaaaaaaaa' );
 	}
 
 	/** A well-formed imageInference entry returns its imageURL. */
@@ -156,17 +150,21 @@ class RunwareImageSupportTest extends BaseTestCase {
 		$support->get_api_key();
 	}
 
-	/** Encrypted key is decrypted on read. */
+	/** Encrypted key is decrypted on read (round-trips through real PRAutoBlogger_Encryption). */
 	public function test_get_api_key_decrypts_encrypted(): void {
-		Functions\when( 'get_option' )->alias( function ( $key, $default = false ) {
+		$plaintext = 'rw-real-round-trip-key';
+		$cipher    = \PRAutoBlogger_Encryption::encrypt( $plaintext );
+		$this->assertStringStartsWith( 'enc:', $cipher, 'encrypt() must return an enc:-prefixed value' );
+
+		Functions\when( 'get_option' )->alias( function ( $key, $default = false ) use ( $cipher ) {
 			if ( 'prautoblogger_runware_api_key' === $key ) {
-				return 'enc:stored-ciphertext';
+				return $cipher;
 			}
 			return $default;
 		} );
 
 		$support = new \PRAutoBlogger_Runware_Image_Support();
-		$this->assertSame( 'rw-test-key-123', $support->get_api_key() );
+		$this->assertSame( $plaintext, $support->get_api_key() );
 	}
 
 	/** A plaintext key (pre-migration) passes through unchanged. */

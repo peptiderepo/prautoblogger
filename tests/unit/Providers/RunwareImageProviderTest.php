@@ -21,7 +21,7 @@ class RunwareImageProviderTest extends BaseTestCase {
 
 		Functions\when( 'get_option' )->alias( function ( $key, $default = false ) {
 			static $options = [
-				'prautoblogger_runware_api_key' => 'enc:fake-key',
+				'prautoblogger_runware_api_key' => 'rw-plain-test-key',
 				'prautoblogger_image_model'     => 'runware:100@1',
 			];
 			return $options[ $key ] ?? $default;
@@ -33,15 +33,7 @@ class RunwareImageProviderTest extends BaseTestCase {
 
 		Functions\when( 'wp_generate_uuid4' )->justReturn( '11111111-2222-3333-4444-555555555555' );
 
-		if ( ! class_exists( 'PRAutoBlogger_Encryption' ) ) {
-			eval( '
-				class PRAutoBlogger_Encryption {
-					public static function is_encrypted( $v ) { return 0 === strpos( $v, "enc:" ); }
-					public static function decrypt( $v ) { return "rw-test-key-123"; }
-					public static function encrypt( $v ) { return "enc:" . $v; }
-				}
-			' );
-		}
+
 	}
 
 	/** Provider name is 'runware'. */
