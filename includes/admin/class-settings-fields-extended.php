@@ -260,6 +260,14 @@ class PRAutoBlogger_Settings_Fields_Extended {
 				'default'     => '1',
 				'description' => __( 'When the provider rejects an image prompt as NSFW (e.g. Cloudflare code 3030), retry once with a generic fallback scene built from the article title. Disable to fail fast if the filter gets trigger-happy.', 'prautoblogger' ),
 			],
+			[
+				'id'          => 'prautoblogger_cf_image_via_gateway',
+				'label'       => __( 'Route Cloudflare Images via AI Gateway', 'prautoblogger' ),
+				'type'        => 'toggle',
+				'section'     => 'prautoblogger_images',
+				'default'     => '1',
+				'description' => __( 'Route Cloudflare Workers AI image calls through the Cloudflare AI Gateway (requires the AI Gateway URL configured under API Keys). Adds response caching, cost logging, and rate-limiting. Turn off to hit the direct Workers AI API — only needed if the gateway route regresses.', 'prautoblogger' ),
+			],
 		];
 	}
 }

@@ -5,6 +5,19 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.8.2] — 2026-04-21
+
+### Changed
+
+- **Cloudflare Workers AI image calls now route through the AI Gateway
+  by default.** The 2026-04-15 regression that caused the gateway route
+  to 403 on Workers AI has been resolved upstream. Routing via the
+  gateway gives us response caching, unified cost/latency dashboard,
+  and rate limiting for free, mirroring the OpenRouter LLM path. A new
+  admin toggle `prautoblogger_cf_image_via_gateway` (default on) lets
+  operators force direct-API if the gateway route regresses again,
+  without clearing the gateway URL setting the LLM provider depends on.
+
 ## [0.8.1] — 2026-04-21
 
 ### Fixed
