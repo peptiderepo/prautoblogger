@@ -138,6 +138,20 @@ class ResearchReaperTest extends BaseTestCase {
 	}
 
 	/**
+	 * Return only the `generation_log` inserts from the capture — filters out
+	 * the `event_log` rows that Logger::instance()->info() writes as a side
+	 * effect of the reaper + amortize's own progress logging.
+	 *
+	 * @return array<int, array<string, mixed>>
+	 */
+	private function gen_log_inserts(): array {
+		return array_values( array_filter(
+			$this->inserted_rows,
+			static fn( $row ) => false !== strpos( (string) ( $row['__table'] ?? '' ), 'generation_log' )
+		) );
+	}
+
+	/**
 	 * Helper: seed the orphan list returned by the reaper's primary SELECT.
 	 *
 	 * @param array<int, array{id: int, run_id: string, created_at: string, estimated_cost?: float, provider?: string, model?: string, prompt_tokens?: int, completion_tokens?: int}> $orphans
@@ -184,7 +198,11 @@ class ResearchReaperTest extends BaseTestCase {
 		$this->assertSame( 1, $stats['reaped'] );
 		$this->assertSame( 0, $stats['deleted'] );
 		$this->assertSame( 0, $stats['skipped'] );
-		$this->assertCount( 2, $this->inserted_rows, 'One amortized row per post should be inserted.' );
+		$this->assertCount(
+			2,
+			$this->gen_log_inserts(),
+			'One amortized row per post should be inserted into the generation_log.'
+		);
 		// Original orphan deleted by amortize_research_costs.
 		$this->assertNotEmpty( array_filter( $this->deleted_rows, static fn( $d ) => ( $d[1]['id'] ?? null ) === 99 ) );
 	}
@@ -246,7 +264,7 @@ class ResearchReaperTest extends BaseTestCase {
 		$stats = \PRAutoBlogger_Research_Reaper::reap();
 
 		$this->assertSame( 1, $stats['reaped'] );
-		$this->assertCount( 2, $this->inserted_rows );
+		$this->assertCount( 2, $this->gen_log_inserts() );
 	}
 
 	/**
