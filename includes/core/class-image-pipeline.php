@@ -54,12 +54,8 @@ class PRAutoBlogger_Image_Pipeline {
 	}
 
 	/**
-	 * Instantiate the image provider based on the admin setting.
-	 *
-	 * Returns Runware by default when the setting is unrecognised —
-	 * Cloudflare Workers AI was removed as a provider in v0.10.0; legacy
-	 * 'cloudflare' values are migrated at admin_init, but an unmigrated
-	 * install should still get a working fallback rather than a fatal.
+	 * Instantiate the image provider based on the admin setting. Defaults
+	 * to Runware on unrecognised values (CF was removed in v0.10.0).
 	 *
 	 * @return PRAutoBlogger_Image_Provider_Interface
 	 */

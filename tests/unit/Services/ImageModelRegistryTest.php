@@ -18,7 +18,8 @@ class ImageModelRegistryTest extends BaseTestCase {
 
 	/**
 	 * Every entry returned by get_models() must carry a non-empty id and
-	 * a provider of 'runware', 'openrouter', or 'cloudflare'. If this breaks, the
+	 * a provider of 'runware' or 'openrouter' (Cloudflare Workers AI was
+	 * removed as an image provider in v0.10.0). If this breaks, the
 	 * admin save flow will silently drop the provider derivation.
 	 */
 	public function test_every_registry_entry_has_id_and_known_provider(): void {
@@ -31,7 +32,7 @@ class ImageModelRegistryTest extends BaseTestCase {
 			$this->assertArrayHasKey( 'provider', $model );
 			$this->assertContains(
 				$model['provider'],
-				[ 'runware', 'openrouter', 'cloudflare' ],
+				[ 'runware', 'openrouter' ],
 				sprintf( 'Unexpected provider %s for model %s', (string) $model['provider'], (string) $model['id'] )
 			);
 		}
@@ -43,12 +44,28 @@ class ImageModelRegistryTest extends BaseTestCase {
 	 */
 	public function test_provider_for_returns_paired_provider_for_known_model(): void {
 		$this->assertSame(
-			'cloudflare',
-			\PRAutoBlogger_Image_Model_Registry::provider_for( 'flux-1-schnell' )
-		);
-		$this->assertSame(
 			'openrouter',
 			\PRAutoBlogger_Image_Model_Registry::provider_for( 'google/gemini-2.5-flash-image' )
+		);
+		$this->assertSame(
+			'runware',
+			\PRAutoBlogger_Image_Model_Registry::provider_for( 'runware:100@1' )
+		);
+	}
+
+	/**
+	 * v0.10.0 scope boundary: no Cloudflare entries remain in the registry.
+	 * The legacy `flux-1-schnell` slug (pre-Runware) must resolve to '' so
+	 * the migration's detection path catches it. If a registry regression
+	 * re-adds a cloudflare entry this test fails loudly.
+	 */
+	public function test_cloudflare_entries_removed_v0100(): void {
+		foreach ( \PRAutoBlogger_Image_Model_Registry::get_models() as $model ) {
+			$this->assertNotSame( 'cloudflare', $model['provider'] ?? '' );
+		}
+		$this->assertSame(
+			'',
+			\PRAutoBlogger_Image_Model_Registry::provider_for( 'flux-1-schnell' )
 		);
 	}
 

@@ -220,7 +220,6 @@ class PRAutoBlogger {
 			}
 			update_option( 'prautoblogger_migrated_style_suffix_v3', '1' );
 		}
-
 		// One-time migration (v4): remove caption-in-image instruction from style suffix.
 		// Captions are now inserted as HTML below the image, not baked into the image.
 		if ( ! get_option( 'prautoblogger_migrated_style_suffix_v4' ) ) {
@@ -232,8 +231,9 @@ class PRAutoBlogger {
 			update_option( 'prautoblogger_migrated_style_suffix_v4', '1' );
 		}
 
-		// v0.9.0: flip legacy default image model to Runware schnell.
+		// v0.9.0 — Runware as default image model. v0.10.0 — remove CF Workers AI.
 		PRAutoBlogger_Activator::migrate_default_image_v090();
+		PRAutoBlogger_Migrate_Remove_Cloudflare_V0100::run();
 
 		// One-time migration: re-wrap existing encrypted values with "enc:" prefix.
 		if ( ! get_option( 'prautoblogger_migrated_enc_prefix' ) ) {
