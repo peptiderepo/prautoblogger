@@ -60,8 +60,16 @@ class ResearchReaperTest extends BaseTestCase {
 		$this->orphan_fixtures  = [];
 		$this->gen_log_post_ids = [];
 
-		$this->wpdb            = $this->create_mock_wpdb();
-		$this->wpdb->insert_id = 1;
+		// Bespoke $wpdb mock — BaseTestCase::create_mock_wpdb() doesn't
+		// stub `delete` or `get_col`, both of which the reaper + amortize
+		// call into. Wide-method mock keeps the test scope self-contained.
+		$this->wpdb = $this->getMockBuilder( \stdClass::class )
+			->addMethods( [ 'prepare', 'get_var', 'get_results', 'get_row', 'get_col', 'insert', 'delete', 'update', 'query' ] )
+			->getMock();
+		$this->wpdb->prefix         = 'wp_';
+		$this->wpdb->insert_id      = 1;
+		$this->wpdb->last_error     = '';
+		$this->wpdb->prab_cost_logs = 'wp_prab_cost_logs';
 		$this->wpdb->method( 'insert' )->willReturnCallback(
 			function ( $table, $row ) {
 				$this->inserted_rows[] = array_merge( [ '__table' => $table ], $row );
