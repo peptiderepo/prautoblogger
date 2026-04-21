@@ -175,6 +175,8 @@ class PRAutoBlogger_Activator {
 			'prautoblogger_table_borders'         => '1',
 			'prautoblogger_schedule_time'         => '03:00',
 			'prautoblogger_log_level'             => 'info',
+			'prautoblogger_image_nsfw_retry'      => '1',
+			'prautoblogger_cf_image_via_gateway'  => '1',
 		];
 
 		foreach ( $defaults as $key => $value ) {

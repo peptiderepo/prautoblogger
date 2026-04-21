@@ -110,9 +110,14 @@ class PRAutoBlogger_Cloudflare_Image_Support {
 		if ( 0 !== stripos( $gateway_base, 'https://gateway.ai.cloudflare.com/' ) ) {
 			return '';
 		}
-		// Strip the trailing OpenRouter path component (any path component, really);
-		// everything before the last '/' is the gateway root shared by all provider routes.
-		$gateway_root = substr( $gateway_base, 0, strrpos( $gateway_base, '/' ) ?: strlen( $gateway_base ) );
+		// The configured URL ends with `/openrouter` (LLM route). The gateway
+		// root — shared with the Workers AI route — is everything before the
+		// last `/`. If no `/` is present (defensive), we drop back to direct API.
+		$last_slash = strrpos( $gateway_base, '/' );
+		if ( false === $last_slash ) {
+			return '';
+		}
+		$gateway_root = substr( $gateway_base, 0, $last_slash );
 		if ( '' === $gateway_root ) {
 			return '';
 		}
