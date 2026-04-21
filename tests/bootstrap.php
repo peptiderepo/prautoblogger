@@ -55,6 +55,15 @@ if ( ! defined( 'PRAUTOBLOGGER_DEFAULT_EDITOR_MODEL' ) ) {
     define( 'PRAUTOBLOGGER_DEFAULT_EDITOR_MODEL', 'google/gemini-2.5-flash-lite' );
 }
 
+// Default image model slug used by OpenRouter/Runware pricing fallbacks and
+// settings UI. Source of truth: prautoblogger.php line 63.
+// Historically this was defined implicitly by CloudflareImageProviderTest::setUp()
+// — that test was deleted in v0.10.0 (cloudflare-workers-ai-removal), so the
+// define now lives here where it belongs.
+if ( ! defined( 'PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL' ) ) {
+    define( 'PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL', 'runware:100@1' );
+}
+
 // Default image style suffix used by ImagePromptBuilder and settings UI.
 if ( ! defined( 'PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX' ) ) {
     define( 'PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX', 'Style: test infomercial style.' );
