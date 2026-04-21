@@ -95,7 +95,11 @@ class PRAutoBlogger_Settings_Fields_Extended {
 				'type'        => 'time',
 				'section'     => 'prautoblogger_schedule',
 				'default'     => '03:00',
-				'description' => __( 'Daily generation runs at this time (server timezone).', 'prautoblogger' ),
+				'description' => sprintf(
+					/* translators: %s: site timezone string, e.g. "Asia/Singapore". */
+					esc_html__( "Daily generation runs at this time in your site's configured timezone (Settings → General → Timezone). Current site timezone: %s.", 'prautoblogger' ),
+					esc_html( function_exists( 'wp_timezone_string' ) ? wp_timezone_string() : 'UTC' )
+				),
 			],
 			[
 				'id'          => 'prautoblogger_monthly_budget_usd',
@@ -259,6 +263,14 @@ class PRAutoBlogger_Settings_Fields_Extended {
 				'section'     => 'prautoblogger_images',
 				'default'     => '1',
 				'description' => __( 'When the provider rejects an image prompt as NSFW (e.g. Cloudflare code 3030), retry once with a generic fallback scene built from the article title. Disable to fail fast if the filter gets trigger-happy.', 'prautoblogger' ),
+			],
+			[
+				'id'          => 'prautoblogger_cf_image_via_gateway',
+				'label'       => __( 'Route Cloudflare Images via AI Gateway', 'prautoblogger' ),
+				'type'        => 'toggle',
+				'section'     => 'prautoblogger_images',
+				'default'     => '1',
+				'description' => __( 'Route Cloudflare Workers AI image calls through the Cloudflare AI Gateway (requires the AI Gateway URL configured under API Keys). Adds response caching, cost logging, and rate-limiting. Turn off to hit the direct Workers AI API — only needed if the gateway route regresses.', 'prautoblogger' ),
 			],
 		];
 	}

@@ -192,6 +192,13 @@ class PRAutoBlogger {
 			update_option( 'prautoblogger_migrated_image_provider_v080', '1' );
 		}
 
+		// One-time migration (v0.8.2): reschedule the daily-generation cron in
+		// the site's configured timezone. Pre-v0.8.2 activator interpreted the
+		// admin "Generation Time" input as UTC; after v0.8.2 it honours the
+		// site timezone. Clears the stale UTC-scheduled event and re-queues
+		// using the timezone-aware helper. See class-activator.php.
+		PRAutoBlogger_Activator::reschedule_daily_in_site_timezone_v082();
+
 		// One-time migration (v3): switch to single-panel newspaper comic style.
 		// Replaces both the old infomercial pastiche and the short-lived premium
 		// photography style. Force-update unless the user has a truly custom value.

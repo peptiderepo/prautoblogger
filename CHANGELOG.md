@@ -5,6 +5,35 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.8.2] — 2026-04-21
+
+### Fixed
+
+- **Daily generation schedule now honors site timezone.** Previously
+  the time configured in Settings → Schedule was interpreted as UTC
+  (WordPress core forces `date_default_timezone_set('UTC')`), causing
+  runs to fire N hours off from user intent where N is the site's UTC
+  offset. On peptiderepo.com (Asia/Singapore, UTC+8), a `schedule_time`
+  of `06:00` fired at 14:00 local. An on-upgrade one-shot migration
+  (`prautoblogger_migrated_schedule_tz_v082`) reschedules the existing
+  daily cron in the site's configured timezone — no user action
+  required.
+
+### Changed
+
+- **Cloudflare Workers AI image calls now route through the AI Gateway
+  by default.** The 2026-04-15 regression that caused the gateway route
+  to 403 on Workers AI has been resolved upstream. Routing via the
+  gateway gives us response caching, unified cost/latency dashboard,
+  and rate limiting for free, mirroring the OpenRouter LLM path. A new
+  admin toggle `prautoblogger_cf_image_via_gateway` (default on) lets
+  operators force direct-API if the gateway route regresses again,
+  without clearing the gateway URL setting the LLM provider depends on.
+- **"Generation Time" settings description** now names the site's
+  configured timezone explicitly (from `wp_timezone_string()`) instead
+  of the ambiguous "server timezone" label — operators can see at a
+  glance which zone their input is being interpreted in.
+
 ## [0.8.1] — 2026-04-21
 
 ### Fixed

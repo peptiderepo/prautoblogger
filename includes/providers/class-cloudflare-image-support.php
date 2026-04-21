@@ -55,16 +55,73 @@ class PRAutoBlogger_Cloudflare_Image_Support {
 	/**
 	 * Build the Workers AI run URL for a given account + model.
 	 *
+	 * By default routes through the Cloudflare AI Gateway we already use for
+	 * OpenRouter — the gateway route to Workers AI was observed 403ing in
+	 * April 2026 (see ARCHITECTURE.md #16), but manual probe on 2026-04-21
+	 * shows it's now returning 200. Gateway routing gives us response caching,
+	 * cost logging, rate limiting, and provider fallback for free.
+	 *
+	 * Direct-API fallback kicks in automatically when either the
+	 * `prautoblogger_ai_gateway_base_url` option is empty (no gateway
+	 * configured at all) or the new `prautoblogger_cf_image_via_gateway`
+	 * toggle is off (explicit opt-out for if the gateway route regresses).
+	 *
 	 * @param string $account_id Cloudflare account UUID.
-	 * @param string $model      Fully-qualified Workers AI model id.
+	 * @param string $model      Fully-qualified Workers AI model id (e.g. @cf/black-forest-labs/flux-1-schnell).
 	 * @return string            Fully-formed HTTPS URL.
 	 */
 	public function build_endpoint_url( string $account_id, string $model ): string {
+		$gateway_url = $this->build_gateway_workers_ai_url( $account_id, $model );
+		if ( '' !== $gateway_url ) {
+			return $gateway_url;
+		}
 		return sprintf(
 			'https://api.cloudflare.com/client/v4/accounts/%s/ai/run/%s',
 			rawurlencode( $account_id ),
 			ltrim( $model, '/' )
 		);
+	}
+
+	/**
+	 * Derive a Workers AI URL rooted at the same AI Gateway we already use
+	 * for OpenRouter. Returns empty string when the gateway isn't configured
+	 * or the admin toggle opts out — the caller falls back to direct API.
+	 *
+	 * The existing `prautoblogger_ai_gateway_base_url` option points at
+	 * `https://gateway.ai.cloudflare.com/v1/{account}/{gateway}/openrouter`
+	 * for the LLM path; we strip the `/openrouter` suffix and append
+	 * `/workers-ai/{model}` for the image path. Defensive: only emits a URL
+	 * that pattern-matches, so a bad option value quietly falls back.
+	 *
+	 * @param string $account_id Cloudflare account UUID (kept for symmetry; not used in URL derivation).
+	 * @param string $model      Fully-qualified Workers AI model id.
+	 * @return string Gateway URL, or empty string if unavailable.
+	 */
+	private function build_gateway_workers_ai_url( string $account_id, string $model ): string {
+		unset( $account_id );
+		if ( '1' !== (string) get_option( 'prautoblogger_cf_image_via_gateway', '1' ) ) {
+			return '';
+		}
+		$gateway_base = rtrim( (string) get_option( 'prautoblogger_ai_gateway_base_url', '' ), '/' );
+		if ( '' === $gateway_base ) {
+			return '';
+		}
+		// Must be an https CF AI Gateway URL.
+		if ( 0 !== stripos( $gateway_base, 'https://gateway.ai.cloudflare.com/' ) ) {
+			return '';
+		}
+		// The configured URL ends with `/openrouter` (LLM route). The gateway
+		// root — shared with the Workers AI route — is everything before the
+		// last `/`. If no `/` is present (defensive), we drop back to direct API.
+		$last_slash = strrpos( $gateway_base, '/' );
+		if ( false === $last_slash ) {
+			return '';
+		}
+		$gateway_root = substr( $gateway_base, 0, $last_slash );
+		if ( '' === $gateway_root ) {
+			return '';
+		}
+		return sprintf( '%s/workers-ai/%s', $gateway_root, ltrim( $model, '/' ) );
 	}
 
 	/**

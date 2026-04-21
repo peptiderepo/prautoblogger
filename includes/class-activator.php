@@ -34,116 +34,9 @@ class PRAutoBlogger_Activator {
 		update_option( 'prautoblogger_db_version', PRAUTOBLOGGER_DB_VERSION, false );
 	}
 
-	/**
-	 * Create all custom database tables using dbDelta.
-	 *
-	 * Side effects: creates/updates four database tables.
-	 *
-	 * @return void
-	 */
+	/** Delegate to `PRAutoBlogger_Schema_Installer::install()` — see that class. */
 	private static function create_tables(): void {
-		global $wpdb;
-
-		$charset_collate = $wpdb->get_charset_collate();
-		$prefix          = $wpdb->prefix . 'prautoblogger_';
-
-		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-
-		// Source data — raw posts/comments from social platforms.
-		$sql_source_data = "CREATE TABLE {$prefix}source_data (
-			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-			source_type VARCHAR(50) NOT NULL,
-			source_id VARCHAR(255) NOT NULL,
-			subreddit VARCHAR(255) DEFAULT NULL,
-			title TEXT DEFAULT NULL,
-			content LONGTEXT DEFAULT NULL,
-			author VARCHAR(255) DEFAULT NULL,
-			score INT DEFAULT 0,
-			comment_count INT DEFAULT 0,
-			permalink VARCHAR(500) DEFAULT NULL,
-			collected_at DATETIME NOT NULL,
-			metadata_json LONGTEXT DEFAULT NULL,
-			PRIMARY KEY (id),
-			UNIQUE KEY source_unique (source_type, source_id),
-			KEY source_collected (source_type, collected_at)
-		) {$charset_collate};";
-
-		// Analysis results — detected patterns from source data.
-		$sql_analysis = "CREATE TABLE {$prefix}analysis_results (
-			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-			analysis_type VARCHAR(50) NOT NULL,
-			topic VARCHAR(500) NOT NULL,
-			summary TEXT DEFAULT NULL,
-			frequency INT DEFAULT 1,
-			relevance_score FLOAT DEFAULT 0,
-			source_ids_json LONGTEXT DEFAULT NULL,
-			analyzed_at DATETIME NOT NULL,
-			metadata_json LONGTEXT DEFAULT NULL,
-			PRIMARY KEY (id),
-			KEY type_relevance (analysis_type, relevance_score),
-			KEY analyzed_at (analyzed_at)
-		) {$charset_collate};";
-
-		// Generation log — every API call with cost tracking.
-		// run_id groups all log entries from a single pipeline execution so
-		// link_generation_logs() can accurately attribute costs to a post.
-		$sql_generation_log = "CREATE TABLE {$prefix}generation_log (
-			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-			post_id BIGINT UNSIGNED DEFAULT NULL,
-			run_id VARCHAR(36) DEFAULT NULL,
-			stage VARCHAR(50) NOT NULL,
-			provider VARCHAR(50) NOT NULL,
-			model VARCHAR(100) NOT NULL,
-			prompt_tokens INT DEFAULT 0,
-			completion_tokens INT DEFAULT 0,
-			estimated_cost DECIMAL(10,6) DEFAULT 0,
-			request_json LONGTEXT DEFAULT NULL,
-			response_status VARCHAR(20) NOT NULL DEFAULT 'success',
-			error_message TEXT DEFAULT NULL,
-			created_at DATETIME NOT NULL,
-			PRIMARY KEY (id),
-			KEY post_id (post_id),
-			KEY run_id (run_id),
-			KEY created_at (created_at),
-			KEY stage (stage)
-		) {$charset_collate};";
-
-		// Content scores — post performance metrics for self-improvement.
-		$sql_content_scores = "CREATE TABLE {$prefix}content_scores (
-			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-			post_id BIGINT UNSIGNED NOT NULL,
-			pageviews INT DEFAULT 0,
-			avg_time_on_page FLOAT DEFAULT 0,
-			bounce_rate FLOAT DEFAULT 0,
-			comment_count INT DEFAULT 0,
-			composite_score FLOAT DEFAULT 0,
-			score_factors_json LONGTEXT DEFAULT NULL,
-			measured_at DATETIME NOT NULL,
-			PRIMARY KEY (id),
-			KEY post_id (post_id),
-			KEY measured_at (measured_at),
-			KEY composite_score (composite_score)
-		) {$charset_collate};";
-
-		// Event log — structured application log entries for the admin log viewer.
-		$sql_event_log = "CREATE TABLE {$prefix}event_log (
-			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-			level VARCHAR(10) NOT NULL DEFAULT 'info',
-			context VARCHAR(100) DEFAULT NULL,
-			message TEXT NOT NULL,
-			meta_json LONGTEXT DEFAULT NULL,
-			created_at DATETIME NOT NULL,
-			PRIMARY KEY (id),
-			KEY level (level),
-			KEY created_at (created_at),
-			KEY level_created (level, created_at)
-		) {$charset_collate};";
-
-		dbDelta( $sql_source_data );
-		dbDelta( $sql_analysis );
-		dbDelta( $sql_generation_log );
-		dbDelta( $sql_content_scores );
-		dbDelta( $sql_event_log );
+		PRAutoBlogger_Schema_Installer::install();
 	}
 
 	/**
@@ -175,6 +68,8 @@ class PRAutoBlogger_Activator {
 			'prautoblogger_table_borders'         => '1',
 			'prautoblogger_schedule_time'         => '03:00',
 			'prautoblogger_log_level'             => 'info',
+			'prautoblogger_image_nsfw_retry'      => '1',
+			'prautoblogger_cf_image_via_gateway'  => '1',
 		];
 
 		foreach ( $defaults as $key => $value ) {
@@ -196,14 +91,8 @@ class PRAutoBlogger_Activator {
 	 */
 	private static function schedule_cron(): void {
 		if ( ! wp_next_scheduled( 'prautoblogger_daily_generation' ) ) {
-			// Schedule for the configured time tomorrow.
-			$time_str  = get_option( 'prautoblogger_schedule_time', '03:00' );
-			$parts     = explode( ':', $time_str );
-			$hour      = isset( $parts[0] ) ? absint( $parts[0] ) : 3;
-			$minute    = isset( $parts[1] ) ? absint( $parts[1] ) : 0;
-			$timestamp = strtotime( "tomorrow {$hour}:{$minute}" );
-
-			if ( false !== $timestamp ) {
+			$timestamp = self::next_daily_generation_timestamp();
+			if ( $timestamp > 0 ) {
 				wp_schedule_event( $timestamp, 'daily', 'prautoblogger_daily_generation' );
 			}
 		}
@@ -237,6 +126,75 @@ class PRAutoBlogger_Activator {
 				wp_schedule_event( $tomorrow, 'daily', 'prautoblogger_reap_orphan_research_rows' );
 			}
 		}
+	}
+
+	/**
+	 * Compute the next daily-generation timestamp in the site's configured
+	 * timezone. Fixes the v<0.8.2 bug where `strtotime("tomorrow HH:MM")`
+	 * evaluated in UTC (WP core sets `date_default_timezone_set('UTC')`),
+	 * firing the cron N hours off from user intent where N is the site's
+	 * UTC offset.
+	 *
+	 * @return int Unix timestamp, or 0 on any failure.
+	 */
+	public static function next_daily_generation_timestamp(): int {
+		$time_str = (string) get_option( 'prautoblogger_schedule_time', '03:00' );
+		$parts    = explode( ':', $time_str );
+		$hour     = isset( $parts[0] ) ? absint( $parts[0] ) : 3;
+		$minute   = isset( $parts[1] ) ? absint( $parts[1] ) : 0;
+
+		try {
+			$site_tz = function_exists( 'wp_timezone' )
+				? wp_timezone()
+				: new \DateTimeZone( 'UTC' );
+			$local = ( new \DateTimeImmutable( 'tomorrow', $site_tz ) )
+				->setTime( $hour, $minute, 0 );
+			return (int) $local->getTimestamp();
+		} catch ( \Exception $e ) {
+			// Defensive: never leave the site without any schedule because
+			// of a bad tz string. Fall back to the pre-fix behaviour.
+			$timestamp = strtotime( "tomorrow {$hour}:{$minute}" );
+			return false === $timestamp ? 0 : (int) $timestamp;
+		}
+	}
+
+	/**
+	 * v0.8.2 one-shot migration — reschedule `prautoblogger_daily_generation`
+	 * in the site's timezone.
+	 *
+	 * Existing installs had their daily cron scheduled with the v<0.8.2
+	 * UTC-interpretation bug. This clears the stale event and reschedules it
+	 * using the timezone-aware helper, exactly once per site (gated by
+	 * `prautoblogger_migrated_schedule_tz_v082`). Logs an INFO line with the
+	 * before/after next-run times so the outcome is auditable.
+	 *
+	 * @return void
+	 */
+	public static function reschedule_daily_in_site_timezone_v082(): void {
+		if ( get_option( 'prautoblogger_migrated_schedule_tz_v082' ) ) {
+			return;
+		}
+
+		$old_timestamp = wp_next_scheduled( 'prautoblogger_daily_generation' );
+		wp_clear_scheduled_hook( 'prautoblogger_daily_generation' );
+
+		$new_timestamp = self::next_daily_generation_timestamp();
+		if ( $new_timestamp > 0 ) {
+			wp_schedule_event( $new_timestamp, 'daily', 'prautoblogger_daily_generation' );
+		}
+
+		if ( class_exists( 'PRAutoBlogger_Logger', false ) ) {
+			PRAutoBlogger_Logger::instance()->info(
+				sprintf(
+					'Rescheduled daily generation in site timezone (was UTC). Old next_run: %s, new next_run: %s.',
+					false !== $old_timestamp ? gmdate( 'Y-m-d H:i:s \\U\\T\\C', (int) $old_timestamp ) : 'unscheduled',
+					$new_timestamp > 0 ? gmdate( 'Y-m-d H:i:s \\U\\T\\C', $new_timestamp ) : 'unscheduled'
+				),
+				'activator'
+			);
+		}
+
+		update_option( 'prautoblogger_migrated_schedule_tz_v082', '1' );
 	}
 
 	/**
