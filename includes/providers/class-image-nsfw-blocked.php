@@ -4,18 +4,18 @@ declare(strict_types=1);
 /**
  * Exception raised when an image provider rejects a prompt as NSFW.
  *
- * Cloudflare Workers AI returns HTTP 400 with an `errors[].code === 3030`
- * body when its content filter blocks a prompt. We catch that shape in
- * the provider and raise this typed exception so the image pipeline can
- * distinguish a content-filter rejection from a generic 4xx and retry
- * once with a sanitized fallback prompt.
+ * Image providers (Runware, OpenRouter) return provider-specific error
+ * shapes when their content filters block a prompt. We catch those shapes
+ * in each provider and raise this typed exception so the image pipeline
+ * can distinguish a content-filter rejection from a generic 4xx and
+ * retry once with a sanitized fallback prompt.
  *
- * Triggered by: PRAutoBlogger_Cloudflare_Image_Provider on NSFW 4xx.
+ * Triggered by: image providers on NSFW-filter rejection.
  * Dependencies: None.
  *
- * @see providers/class-cloudflare-image-provider.php — Raises this.
- * @see core/class-image-nsfw-retry.php               — Catches + rebuilds prompt.
- * @see https://developers.cloudflare.com/workers-ai/models/flux-1-schnell/ — Upstream error codes.
+ * @see providers/class-runware-image-provider.php     — May raise this.
+ * @see providers/class-open-router-image-provider.php — May raise this.
+ * @see core/class-image-nsfw-retry.php                — Catches + rebuilds prompt.
  */
 class PRAutoBlogger_Image_NSFW_Blocked extends \RuntimeException {
 

@@ -42,7 +42,7 @@ class PRAutoBlogger_Ajax_Handlers {
 			return;
 		}
 
-		// Image generation can take 20-30s on Cloudflare Workers AI.
+		// Image generation can take 20-30s (Runware FLUX + OpenRouter image models).
 		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		@set_time_limit( 120 );
 

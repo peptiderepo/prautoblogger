@@ -4,7 +4,7 @@ declare(strict_types=1);
 /**
  * Pricing + model-id resolution helpers for the OpenRouter image provider.
  *
- * Mirrors the Cloudflare pricing helper pattern. Each model's cost per image
+ * Mirrors the Runware pricing helper pattern. Each model's cost per image
  * is a flat rate sourced from OpenRouter's pricing page (April 2026).
  *
  * Triggered by: PRAutoBlogger_OpenRouter_Image_Provider (both generate_image()
@@ -12,7 +12,7 @@ declare(strict_types=1);
  * Dependencies: None — pure calculation + option reads.
  *
  * @see class-openrouter-image-provider.php — Caller.
- * @see class-cloudflare-image-pricing.php  — Sibling pattern for Cloudflare.
+ * @see class-runware-image-pricing.php     — Sibling pattern for Runware.
  */
 class PRAutoBlogger_OpenRouter_Image_Pricing {
 

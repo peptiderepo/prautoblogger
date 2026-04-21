@@ -54,7 +54,7 @@ define( 'PRAUTOBLOGGER_DEFAULT_WRITING_MODEL', 'google/gemini-2.5-flash-lite' );
 define( 'PRAUTOBLOGGER_DEFAULT_EDITOR_MODEL', 'google/gemini-2.5-flash-lite' );
 
 // Image generation defaults.
-// Default provider is Runware; OpenRouter (Gemini) + Cloudflare remain as alternates.
+// Default provider is Runware; OpenRouter (Gemini) remains as the alternate.
 // Default model is FLUX.1 schnell via Runware (~$0.0006/image, ~2s). CEO
 // decision 2026-04-21 after comic A/B: schnell's looser fidelity reads as
 // editorial-cartoon style and is 65× cheaper than Nano Banana. Users can

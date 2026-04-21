@@ -38,7 +38,7 @@ class PRAutoBlogger_Image_Pipeline {
 	 *
 	 * When no provider is injected, the constructor reads the
 	 * `prautoblogger_image_provider` setting and instantiates the
-	 * matching concrete class ('runware', 'openrouter', or 'cloudflare').
+	 * matching concrete class ('runware' or 'openrouter').
 	 *
 	 * @param PRAutoBlogger_Image_Provider_Interface|null $provider Optional provider override.
 	 * @param PRAutoBlogger_Cost_Tracker|null             $cost_tracker Optional cost tracker.
@@ -56,17 +56,19 @@ class PRAutoBlogger_Image_Pipeline {
 	/**
 	 * Instantiate the image provider based on the admin setting.
 	 *
+	 * Returns Runware by default when the setting is unrecognised —
+	 * Cloudflare Workers AI was removed as a provider in v0.10.0; legacy
+	 * 'cloudflare' values are migrated at admin_init, but an unmigrated
+	 * install should still get a working fallback rather than a fatal.
+	 *
 	 * @return PRAutoBlogger_Image_Provider_Interface
 	 */
 	private static function create_default_provider(): PRAutoBlogger_Image_Provider_Interface {
 		$provider_id = (string) get_option( 'prautoblogger_image_provider', PRAUTOBLOGGER_DEFAULT_IMAGE_PROVIDER );
-		if ( 'runware' === $provider_id ) {
-			return new PRAutoBlogger_Runware_Image_Provider();
-		}
 		if ( 'openrouter' === $provider_id ) {
 			return new PRAutoBlogger_OpenRouter_Image_Provider();
 		}
-		return new PRAutoBlogger_Cloudflare_Image_Provider();
+		return new PRAutoBlogger_Runware_Image_Provider();
 	}
 
 	/**
