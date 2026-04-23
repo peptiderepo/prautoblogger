@@ -233,5 +233,4 @@ class PRAutoBlogger_Opik_Trace_Context {
 			$g5
 		);
 	}
-
 }
