@@ -116,6 +116,30 @@ class PRAutoBlogger {
 		$registry = $this->executor->get_model_registry();
 		add_action( 'prautoblogger_refresh_model_registry', array( $registry, 'refresh' ) );
 
+		// Opik observability: async trace/span dispatch.
+		add_action(
+			'prautoblogger_opik_dispatch',
+			static function (): void {
+				if ( ! defined( 'PRAUTOBLOGGER_OPIK_API_KEY' ) || empty( PRAUTOBLOGGER_OPIK_API_KEY ) ) {
+					return;
+				}
+				$client = new PRAutoBlogger_Opik_Client(
+					PRAUTOBLOGGER_OPIK_API_KEY,
+					PRAUTOBLOGGER_OPIK_WORKSPACE,
+					PRAUTOBLOGGER_OPIK_URL_OVERRIDE
+				);
+				$queue = new PRAutoBlogger_Opik_Span_Queue();
+				$dispatcher = new PRAutoBlogger_Opik_Dispatcher( $client, $queue );
+				$dispatcher->dispatch();
+				update_option( 'prautoblogger_opik_last_dispatch', time() );
+			}
+		);
+
+		// Opik settings registration.
+		if ( is_admin() ) {
+			new PRAutoBlogger_Opik_Settings();
+		}
+
 		// Single-idea generation from the Ideas browser page.
 		add_action( 'prautoblogger_generate_from_idea', array( 'PRAutoBlogger_Ideas_Browser', 'on_cron_generate_from_idea' ) );
 

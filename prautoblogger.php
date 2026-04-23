@@ -9,7 +9,7 @@
  * Plugin Name:       PRAutoBlogger
  * Plugin URI:        https://peptiderepo.com/prautoblogger
  * Description:       Monitors social media for trending topics, generates SEO-friendly blog posts using AI, and publishes them on a daily schedule with full cost tracking and self-improvement metrics.
- * Version:           0.11.0
+ * Version:           0.12.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            PeptideRepo
@@ -35,7 +35,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 | Defined here so every file in the plugin can reference paths, versions,
 | and limits without magic strings.
 */
-define( 'PRAUTOBLOGGER_VERSION', '0.11.0' );
+define( 'PRAUTOBLOGGER_VERSION', '0.12.0' );
 define( 'PRAUTOBLOGGER_DB_VERSION', '1.1.0' );
 define( 'PRAUTOBLOGGER_PLUGIN_FILE', __FILE__ );
 define( 'PRAUTOBLOGGER_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
@@ -66,6 +66,21 @@ define(
 	'PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX',
 	'Style: a single-panel newspaper comic in classic black ink on white paper, simple clean linework like The Far Side or B.C., slightly yellowed newsprint texture, hand-drawn crosshatching for shading, bold panel border, warm and humorous tone, visible in a newspaper comics section. IMPORTANT: Do not render any text, captions, speech bubbles, or words inside the image.'
 );
+// Opik observability (feature-flag gated).
+// API credentials must be defined in wp-config.php constants:
+// - PRAUTOBLOGGER_OPIK_API_KEY: API key for authentication
+// - PRAUTOBLOGGER_OPIK_WORKSPACE: Opik workspace name (e.g. 'peptiderepo')
+// - PRAUTOBLOGGER_OPIK_URL_OVERRIDE: Optional; defaults to https://www.comet.com/opik/api/
+if ( ! defined( 'PRAUTOBLOGGER_OPIK_API_KEY' ) ) {
+	define( 'PRAUTOBLOGGER_OPIK_API_KEY', '' );
+}
+if ( ! defined( 'PRAUTOBLOGGER_OPIK_WORKSPACE' ) ) {
+	define( 'PRAUTOBLOGGER_OPIK_WORKSPACE', 'peptiderepo' );
+}
+if ( ! defined( 'PRAUTOBLOGGER_OPIK_URL_OVERRIDE' ) ) {
+	define( 'PRAUTOBLOGGER_OPIK_URL_OVERRIDE', 'https://www.comet.com/opik/api/' );
+}
+
 /*
 |--------------------------------------------------------------------------
 | Autoloader

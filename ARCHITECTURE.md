@@ -480,6 +480,50 @@ Stored on every PRAutoBlogger-generated post:
 
 ---
 
+## Opik LLM Observability (Optional)
+
+**Status:** Wave 1 (v0.12.0) — tracing skeleton. Wave 2 (future) — eval harness with frozen-dataset regression testing.
+
+Opik is a cloud-hosted LLM observability platform (Comet) providing:
+- **Per-call tracing:** Every OpenRouter call generates a span with model, tokens, latency metadata.
+- **Trace grouping:** One trace per article generation bundles all spans (draft, QA, image prompt).
+- **Prompt versioning:** Foundation for Wave 2 — compare new prompt revisions against a frozen reference dataset using LLM-as-judge scoring on rubric axes (factual accuracy, style match, hallucination risk).
+
+**Architecture:**
+- **Feature flag:** `prautoblogger_opik_enabled` (WP option, default off). When false, zero network traffic to Opik.
+- **Credentials:** API key and workspace from PHP constants `PRAUTOBLOGGER_OPIK_API_KEY`, `PRAUTOBLOGGER_OPIK_WORKSPACE` (defined in wp-config.php). Never stored in DB.
+- **Span lifecycle:** 
+  1. `Opik_Trace_Context::init_trace()` generates UUID at article-worker start.
+  2. Each LLM call wraps with `start_span()` → LLM request → `end_span()` with tokens + response.
+  3. `finalize_trace()` + `Opik_Span_Queue::enqueue()` accumulates trace + spans for async dispatch.
+  4. `prautoblogger_opik_dispatch` cron action batches spans/traces (max 100 per POST) to `/v1/private/spans/batch`, `/v1/private/traces/batch`.
+- **Retry logic:** Exponential backoff (2s, 4s, 8s) on 5xx errors; permanent abort on 4xx; dropped after 3 attempts per item.
+- **Queue:** WP options-backed; max 1000 items; 12-hour TTL; persists across page reloads for truly async dispatch.
+
+**Call sites instrumented (Wave 1):**
+- Draft generation (single-pass or multi-step outline/draft/polish).
+- Editorial review (chief editor LLM call).
+- Image prompt generation (deferred; file at 314 LOC, over limit).
+
+**Cost & Performance:**
+- Opik free tier: 25k spans/month. Estimated current usage ~4.2k/month (20 posts/day × 7 calls × 30 days). Headroom to 5× growth.
+- Impact on article generation: async dispatch, zero blocking latency overhead.
+- Wave 2 (eval harness): adds LLM-as-judge calls (~$14/month at Haiku pricing, assuming 2 eval runs/week).
+
+**Code structure:**
+```
+includes/services/opik/
+  class-opik-client.php            — REST client (auth, retry, batch POSTs)
+  class-opik-trace-context.php     — per-request trace state singleton
+  class-opik-span-queue.php        — WP options-backed async queue
+  class-opik-dispatcher.php        — cron handler, batch dispatch
+
+includes/admin/
+  class-opik-settings.php          — admin UI (toggle, project name, status)
+```
+
+---
+
 ## Key Decisions
 
 ### #1: OpenRouter over direct provider APIs

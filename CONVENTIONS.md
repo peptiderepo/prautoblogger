@@ -333,3 +333,103 @@ curl -s -X POST -H "Authorization: token $GH_TOKEN" \
 ### When this changes
 
 If the peptiderepo GitHub account is ever upgraded to Pro (or the repo goes public), replace this soft-enforcement section with a note pointing to the real branch protection rules in repo settings.
+## Instrumenting a New LLM Call Site for Opik (v0.12.0+)
+
+When you add a new LLM call (via `$llm->send_chat_completion()`), follow this pattern to capture it in Opik:
+
+### 1. Get the trace context
+
+At the start of your method, grab the per-request singleton:
+
+```php
+$ctx = PRAutoBlogger_Opik_Trace_Context::current();
+```
+
+### 2. Start the span
+
+Before the LLM call, declare a span with metadata:
+
+```php
+$span_id = $ctx->start_span(
+	array(
+		'name'     => 'my_llm_operation',  // kebab-case, descriptive
+		'type'     => 'llm',
+		'model'    => $model,               // e.g. 'gpt-4', from get_option()
+		'provider' => 'openrouter',         // or the actual provider name
+		'input'    => array( 'key' => 'value' ), // optional metadata (no full prompts!)
+	)
+);
+```
+
+### 3. Make the LLM call (unchanged)
+
+```php
+$response = $this->llm->send_chat_completion(
+	array(
+		array( 'role' => 'system', 'content' => $system_prompt ),
+		array( 'role' => 'user', 'content' => $user_prompt ),
+	),
+	$model,
+	array( 'temperature' => 0.7, 'max_tokens' => 4000 )
+);
+```
+
+### 4. End the span with output
+
+After the response, record the outcome:
+
+```php
+$ctx->end_span(
+	$span_id,
+	array(
+		'output' => array( 'response_length' => strlen( $response['content'] ?? '' ) ),
+		'usage'  => array(
+			'prompt_tokens'     => $response['prompt_tokens'],
+			'completion_tokens' => $response['completion_tokens'],
+			'total_tokens'      => $response['prompt_tokens'] + $response['completion_tokens'],
+		),
+	)
+);
+```
+
+### Key rules
+
+- **Never log full prompts.** Use prompt hashes or version tags in `input`. Full text blows payload size and leaks content policy.
+- **Check the feature flag at call-site level?** No. The singleton is always available; Opik_Dispatcher checks the flag before dispatch.
+- **Async dispatch?** Yes. Spans are queued; dispatch happens via `prautoblogger_opik_dispatch` cron (no blocking).
+- **Cost logging?** Unchanged. Your `cost_tracker->log_api_call()` remains separate from Opik; Opik is observability-only.
+
+### Example: minimal instrumentation
+
+```php
+public function my_operation( $input ) {
+	$model = get_option( 'my_model', 'default-model' );
+	$ctx = PRAutoBlogger_Opik_Trace_Context::current();
+
+	$span_id = $ctx->start_span(
+		array(
+			'name'     => 'my_operation',
+			'type'     => 'llm',
+			'model'    => $model,
+			'provider' => 'openrouter',
+		)
+	);
+
+	$response = $this->llm->send_chat_completion( /* ... */ );
+
+	$ctx->end_span(
+		$span_id,
+		array(
+			'usage' => array(
+				'prompt_tokens'     => $response['prompt_tokens'],
+				'completion_tokens' => $response['completion_tokens'],
+				'total_tokens'      => $response['prompt_tokens'] + $response['completion_tokens'],
+			),
+		)
+	);
+
+	return $response['content'];
+}
+```
+
+That's it. No config, no feature-flag checks, no try/catch needed.

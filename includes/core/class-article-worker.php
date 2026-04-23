@@ -12,10 +12,14 @@ declare(strict_types=1);
  * Triggered by: Pipeline_Runner (directly for article 1, via cron for 2..N).
  * Dependencies: Content_Generator, Chief_Editor, Publisher, Cost_Tracker.
  *
+ * Opik instrumentation: Initializes trace context at start, creates spans
+ * for content generation and editorial review. Feature-flag gated (default off).
+ *
  * @see core/class-pipeline-runner.php — Orchestrates and dispatches workers.
  * @see core/class-content-generator.php — LLM content generation.
  * @see core/class-chief-editor.php      — Editorial quality gate.
  * @see core/class-publisher.php         — WordPress post creation.
+ * @see services/opik/class-opik-trace-context.php — Opik tracing.
  */
 class PRAutoBlogger_Article_Worker {
 
@@ -34,14 +38,22 @@ class PRAutoBlogger_Article_Worker {
 	 * Runs the full single-article pipeline: LLM content generation →
 	 * editorial review → publish or save as draft.
 	 *
+	 * Initializes Opik trace context if enabled and tears it down at end.
+	 *
 	 * Side effects: LLM API calls, database writes, WordPress post creation,
-	 * image generation, cost logging.
+	 * image generation, cost logging, Opik span queuing.
 	 *
 	 * @param PRAutoBlogger_Article_Idea $idea The scored idea to generate from.
 	 *
 	 * @return array{generated: int, published: int, rejected: int, cost: float}
 	 */
 	public function generate( PRAutoBlogger_Article_Idea $idea ): array {
+		// Initialize Opik trace context for this article generation.
+		$opik = $this->should_trace_with_opik();
+		if ( $opik ) {
+			PRAutoBlogger_Opik_Trace_Context::current()->init_trace();
+		}
+
 		$llm       = new PRAutoBlogger_OpenRouter_Provider();
 		$generator = new PRAutoBlogger_Content_Generator( $llm, $this->cost_tracker );
 		$editor    = new PRAutoBlogger_Chief_Editor( $llm, $this->cost_tracker );
@@ -90,6 +102,12 @@ class PRAutoBlogger_Article_Worker {
 		}
 
 		$result['cost'] = $this->cost_tracker->get_current_run_cost();
+
+		// Finalize and queue Opik trace if enabled.
+		if ( $opik ) {
+			$this->finalize_opik_trace();
+		}
+
 		return $result;
 	}
 
@@ -148,5 +166,48 @@ class PRAutoBlogger_Article_Worker {
 			$current['last_updated'] = time();
 			set_transient( $transient_key, $current, 600 );
 		}
+	}
+
+	/**
+	 * Check if Opik tracing is enabled and has credentials.
+	 *
+	 * @return bool
+	 */
+	private function should_trace_with_opik(): bool {
+		if ( ! get_option( 'prautoblogger_opik_enabled', false ) ) {
+			return false;
+		}
+
+		return defined( 'PRAUTOBLOGGER_OPIK_API_KEY' ) &&
+			defined( 'PRAUTOBLOGGER_OPIK_WORKSPACE' ) &&
+			! empty( PRAUTOBLOGGER_OPIK_API_KEY ) &&
+			! empty( PRAUTOBLOGGER_OPIK_WORKSPACE );
+	}
+
+	/**
+	 * Finalize and queue the Opik trace.
+	 *
+	 * Dispatches trace to queue for async posting.
+	 */
+	private function finalize_opik_trace(): void {
+		$ctx = PRAutoBlogger_Opik_Trace_Context::current();
+		$trace = $ctx->finalize_trace();
+		$queue = new PRAutoBlogger_Opik_Span_Queue();
+
+		// Queue the trace.
+		$queue->enqueue( $trace, 'trace' );
+
+		// Queue all spans.
+		foreach ( $ctx->get_spans() as $span ) {
+			$queue->enqueue( $span, 'span' );
+		}
+
+		// Schedule async dispatch if not already scheduled.
+		if ( ! wp_next_scheduled( 'prautoblogger_opik_dispatch' ) ) {
+			wp_schedule_single_event( time(), 'prautoblogger_opik_dispatch' );
+		}
+
+		// Teardown context for next request.
+		PRAutoBlogger_Opik_Trace_Context::teardown();
 	}
 }

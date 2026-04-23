@@ -5,6 +5,37 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.12.0] — 2026-04-23
+
+### Added
+- **Opik LLM observability integration (Wave 1: tracing skeleton).** Cloud-hosted observability via Comet Opik for detailed per-call tracing and prompt-version regression testing. Captured via async fire-and-forget dispatch to avoid blocking article generation.
+
+- **Opik REST client.** Minimal HTTP client (no third-party SDK) with exponential backoff retry, batch endpoints, and credential isolation (API key from wp-config.php constants, never in DB).
+
+- **Per-request trace context singleton.** Holds trace ID + span stack for one article generation. UUID threading across draft generation, editorial review, and image prompt generation.
+
+- **Async span/trace queue.** WP options-backed queue with TTL expiry (12 hours) and max depth (1000 items). Drained by cron dispatcher with per-batch retry logic.
+
+- **Cron dispatcher.** `prautoblogger_opik_dispatch` action scheduled via `wp_schedule_single_event()` drains queue in batches of up to 100 spans.
+
+- **Opik admin settings section.** Toggle to enable/disable tracing (default off), project name field, opt-in full-prompt capture, read-only status display (API key configured, last dispatch, queue depth).
+
+- **Span instrumentation at four LLM call sites:** single-pass article generation, outline/draft/polish stages (multi-step), and editorial review. Each span captures model name, provider, usage tokens.
+
+- **Comprehensive unit test suite.** 4 test files covering client (auth, retry, batch limits), trace context (UUID generation, span stacking), queue (enqueue/dequeue, expiry, reenqueue), and dispatcher (batch POST, separation of traces vs. spans).
+
+### Changed
+- **class-article-worker.php:** Initializes Opik trace context at generation start, enqueues finalized trace + spans at end if feature enabled.
+
+- **class-content-generator.php:** Wraps single-pass and multi-step stages (outline, draft, polish) with Opik spans capturing token usage.
+
+- **class-chief-editor.php:** Wraps editorial review LLM call with Opik span.
+
+### Notes
+- **Feature-flag default OFF.** Zero network traffic to Opik unless `prautoblogger_opik_enabled` option is true AND API credentials are defined in wp-config.php.
+- **Image prompt generation instrumentation deferred.** File already at 314 LOC (over 300-line rule); can be instrumented in Wave 2 without modifying existing code.
+- **Wave 2 holds eval harness.** CLI command for frozen-dataset regression testing with LLM-as-judge scoring (separate thread after v0.12.0 ships and is live-tested).
+
 ## [0.11.0] — 2026-04-23
 
 ### Added
