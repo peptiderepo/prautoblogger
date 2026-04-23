@@ -138,13 +138,13 @@ class PRAutoBlogger_Article_Worker {
 				: $content;
 
 			if ( $auto_publish ) {
-				$publisher->publish( $final, $idea, $review, $run_id );
+				$publisher->publish( $final, $idea, $review, $run_id, $this->cost_tracker );
 				++$result['published'];
 			} else {
-				$publisher->save_as_draft( $final, $idea, $review, $run_id );
+				$publisher->save_as_draft( $final, $idea, $review, $run_id, $this->cost_tracker );
 			}
 		} else {
-			$publisher->save_as_draft( $content, $idea, $review, $run_id );
+			$publisher->save_as_draft( $content, $idea, $review, $run_id, $this->cost_tracker );
 			++$result['rejected'];
 			PRAutoBlogger_Logger::instance()->info(
 				'Article rejected by editor: ' . $idea->get_topic(),

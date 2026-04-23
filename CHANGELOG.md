@@ -5,6 +5,14 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.12.2] — 2026-04-24
+
+### Fixed
+- **Image style suffix empty-string bypass** — `get_option()` for `prautoblogger_image_style_suffix` only returns the default constant when the key is absent from `wp_options`; an empty string stored in the DB returns `''`, bypassing fallback entirely. Root cause of post #675 rendering photorealistically instead of as a newspaper comic. Fixed all three call sites in `class-image-prompt-builder.php` (lines 85, 107, 272) by extracting a private helper `get_style_suffix()` that treats both absent AND empty string as "use default".
+
+- **Image cost logged under wrong run_id** — `class-image-pipeline.php` created a fresh cost tracker when invoked without an argument, so image costs were logged under a different `run_id` than the article's other stages. Cost breakdowns aggregating by `run_id` silently excluded the image line item. Fixed by threading the article worker's cost tracker through `PRAutoBlogger_Publisher` and `PRAutoBlogger_Post_Assembler::attach_generated_images()` to the image pipeline constructor. Image costs now share the same `run_id` as analysis, draft, review, and llm_research stages.
+
+
 ## [0.12.1] — 2026-04-23
 
 ### Fixed
