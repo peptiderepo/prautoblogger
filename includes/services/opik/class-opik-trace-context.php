@@ -57,7 +57,7 @@ class PRAutoBlogger_Opik_Trace_Context {
 	 * @return string The trace ID (UUID).
 	 */
 	public function init_trace(): string {
-		$this->trace_id    = wp_generate_uuid4();
+		$this->trace_id    = self::generate_uuid7();
 		$this->trace_start = microtime( true );
 		return $this->trace_id;
 	}
@@ -86,7 +86,7 @@ class PRAutoBlogger_Opik_Trace_Context {
 	 * @return string Generated span ID (UUID).
 	 */
 	public function start_span( array $span_data ): string {
-		$span_id = wp_generate_uuid4();
+		$span_id = self::generate_uuid7();
 
 		$span = array(
 			'id'             => $span_id,
@@ -192,5 +192,45 @@ class PRAutoBlogger_Opik_Trace_Context {
 	 */
 	public static function teardown(): void {
 		self::$instance = null;
+	}
+
+	/**
+	 * Generate a UUID version 7 (time-ordered, random).
+	 *
+	 * Opik requires v7 UUIDs for trace and span IDs. WordPress only provides
+	 * wp_generate_uuid4() so we implement v7 here.
+	 *
+	 * UUID v7 structure (128 bits):
+	 *   - Bits  0-47 : Unix timestamp in milliseconds (big-endian)
+	 *   - Bits 48-51 : Version nibble (0x7)
+	 *   - Bits 52-63 : rand_a (12 random bits)
+	 *   - Bits 64-65 : Variant (0b10)
+	 *   - Bits 66-127: rand_b (62 random bits)
+	 *
+	 * @return string UUID v7 in standard 8-4-4-4-12 hex format.
+	 */
+	private static function generate_uuid7(): string {
+		$ms     = (int) ( microtime( true ) * 1000 );
+		$ts_hex = str_pad( dechex( $ms ), 12, '0', STR_PAD_LEFT ); // 48-bit ts -> 12 hex
+		$rand   = bin2hex( random_bytes( 10 ) );                    // 80 random bits -> 20 hex
+
+		// Group 3: version nibble '7' + 12 random bits (3 hex chars).
+		$g3 = '7' . substr( $rand, 0, 3 );
+
+		// Group 4: variant byte (top 2 bits = 10) + 2 random hex chars.
+		$var_byte = ( hexdec( substr( $rand, 4, 2 ) ) & 0x3f ) | 0x80;
+		$g4       = sprintf( '%02x', $var_byte ) . substr( $rand, 6, 2 );
+
+		// Group 5: 12 remaining random hex chars.
+		$g5 = substr( $rand, 8, 12 );
+
+		return sprintf(
+			'%s-%s-%s-%s-%s',
+			substr( $ts_hex, 0, 8 ), // time_high (32 bits)
+			substr( $ts_hex, 8, 4 ), // time_low  (16 bits)
+			$g3,
+			$g4,
+			$g5
+		);
 	}
 }
