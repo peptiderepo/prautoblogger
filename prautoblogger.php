@@ -1,5 +1,4 @@
 <?php
-declare(strict_types=1);
 
 /**
  * phpcs:ignore Generic.PHP.RequireStrictTypes.MissingDeclaration -- strict_types must precede docblock
@@ -23,12 +22,12 @@ declare(strict_types=1);
  * @see ARCHITECTURE.md — Full data flow and file tree
  * @see CONVENTIONS.md  — Naming patterns and extension guides
  */
+declare(strict_types=1);
 
 // Abort if called directly.
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
-
 /*
 |--------------------------------------------------------------------------
 | Plugin Constants
@@ -36,25 +35,21 @@ if ( ! defined( 'ABSPATH' ) ) {
 | Defined here so every file in the plugin can reference paths, versions,
 | and limits without magic strings.
 */
-
 define( 'PRAUTOBLOGGER_VERSION', '0.10.1' );
 define( 'PRAUTOBLOGGER_DB_VERSION', '1.1.0' );
 define( 'PRAUTOBLOGGER_PLUGIN_FILE', __FILE__ );
 define( 'PRAUTOBLOGGER_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PRAUTOBLOGGER_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'PRAUTOBLOGGER_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
-
 // API and retry limits — named constants instead of magic numbers.
 define( 'PRAUTOBLOGGER_MAX_RETRIES', 3 );
 define( 'PRAUTOBLOGGER_RETRY_BASE_DELAY_SECONDS', 2 );
 define( 'PRAUTOBLOGGER_API_TIMEOUT_SECONDS', 180 );
 define( 'PRAUTOBLOGGER_CACHE_TTL_SECONDS', 3600 );
-
 // Default models for OpenRouter (user can override in settings).
 define( 'PRAUTOBLOGGER_DEFAULT_ANALYSIS_MODEL', 'google/gemini-2.5-flash-lite' );
 define( 'PRAUTOBLOGGER_DEFAULT_WRITING_MODEL', 'google/gemini-2.5-flash-lite' );
 define( 'PRAUTOBLOGGER_DEFAULT_EDITOR_MODEL', 'google/gemini-2.5-flash-lite' );
-
 // Image generation defaults.
 // Default provider is Runware; OpenRouter (Gemini) remains as the alternate.
 // Default model is FLUX.1 schnell via Runware (~$0.0006/image, ~2s). CEO
@@ -63,7 +58,6 @@ define( 'PRAUTOBLOGGER_DEFAULT_EDITOR_MODEL', 'google/gemini-2.5-flash-lite' );
 // override via Settings → Images → Image Model.
 define( 'PRAUTOBLOGGER_DEFAULT_IMAGE_PROVIDER', 'runware' );
 define( 'PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL', 'runware:100@1' );
-
 // Default style suffix appended to every image-gen prompt. Updated
 // 2026-04-18 v4: single-panel newspaper comic style. Caption is now
 // inserted as HTML text below the image, NOT rendered inside it.
@@ -72,30 +66,24 @@ define(
 	'PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX',
 	'Style: a single-panel newspaper comic in classic black ink on white paper, simple clean linework like The Far Side or B.C., slightly yellowed newsprint texture, hand-drawn crosshatching for shading, bold panel border, warm and humorous tone, visible in a newspaper comics section. IMPORTANT: Do not render any text, captions, speech bubbles, or words inside the image.'
 );
-
 /*
 |--------------------------------------------------------------------------
 | Autoloader
 |--------------------------------------------------------------------------
 */
-
 require_once PRAUTOBLOGGER_PLUGIN_DIR . 'includes/class-autoloader.php';
 PRAutoBlogger_Autoloader::register();
-
 // The main orchestrator class is loaded explicitly because its CamelCase name
 // (PRAutoBlogger) doesn't map cleanly to a filename via the autoloader's
 // kebab-case convention (it would look for class-pr-auto-blogger.php).
 require_once PRAUTOBLOGGER_PLUGIN_DIR . 'includes/class-prautoblogger.php';
-
 /*
 |--------------------------------------------------------------------------
 | Activation & Deactivation
 |--------------------------------------------------------------------------
 */
-
 register_activation_hook( __FILE__, array( 'PRAutoBlogger_Activator', 'activate' ) );
 register_deactivation_hook( __FILE__, array( 'PRAutoBlogger_Deactivator', 'deactivate' ) );
-
 /*
 |--------------------------------------------------------------------------
 | Boot the Plugin
@@ -103,7 +91,6 @@ register_deactivation_hook( __FILE__, array( 'PRAutoBlogger_Deactivator', 'deact
 | The main orchestrator registers all hooks. Nothing else happens here —
 | keep the bootstrap file minimal.
 */
-
 /**
  * Returns the singleton instance of the main plugin class.
  *
@@ -116,7 +103,6 @@ function prautoblogger(): PRAutoBlogger {
 	}
 	return $instance;
 }
-
 // Initialize on plugins_loaded so all dependencies are available.
 add_action(
 	'plugins_loaded',

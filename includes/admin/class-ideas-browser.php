@@ -297,9 +297,9 @@ class PRAutoBlogger_Ideas_Browser {
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$total = (int) $wpdb->get_var(  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			empty( $params )  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				? "SELECT COUNT(*) FROM {$table} {$where_sql}"  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				: $wpdb->prepare( "SELECT COUNT(*) FROM {$table} {$where_sql}", ...$params )
+			empty( $params )  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
+			? "SELECT COUNT(*) FROM {$table} {$where_sql}"  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
+			: $wpdb->prepare( "SELECT COUNT(*) FROM {$table} {$where_sql}", ...$params )  // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 		);
 
 		$order_sql = 'ORDER BY analyzed_at DESC, relevance_score DESC';
@@ -307,9 +307,9 @@ class PRAutoBlogger_Ideas_Browser {
 		$full_sql  = "SELECT * FROM {$table} {$where_sql} {$order_sql} {$limit_sql}";
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$rows = empty( $params )  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			? $wpdb->get_results( $full_sql, ARRAY_A )  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			: $wpdb->get_results( $wpdb->prepare( $full_sql, ...$params ), ARRAY_A );
+		$rows = empty( $params )  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
+		? $wpdb->get_results( $full_sql, ARRAY_A )  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
+		: $wpdb->get_results( $wpdb->prepare( $full_sql, ...$params ), ARRAY_A );  // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 
 		return array(
 			'rows'  => $rows ?? array(),

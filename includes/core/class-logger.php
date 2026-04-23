@@ -187,9 +187,9 @@ class PRAutoBlogger_Logger {
 		// Total count.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		$total = (int) $wpdb->get_var(  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			empty( $params )  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				? "SELECT COUNT(*) FROM {$table} {$where_sql}"  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				: $wpdb->prepare( "SELECT COUNT(*) FROM {$table} {$where_sql}", ...$params )
+			empty( $params )  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
+				? "SELECT COUNT(*) FROM {$table} {$where_sql}"  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
+			: $wpdb->prepare( "SELECT COUNT(*) FROM {$table} {$where_sql}", ...$params )  // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 		);
 
 		// Rows.

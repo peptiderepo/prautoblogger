@@ -8,6 +8,7 @@ and this project uses [Semantic Versioning](https://semver.org/).
 ## [0.10.1] — 2026-04-23
 
 ### Fixed
+- **PHPCS: closed the last 26 WordPress-Core residuals** (15 short ternaries rewritten, 11 targeted ignores on false-positive ternary-with-prepare in ideas-browser + logger).
 
 - **Tests: OpenRouterImageProviderTest now round-trips through real Encryption class.**
   setUp was using a dead `eval()` mock that never installed because the real `PRAutoBlogger_Encryption`

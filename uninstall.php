@@ -1,6 +1,4 @@
 <?php
-declare(strict_types=1);
-
 /**
  * phpcs:ignore Generic.PHP.RequireStrictTypes.MissingDeclaration -- strict_types must precede docblock
  *
@@ -11,6 +9,7 @@ declare(strict_types=1);
  *
  * @see class-deactivator.php — Lighter cleanup on deactivation (preserves data).
  */
+declare(strict_types=1);
 
 // Abort if not called by WordPress uninstall process.
 if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
