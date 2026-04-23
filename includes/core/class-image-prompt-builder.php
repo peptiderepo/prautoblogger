@@ -314,7 +314,7 @@ PROMPT;
 
 	/**
 	 * Get image style suffix with empty-string safeguard.
-	 * 
+	 *
 	 * Treats both absent and empty string as "use default" to prevent
 	 * silent style loss if the admin settings field is saved empty.
 	 *
@@ -327,5 +327,5 @@ PROMPT;
 		}
 		return $style_suffix;
 	}
-
 }
+
