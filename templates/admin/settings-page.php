@@ -102,14 +102,20 @@ $next_run       = wp_next_scheduled( 'prautoblogger_daily_generation' );
 
 				<?php foreach ( $sections as $sid => $sec ) : ?>
 					<div class="ab-panel <?php echo $active_tab === $sid ? 'ab-panel-active' : ''; ?>"
-					     data-tab="<?php echo esc_attr( $sid ); ?>"
-					     role="tabpanel">
-						<div class="ab-panel-head">
-							<h2 class="ab-panel-title"><?php echo esc_html( $sec['title'] ); ?></h2>
-							<?php if ( ! empty( $sec['description'] ) ) : ?>
-								<p class="ab-panel-desc"><?php echo esc_html( $sec['description'] ); ?></p>
-							<?php endif; ?>
-						</div>
+						data-tab="<?php echo esc_attr( $sid ); ?>"
+						role="tabpanel">
+					<div class="ab-panel-head">
+						<h2 class="ab-panel-title"><?php echo esc_html( $sec['title'] ); ?></h2>
+						<?php if ( ! empty( $sec['description'] ) ) : ?>
+							<p class="ab-panel-desc"><?php echo esc_html( $sec['description'] ); ?></p>
+						<?php endif; ?>
+						<?php if ( 'prautoblogger_models' === $sid ) : ?>
+							<button type="button" id="prautoblogger-refresh-models" class="ab-btn ab-btn-secondary ab-btn-sm" data-nonce="<?php echo esc_attr( wp_create_nonce( 'prautoblogger_refresh_models' ) ); ?>">
+								<span class="dashicons dashicons-update"></span>
+								<span class="ab-btn-label"><?php esc_html_e( 'Refresh Model List', 'prautoblogger' ); ?></span>
+							</button>
+						<?php endif; ?>
+					</div>
 						<table class="form-table ab-form-table" role="presentation">
 							<?php do_settings_fields( 'prautoblogger-settings', $sid ); ?>
 						</table>

@@ -5,6 +5,20 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.11.0] — 2026-04-23
+
+### Added
+- **OpenRouter model picker for text models.** Admin-facing dropdown field type (`model_select`) with searchable list, capability filtering, and estimated cost preview. Replaces free-text model slug inputs on the three text model settings (analysis, writing, editor). Includes daily cron refresh of the OpenRouter registry cache and manual "Refresh Model List" button on the AI Models tab.
+
+- **Cost preview in model picker.** Shows estimated cost per generation based on historical token usage for the 30 days prior. Maps each setting to its constituent pipeline stages (writing model = outline + draft + polish).
+
+- **AJAX refresh endpoint** (`prautoblogger_refresh_models`) for manual model registry refresh with nonce + capability gating (`manage_options`).
+
+- **New public method on Cost Tracker:** `get_avg_tokens_for_stages(array $stages, int $days = 30): array` returns average input/output token counts for a stage list, used by cost preview.
+
+### Changed
+- **AI Models tab now renders a "Refresh Model List" button** next to the panel title. Triggers `prautoblogger_refresh_models` AJAX endpoint.
+
 ## [0.10.1] — 2026-04-23
 
 ### Fixed

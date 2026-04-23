@@ -8,13 +8,16 @@ declare(strict_types=1);
  *
  * What: a button showing the current model's name + pricing. Clicking it
  *       opens a JS-powered popup (model-picker.js) with a searchable list.
+ *       Includes an estimated cost preview below based on historical usage.
  * Who calls it: PRAutoBlogger_Admin_Page::render_field() delegates here
  *               for fields with type 'model_select'.
- * Dependencies: PRAutoBlogger_Model_Registry_Interface (cached registry lookup).
+ * Dependencies: PRAutoBlogger_Model_Registry_Interface (cached registry lookup),
+ *               PRAutoBlogger_Cost_Tracker (historical token averages).
  *
  * @see admin/class-admin-page.php          — Calls render() from the main field switch.
  * @see assets/js/model-picker.js           — JS popup that fetches + displays models.
  * @see services/interface-model-registry.php — Registry interface for find_model().
+ * @see core/class-cost-tracker.php         — get_avg_tokens_for_stages() for cost preview.
  */
 class PRAutoBlogger_OpenRouter_Model_Field {
 
@@ -71,6 +74,75 @@ class PRAutoBlogger_OpenRouter_Model_Field {
 			esc_html( $display_name ),
 			esc_html( $display_price )
 		);
+
+		// Cost preview panel — only for text→text models (not image).
+		if ( 'image_generation' !== $capability && '' !== $value ) {
+			$cost_preview = self::get_cost_preview( $id, $value );
+			if ( $cost_preview ) {
+				printf(
+					'<div class="ab-mp-cost-preview">%s</div>',
+					wp_kses_post( $cost_preview )
+				);
+			}
+		}
+	}
+
+	/**
+	 * Calculate and render the estimated cost preview for a model + setting combo.
+	 *
+	 * @param string $field_id Setting ID (e.g. 'prautoblogger_writing_model').
+	 * @param string $model_id Model ID (e.g. 'anthropic/claude-3.5-haiku').
+	 *
+	 * @return string HTML snippet for the cost preview, or empty if no history.
+	 */
+	private static function get_cost_preview( string $field_id, string $model_id ): string {
+		$stages = self::get_stages_for_setting( $field_id );
+		if ( empty( $stages ) ) {
+			return '';
+		}
+
+		$registry = prautoblogger()->get_executor()->get_model_registry();
+		$model    = $registry->find_model( $model_id );
+		if ( null === $model ) {
+			return '';
+		}
+
+		$tracker = new PRAutoBlogger_Cost_Tracker();
+		$tokens  = $tracker->get_avg_tokens_for_stages( $stages, 30 );
+
+		if ( 0 === $tokens['sample_size'] ) {
+			return '<small>' . esc_html__( 'Estimated cost: — (insufficient history)', 'prautoblogger' ) . '</small>';
+		}
+
+		$in_price   = (float) ( $model['input_price_per_m'] ?? 0 );
+		$out_price  = (float) ( $model['output_price_per_m'] ?? 0 );
+		$avg_tokens_in  = $tokens['avg_prompt_tokens'];
+		$avg_tokens_out = $tokens['avg_completion_tokens'];
+
+		// Cost per generation = (avg_in_tokens × in_price + avg_out_tokens × out_price) / 1_000_000
+		$cost_per_gen = ( ( $avg_tokens_in * $in_price ) + ( $avg_tokens_out * $out_price ) ) / 1_000_000;
+
+		return sprintf(
+			'<small>%s %s</small>',
+			esc_html__( 'Estimated cost per generation:', 'prautoblogger' ),
+			esc_html( '$' . number_format( $cost_per_gen, 4 ) )
+		);
+	}
+
+	/**
+	 * Map a setting ID to its constituent pipeline stages.
+	 *
+	 * @param string $field_id Setting ID.
+	 *
+	 * @return string[] Stage names, e.g. ['outline', 'draft', 'polish'] for writing model.
+	 */
+	private static function get_stages_for_setting( string $field_id ): array {
+		$map = array(
+			'prautoblogger_analysis_model' => array( 'analysis' ),
+			'prautoblogger_writing_model'  => array( 'outline', 'draft', 'polish' ),
+			'prautoblogger_editor_model'   => array( 'review' ),
+		);
+		return $map[ $field_id ] ?? array();
 	}
 
 	/**
