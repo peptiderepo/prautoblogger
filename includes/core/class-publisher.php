@@ -28,6 +28,7 @@ class PRAutoBlogger_Publisher {
 	 * @param PRAutoBlogger_Article_Idea      $idea    The original article idea.
 	 * @param PRAutoBlogger_Editorial_Review  $review  The editor's review.
 	 * @param string|null                   $run_id  Pipeline run ID for log linking.
+	 * @param ?PRAutoBlogger_Cost_Tracker $cost_tracker Optional cost tracker for image generation cost logging.
 	 * @return int The created post ID.
 	 * @throws \RuntimeException If post creation fails.
 	 */
@@ -48,6 +49,7 @@ class PRAutoBlogger_Publisher {
 	 * @param PRAutoBlogger_Article_Idea      $idea    The original article idea.
 	 * @param PRAutoBlogger_Editorial_Review  $review  The editor's review with rejection notes.
 	 * @param string|null                   $run_id  Pipeline run ID for log linking.
+	 * @param ?PRAutoBlogger_Cost_Tracker $cost_tracker Optional cost tracker for image generation cost logging.
 	 * @return int The created post ID.
 	 * @throws \RuntimeException If post creation fails.
 	 */
