@@ -544,6 +544,11 @@ We already use Cloudflare for DNS/CDN on peptiderepo.com, so layering AI Gateway
 
 ---
 
+### #20: PHPUnit test infrastructure + WordPress-Core PHPCS compliance (v0.10.1)
+
+Tests use Brain\Monkey for WordPress function mocking (no database required). The BaseTestCase singleton handles setup/teardown of Monkey stubs and provides fixture helpers for common data shapes (SourceData, ArticleIdea, GenerationLog, etc.). All WordPress functions used by the plugin are stubbed in BaseTestCase::setUp() so individual test classes only override what they need. In v0.10.1, missing stubs for `post_type_exists()` were added to support PeptideLinker's PR-Core guards. All 1,362 WordPress-Core coding-standards violations (short array syntax, line length, spacing) were auto-fixed via phpcbf and the CI gate was flipped to strict mode — PHPCS failures now block CI. This prevents future regressions on the code style front.
+
+
 ## Cross-System LLM Budget Coordination
 
 PRAutoBlogger and Peptide News both call OpenRouter and may share a single API key / billing account. Their combined spend should be considered when setting per-plugin budgets.

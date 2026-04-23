@@ -8,7 +8,7 @@ declare(strict_types=1);
  * Plugin Name:       PRAutoBlogger
  * Plugin URI:        https://peptiderepo.com/prautoblogger
  * Description:       Monitors social media for trending topics, generates SEO-friendly blog posts using AI, and publishes them on a daily schedule with full cost tracking and self-improvement metrics.
- * Version:           0.10.0
+ * Version:           0.10.1
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            PeptideRepo

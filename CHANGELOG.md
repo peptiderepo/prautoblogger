@@ -5,6 +5,23 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.10.1] — 2026-04-23
+
+### Fixed
+
+- **Tests: add missing `post_type_exists()` stub to BaseTestCase.**
+  When PR Core is not active, PeptideLinker guards calls with `post_type_exists()`.
+  This WordPress function was not mocked in the base test setup, causing 8 PublisherTest errors.
+
+### Changed
+
+- **PHPCS: autofix all 1,362 WordPress-Core style violations.**
+  Ran `phpcbf --standard=WordPress-Core` across 75 files.
+  Changes include short array syntax (`array()` instead of `[]`), proper line breaking,
+  and consistent indentation. No logic changes.
+- **CI: PHPCS gate now strict.** Changed `continue-on-error: true → false` in `.github/workflows/ci.yml`.
+  PHPCS failures will now block CI, preventing style regression.
+
 ## [0.10.0] — 2026-04-21
 
 ### Removed
