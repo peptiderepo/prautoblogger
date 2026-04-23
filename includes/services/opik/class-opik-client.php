@@ -198,7 +198,7 @@ class PRAutoBlogger_Opik_Client {
 
 			// Retry on network/timeout errors.
 			if ( $attempt < $max_attempts - 1 ) {
-				$delay = (int) ( 2 ** ($attempt + 1) ); // 2s, 4s, 8s
+				$delay = (int) ( 2 ** ( $attempt + 1 ) ); // 2s, 4s, 8s
 				sleep( $delay );
 				return $this->post( $endpoint, $payload, $attempt + 1 );
 			}
@@ -242,7 +242,7 @@ class PRAutoBlogger_Opik_Client {
 			);
 
 			if ( $attempt < $max_attempts - 1 ) {
-				$delay = (int) ( 2 ** ($attempt + 1) );
+				$delay = (int) ( 2 ** ( $attempt + 1 ) );
 				sleep( $delay );
 				return $this->post( $endpoint, $payload, $attempt + 1 );
 			}
