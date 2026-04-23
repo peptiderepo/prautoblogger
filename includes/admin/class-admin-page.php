@@ -75,6 +75,8 @@ class PRAutoBlogger_Admin_Page {
 		wp_enqueue_style( 'prautoblogger-model-picker', PRAUTOBLOGGER_PLUGIN_URL . 'assets/css/model-picker.css', array( 'prautoblogger-admin' ), PRAUTOBLOGGER_VERSION );
 		wp_enqueue_script( 'prautoblogger-admin', PRAUTOBLOGGER_PLUGIN_URL . 'assets/js/admin.js', array( 'jquery' ), PRAUTOBLOGGER_VERSION, true );
 		wp_enqueue_script( 'prautoblogger-model-picker', PRAUTOBLOGGER_PLUGIN_URL . 'assets/js/model-picker.js', array( 'jquery', 'prautoblogger-admin' ), PRAUTOBLOGGER_VERSION, true );
+		wp_enqueue_script( 'peptiderepo-model-picker', PRAUTOBLOGGER_PLUGIN_URL . 'assets/admin/peptiderepo-model-picker.js', array( 'jquery' ), PRAUTOBLOGGER_VERSION, true );
+		wp_enqueue_style( 'peptiderepo-model-picker', PRAUTOBLOGGER_PLUGIN_URL . 'assets/admin/peptiderepo-model-picker.css', array(), PRAUTOBLOGGER_VERSION );
 
 		wp_localize_script(
 			'prautoblogger-admin',
