@@ -38,6 +38,9 @@ abstract class BaseTestCase extends TestCase {
 
         // home_url is used by OpenRouter provider in request headers.
         Functions\when( 'home_url' )->justReturn( 'https://test.example.com' );
+        // post_type_exists is used by PeptideLinker to check if PR Core is active.
+        // Stub returns false to simulate when PR Core is not installed.
+        Functions\when( 'post_type_exists' )->justReturn( false );
 
         // current_time is called by Logger on every log write. Stub returns a
         // deterministic timestamp so tests are reproducible.
