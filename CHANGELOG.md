@@ -5,6 +5,15 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.12.1] — 2026-04-23
+
+### Fixed
+- **Opik UUID v7 bug** — `PRAutoBlogger_Opik_Trace_Context` was generating trace and
+  span IDs with `wp_generate_uuid4()` (UUID v4). Opik's REST API requires UUID v7 and
+  rejects v4 with HTTP 400 "Trace id must be a version 7 UUID". Added a private static
+  `generate_uuid7()` method using `microtime()` + `random_bytes()` and replaced both
+  call sites. All trace and span submissions now succeed.
+
 ## [0.12.0] — 2026-04-23
 
 ### Added
