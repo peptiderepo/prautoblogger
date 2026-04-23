@@ -211,8 +211,8 @@ class PRAutoBlogger_Opik_Trace_Context {
 	 */
 	private static function generate_uuid7(): string {
 		$ms     = (int) ( microtime( true ) * 1000 );
-		$ts_hex = str_pad( dechex( $ms ), 12, '0', STR_PAD_LEFT ); // 48-bit ts → 12 hex
-		$rand   = bin2hex( random_bytes( 10 ) );                    // 80 random bits → 20 hex
+		$ts_hex = str_pad( dechex( $ms ), 12, '0', STR_PAD_LEFT ); // 48-bit ts -> 12 hex
+		$rand   = bin2hex( random_bytes( 10 ) );                    // 80 random bits -> 20 hex
 
 		// Group 3: version nibble '7' + 12 random bits (3 hex chars).
 		$g3 = '7' . substr( $rand, 0, 3 );
