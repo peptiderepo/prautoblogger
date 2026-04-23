@@ -1,8 +1,9 @@
 <?php
-// phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Extracts valid JSON from potentially dirty LLM response strings.
  *
  * Many models ignore the `response_format: json_object` instruction and wrap

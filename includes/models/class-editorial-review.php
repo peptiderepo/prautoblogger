@@ -1,8 +1,9 @@
 <?php
-// phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Value object representing the chief editor agent's review of generated content.
  *
  * Triggered by: Chief_Editor creates these; Publisher consumes them.

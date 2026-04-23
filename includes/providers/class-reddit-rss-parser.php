@@ -1,8 +1,9 @@
 <?php
-// phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Reddit RSS/Atom feed parser — parses Atom XML into normalized post arrays.
  *
  * Handles parsing of Reddit's Atom/RSS feeds and mapping them to the standard

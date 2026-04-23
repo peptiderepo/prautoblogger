@@ -1,8 +1,9 @@
 <?php
-// phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Adds "Writing Model", "Image Model", and "Cost" columns to the Posts list.
  *
  * Shows which LLM wrote each article, which model generated its featured image,

@@ -1,8 +1,9 @@
 <?php
-// phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Admin page listing analysis results (article ideas) with per-idea generation.
  *
  * Triggered by: PRAutoBlogger::register_admin_hooks() on `admin_menu`.

@@ -1,8 +1,9 @@
 <?php
-// phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Registers the [prautoblogger_posts] shortcode and its supporting REST API endpoint.
  *
  * This is PRAutoBlogger's first public-facing frontend feature. It renders a React-powered

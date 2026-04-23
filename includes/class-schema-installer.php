@@ -1,8 +1,9 @@
 <?php
-// phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Creates / updates the plugin's custom database tables via `dbDelta`.
  *
  * Extracted from `PRAutoBlogger_Activator` in v0.8.2 to keep that class

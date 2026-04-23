@@ -1,8 +1,9 @@
 <?php
-// phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Normalizes raw OpenRouter model data into the standardized record shape.
  *
  * Extracted from PRAutoBlogger_OpenRouter_Model_Registry so both classes stay

@@ -1,8 +1,9 @@
 <?php
-// phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Collects post performance metrics from WordPress native data and Google Analytics 4.
  *
  * Runs on a separate cron schedule (every 6 hours) to gather pageviews, bounce rate,

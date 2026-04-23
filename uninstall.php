@@ -1,8 +1,9 @@
 <?php
 declare(strict_types=1);
-// phpcs:ignore Generic.PHP.RequireStrictTypes.MissingDeclaration -- strict_types must precede docblock
 
 /**
+ * phpcs:ignore Generic.PHP.RequireStrictTypes.MissingDeclaration -- strict_types must precede docblock
+ *
  * Fired when the plugin is uninstalled (deleted) from WordPress.
  *
  * Removes ALL plugin data: custom tables, options, post meta, transients, and cron events.

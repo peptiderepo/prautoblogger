@@ -1,8 +1,9 @@
 <?php
-// phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Reddit data provider — collects posts and comments from target subreddits.
  *
  * Uses Reddit RSS/Atom feeds as the PRIMARY data source (reliable from datacenter IPs,

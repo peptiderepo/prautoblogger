@@ -1,8 +1,9 @@
 <?php
-// phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * One-shot v0.10.0 migration — remove Cloudflare Workers AI as image provider.
  *
  * Cloudflare Workers AI was removed as an image provider in v0.10.0.

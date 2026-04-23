@@ -1,8 +1,9 @@
 <?php
-// phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * OpenRouter model registry — fetches, normalizes, and caches the model list.
  *
  * All config is constructor-injected. No PRAUTOBLOGGER_* constants referenced

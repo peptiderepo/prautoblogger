@@ -1,8 +1,9 @@
 <?php
-// phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * PSR-4-inspired autoloader for PRAutoBlogger classes.
  *
  * Maps class names like `PRAutoBlogger_Content_Generator` to file paths like
