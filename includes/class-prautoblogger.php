@@ -153,6 +153,7 @@ class PRAutoBlogger {
 		add_action( 'wp_ajax_prautoblogger_generate_image', array( $this->ajax_handlers, 'on_ajax_generate_image' ) );
 		add_action( 'wp_ajax_prautoblogger_test_connection', array( $this->ajax_handlers, 'on_ajax_test_connection' ) );
 		add_action( 'wp_ajax_prautoblogger_get_models', array( $this->ajax_handlers, 'on_ajax_get_models' ) );
+		add_action( 'wp_ajax_prautoblogger_refresh_models', array( new PRAutoBlogger_Model_Registry_Refresh( $this->ajax_handlers->get_registry() ), 'handle' ) );
 
 		$review_queue = new PRAutoBlogger_Review_Queue();
 		add_action( 'wp_ajax_prautoblogger_approve_post', array( $review_queue, 'on_ajax_approve_post' ) );

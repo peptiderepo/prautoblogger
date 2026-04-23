@@ -150,4 +150,13 @@ class PRAutoBlogger_Ajax_Handlers {
 		}
 		wp_send_json_success( $results );
 	}
+
+	/**
+	 * Get the shared model registry instance.
+	 *
+	 * @return PRAutoBlogger_OpenRouter_Model_Registry
+	 */
+	public function get_registry(): PRAutoBlogger_OpenRouter_Model_Registry {
+		return $this->model_registry;
+	}
 }

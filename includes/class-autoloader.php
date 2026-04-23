@@ -30,6 +30,7 @@ class PRAutoBlogger_Autoloader {
 		'models/',
 		'frontend/',
 		'services/',
+		'ajax/',
 	);
 
 	/**

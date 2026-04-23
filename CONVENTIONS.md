@@ -234,6 +234,60 @@ Frontend components use `wp.element` (WordPress-bundled React) — no JSX, no bu
 9. **No `echo` of raw data** — always escape with `esc_html()`, `esc_attr()`, etc.
 10. **Nonce on every form/AJAX** — `wp_nonce_field()` / `check_ajax_referer()`
 
+
+## How To: Add an OpenRouter model picker field (v0.11.0+)
+
+Use the `model_select` field type to let admins choose OpenRouter models with a searchable dropdown, capability filtering, and estimated cost preview based on usage history.
+
+### 1. Declare the field in `class-settings-fields.php`
+
+```php
+[
+    'id'          => 'my_plugin_model',
+    'label'       => __( 'My Model Setting', 'my-plugin' ),
+    'type'        => 'model_select',
+    'section'     => 'my_plugin_settings',
+    'default'     => 'anthropic/claude-3.5-haiku',
+    'capability'  => 'text→text',  // see ARCHITECTURE.md §18 for all capability strings
+    'description' => __( 'Choose a model...', 'my-plugin' ),
+    'badge'       => __( 'Quality', 'my-plugin' ),
+],
+```
+
+### 2. Map the setting to pipeline stages (for cost preview)
+
+If you want cost preview to work, add your setting ID and stage list to the `get_stages_for_setting()` method in `includes/admin/fields/class-open-router-model-field.php`:
+
+```php
+private static function get_stages_for_setting( string $field_id ): array {
+    $map = [
+        'prautoblogger_analysis_model'     => [ 'analysis' ],
+        'prautoblogger_writing_model'      => [ 'outline', 'draft', 'polish' ],
+        'prautoblogger_editor_model'       => [ 'review' ],
+        'my_new_model_setting'             => [ 'my_stage' ],  // ADD HERE
+    ];
+    return $map[ $field_id ] ?? [];
+}
+```
+
+The cost preview queries `get_avg_tokens_for_stages()` on the Cost Tracker to show estimated cost per generation based on the last 30 days of usage.
+
+### 3. That's it
+
+The field renderer, AJAX refresh, model picker JS, and capability filtering are already wired. The admin will see a "Refresh Model List" button on the AI Models tab (or whichever tab contains the picker field).
+
+### Capability strings (locked in v0.11.0)
+
+- `text→text` — text input, text output (default for analysis/writing/editor)
+- `text+image→text` — vision models
+- `text+audio→text` — audio input models
+- `text→image` — image generation
+- `text→audio` — voice synthesis
+- `text→video` — video generation
+- `text→embedding` — embeddings
+
+Phase 3 will add provider selection; v0.11.0 is OpenRouter-only.
+
 ## Git Workflow — PR-Gated, Soft-Enforced
 
 This repo is private on GitHub's free plan, which does not support branch protection or rulesets. The review gate is enforced at the agent layer, not server-side. Every agent and human contributor follows these rules; the `.github/workflows/main-push-audit.yml` tripwire opens an audit issue on any direct push to `main` that did not come from a merged PR.
