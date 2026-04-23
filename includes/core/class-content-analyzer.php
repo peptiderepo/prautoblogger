@@ -49,7 +49,7 @@ class PRAutoBlogger_Content_Analyzer {
 
 		if ( empty( $source_items ) ) {
 			PRAutoBlogger_Logger::instance()->info( 'No new source data to analyze.', 'analyzer' );
-			return [];
+			return array();
 		}
 
 		$niche = get_option( 'prautoblogger_niche_description', '' );
@@ -61,16 +61,22 @@ class PRAutoBlogger_Content_Analyzer {
 		$user_prompt         = PRAutoBlogger_Analysis_Prompts::build_user_prompt( $summary, $target_idea_count );
 
 		$response = $this->llm->send_chat_completion(
-			[
-				[ 'role' => 'system', 'content' => $system_prompt ],
-				[ 'role' => 'user', 'content' => $user_prompt ],
-			],
+			array(
+				array(
+					'role'    => 'system',
+					'content' => $system_prompt,
+				),
+				array(
+					'role'    => 'user',
+					'content' => $user_prompt,
+				),
+			),
 			$model,
-			[
+			array(
 				'temperature'     => 0.5,
 				'max_tokens'      => 8000,
-				'response_format' => [ 'type' => 'json_object' ],
-			]
+				'response_format' => array( 'type' => 'json_object' ),
+			)
 		);
 
 		$this->cost_tracker->log_api_call(
@@ -130,7 +136,7 @@ class PRAutoBlogger_Content_Analyzer {
 				gmdate( 'Y-m-d H:i:s', time() - DAY_IN_SECONDS )
 			),
 			ARRAY_A
-		) ?: [];
+		) ?: array();
 	}
 
 	/**
@@ -142,8 +148,8 @@ class PRAutoBlogger_Content_Analyzer {
 	 * @return string Formatted text summary.
 	 */
 	private function build_source_summary( array $items ): string {
-		$parts = [];
-		$char_limit = 30000; // Roughly ~7500 tokens.
+		$parts         = array();
+		$char_limit    = 30000; // Roughly ~7500 tokens.
 		$current_chars = 0;
 
 		foreach ( $items as $item ) {
@@ -163,7 +169,7 @@ class PRAutoBlogger_Content_Analyzer {
 				break;
 			}
 
-			$parts[] = $entry;
+			$parts[]        = $entry;
 			$current_chars += strlen( $entry );
 		}
 
@@ -185,27 +191,29 @@ class PRAutoBlogger_Content_Analyzer {
 				. mb_substr( $content, 0, 500 ),
 				'analyzer'
 			);
-			return [];
+			return array();
 		}
 
 		$source_ids = array_column( $source_items, 'id' );
-		$results    = [];
+		$results    = array();
 
 		foreach ( $data['patterns'] as $pattern ) {
-			$results[] = new PRAutoBlogger_Analysis_Result( [
-				'analysis_type'   => sanitize_text_field( $pattern['type'] ?? 'question' ),
-				'topic'           => sanitize_text_field( $pattern['topic'] ?? '' ),
-				'summary'         => sanitize_textarea_field( $pattern['summary'] ?? '' ),
-				'frequency'       => absint( $pattern['frequency'] ?? 1 ),
-				'relevance_score' => (float) ( $pattern['relevance_score'] ?? 0.0 ),
-				'source_ids'      => $source_ids,
-				'analyzed_at'     => current_time( 'mysql' ),
-				'metadata'        => [
-					'suggested_title'  => $pattern['suggested_title'] ?? '',
-					'key_points'       => $pattern['key_points'] ?? [],
-					'target_keywords'  => $pattern['target_keywords'] ?? [],
-				],
-			] );
+			$results[] = new PRAutoBlogger_Analysis_Result(
+				array(
+					'analysis_type'   => sanitize_text_field( $pattern['type'] ?? 'question' ),
+					'topic'           => sanitize_text_field( $pattern['topic'] ?? '' ),
+					'summary'         => sanitize_textarea_field( $pattern['summary'] ?? '' ),
+					'frequency'       => absint( $pattern['frequency'] ?? 1 ),
+					'relevance_score' => (float) ( $pattern['relevance_score'] ?? 0.0 ),
+					'source_ids'      => $source_ids,
+					'analyzed_at'     => current_time( 'mysql' ),
+					'metadata'        => array(
+						'suggested_title' => $pattern['suggested_title'] ?? '',
+						'key_points'      => $pattern['key_points'] ?? array(),
+						'target_keywords' => $pattern['target_keywords'] ?? array(),
+					),
+				)
+			);
 		}
 
 		return $results;

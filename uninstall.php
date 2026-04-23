@@ -24,13 +24,13 @@ global $wpdb;
 */
 
 $prefix = $wpdb->prefix . 'prautoblogger_';
-$tables = [
+$tables = array(
 	$prefix . 'source_data',
 	$prefix . 'analysis_results',
 	$prefix . 'generation_log',
 	$prefix . 'content_scores',
 	$prefix . 'event_log',
-];
+);
 
 foreach ( $tables as $table ) {
 	// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table names are hardcoded above, not user input.
@@ -77,10 +77,10 @@ $wpdb->query(
 |--------------------------------------------------------------------------
 */
 
-$hooks = [
+$hooks = array(
 	'prautoblogger_daily_generation',
 	'prautoblogger_collect_metrics',
-];
+);
 
 foreach ( $hooks as $hook ) {
 	$timestamp = wp_next_scheduled( $hook );

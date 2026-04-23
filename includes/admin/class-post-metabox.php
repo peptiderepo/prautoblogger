@@ -34,7 +34,7 @@ class PRAutoBlogger_Post_Metabox {
 		add_meta_box(
 			'prautoblogger_generation_info',
 			__( 'PRAutoBlogger Generation Info', 'prautoblogger' ),
-			[ $this, 'render_metabox' ],
+			array( $this, 'render_metabox' ),
 			'post',
 			'side',
 			'default'

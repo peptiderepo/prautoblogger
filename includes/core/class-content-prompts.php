@@ -68,7 +68,7 @@ class PRAutoBlogger_Content_Prompts {
 			"- Engaging intro, strong conclusion with CTA\n" .
 			"- Do NOT include the title or <html>/<body> tags\n" .
 			"- Output HTML only, no markdown or commentary\n" .
-			"- Follow EVERY formatting and structural requirement from your system prompt style guide",
+			'- Follow EVERY formatting and structural requirement from your system prompt style guide',
 			$idea->get_suggested_title(),
 			$idea->get_topic(),
 			$idea->get_article_type(),
@@ -92,10 +92,10 @@ class PRAutoBlogger_Content_Prompts {
 			"Create a detailed outline for a blog post titled: \"%s\"\n\n" .
 			"Topic: %s\nArticle type: %s\n\nKey points to cover:\n%s\n\n" .
 			"Target keywords: %s\n\n" .
-			"The outline should have 4-6 main sections with bullet points under each. " .
-			"Include an introduction hook and a conclusion with a call to action. " .
+			'The outline should have 4-6 main sections with bullet points under each. ' .
+			'Include an introduction hook and a conclusion with a call to action. ' .
 			"Word count target: %d-%d words.\n\n" .
-			"Plan the structure to satisfy EVERY requirement in your system prompt style guide.",
+			'Plan the structure to satisfy EVERY requirement in your system prompt style guide.',
 			$idea->get_suggested_title(),
 			$idea->get_topic(),
 			$idea->get_article_type(),
@@ -125,7 +125,7 @@ class PRAutoBlogger_Content_Prompts {
 			"- Naturally incorporate these keywords: %s\n" .
 			"- Do NOT include the title in the HTML (it will be set separately)\n" .
 			"- Do NOT wrap in <html>, <head>, or <body> tags — just the article content\n" .
-			"- Follow EVERY formatting and structural requirement from your system prompt style guide",
+			'- Follow EVERY formatting and structural requirement from your system prompt style guide',
 			$outline,
 			$request->get_tone(),
 			$request->get_min_word_count(),
@@ -147,9 +147,9 @@ class PRAutoBlogger_Content_Prompts {
 			"3. Engagement (hooks, transitions, call-to-action)\n" .
 			"4. Accuracy and clarity\n" .
 			"5. Remove any filler or redundant sentences\n\n" .
-			"IMPORTANT: Preserve all bullet points, numbered lists, hyperlinks, and " .
-			"structural elements from the draft. Do NOT flatten lists into prose or " .
-			"remove links. Ensure every requirement from your system prompt style " .
+			'IMPORTANT: Preserve all bullet points, numbered lists, hyperlinks, and ' .
+			'structural elements from the draft. Do NOT flatten lists into prose or ' .
+			'remove links. Ensure every requirement from your system prompt style ' .
 			"guide is satisfied in the final output.\n\n" .
 			"Return the polished HTML content only. Do not add commentary.\n\n" .
 			"DRAFT:\n" . $draft;
@@ -172,7 +172,7 @@ class PRAutoBlogger_Content_Prompts {
 
 		$rules .= self::build_article_links();
 
-		$rules .= "--- END LINKING RULES ---";
+		$rules .= '--- END LINKING RULES ---';
 
 		return $rules;
 	}
@@ -183,20 +183,22 @@ class PRAutoBlogger_Content_Prompts {
 	 * @return string Formatted list, or a fallback note.
 	 */
 	private static function build_article_links(): string {
-		$posts = get_posts( [
-			'post_type'      => 'post',
-			'post_status'    => 'publish',
-			'posts_per_page' => 30,
-			'orderby'        => 'date',
-			'order'          => 'DESC',
-			'fields'         => 'ids',
-		] );
+		$posts = get_posts(
+			array(
+				'post_type'      => 'post',
+				'post_status'    => 'publish',
+				'posts_per_page' => 30,
+				'orderby'        => 'date',
+				'order'          => 'DESC',
+				'fields'         => 'ids',
+			)
+		);
 
 		if ( empty( $posts ) ) {
 			return "No published articles available for internal linking yet.\n";
 		}
 
-		$lines = [ "Available article links (use where topically relevant):\n" ];
+		$lines = array( "Available article links (use where topically relevant):\n" );
 		foreach ( $posts as $post_id ) {
 			$title = get_the_title( $post_id );
 			$url   = get_permalink( $post_id );
@@ -207,5 +209,4 @@ class PRAutoBlogger_Content_Prompts {
 
 		return implode( "\n", $lines ) . "\n";
 	}
-
 }

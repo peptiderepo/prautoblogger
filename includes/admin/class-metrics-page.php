@@ -27,7 +27,7 @@ class PRAutoBlogger_Metrics_Page {
 			__( 'Metrics & Costs', 'prautoblogger' ),
 			'manage_options',
 			'prautoblogger-metrics',
-			[ $this, 'render_page' ]
+			array( $this, 'render_page' )
 		);
 	}
 

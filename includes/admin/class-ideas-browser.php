@@ -28,7 +28,7 @@ class PRAutoBlogger_Ideas_Browser {
 			__( 'Ideas', 'prautoblogger' ),
 			'manage_options',
 			'prautoblogger-ideas',
-			[ $this, 'render_page' ]
+			array( $this, 'render_page' )
 		);
 	}
 
@@ -62,43 +62,51 @@ class PRAutoBlogger_Ideas_Browser {
 	public function on_ajax_generate_from_idea(): void {
 		check_ajax_referer( 'prautoblogger_idea_gen', 'nonce' );
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( [ 'message' => 'Insufficient permissions.' ], 403 );
+			wp_send_json_error( array( 'message' => 'Insufficient permissions.' ), 403 );
 			return;
 		}
 
 		$idea_id = absint( $_POST['idea_id'] ?? 0 );
 		if ( $idea_id < 1 ) {
-			wp_send_json_error( [ 'message' => 'Invalid idea ID.' ] );
+			wp_send_json_error( array( 'message' => 'Invalid idea ID.' ) );
 			return;
 		}
 
 		// Build Article_Idea from the analysis row.
 		$idea_data = self::load_idea_data( $idea_id );
 		if ( null === $idea_data ) {
-			wp_send_json_error( [ 'message' => 'Idea not found.' ] );
+			wp_send_json_error( array( 'message' => 'Idea not found.' ) );
 			return;
 		}
 
 		// Store idea for the cron handler and set initial "running" status.
 		set_transient( self::STATUS_PREFIX . 'data_' . $idea_id, $idea_data, self::STATUS_TTL );
-		set_transient( self::STATUS_PREFIX . $idea_id, [
-			'status'  => 'running',
-			'stage'   => __( 'Starting generation…', 'prautoblogger' ),
-			'started' => time(),
-		], self::STATUS_TTL );
+		set_transient(
+			self::STATUS_PREFIX . $idea_id,
+			array(
+				'status'  => 'running',
+				'stage'   => __( 'Starting generation…', 'prautoblogger' ),
+				'started' => time(),
+			),
+			self::STATUS_TTL
+		);
 
 		// Schedule background cron — passes idea_id as argument.
 		$hook = 'prautoblogger_generate_from_idea';
-		if ( ! wp_next_scheduled( $hook, [ $idea_id ] ) ) {
-			wp_schedule_single_event( time(), $hook, [ $idea_id ] );
+		if ( ! wp_next_scheduled( $hook, array( $idea_id ) ) ) {
+			wp_schedule_single_event( time(), $hook, array( $idea_id ) );
 		}
 		spawn_cron();
 		wp_remote_post(
 			site_url( 'wp-cron.php?doing_wp_cron=' . sprintf( '%.22F', microtime( true ) ) ),
-			[ 'timeout' => 0.01, 'blocking' => false, 'sslverify' => false ]
+			array(
+				'timeout'   => 0.01,
+				'blocking'  => false,
+				'sslverify' => false,
+			)
 		);
 
-		wp_send_json_success( [ 'message' => 'Generation started.' ] );
+		wp_send_json_success( array( 'message' => 'Generation started.' ) );
 	}
 
 	/**
@@ -109,14 +117,14 @@ class PRAutoBlogger_Ideas_Browser {
 	public function on_ajax_idea_gen_status(): void {
 		check_ajax_referer( 'prautoblogger_idea_gen', 'nonce' );
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( [ 'message' => 'Insufficient permissions.' ], 403 );
+			wp_send_json_error( array( 'message' => 'Insufficient permissions.' ), 403 );
 			return;
 		}
 
 		$idea_id = absint( $_POST['idea_id'] ?? 0 );
 		$status  = get_transient( self::STATUS_PREFIX . $idea_id );
 		if ( ! is_array( $status ) ) {
-			wp_send_json_success( [ 'status' => 'idle' ] );
+			wp_send_json_success( array( 'status' => 'idle' ) );
 			return;
 		}
 
@@ -142,12 +150,26 @@ class PRAutoBlogger_Ideas_Browser {
 		$key       = self::STATUS_PREFIX . $idea_id;
 		$idea_data = get_transient( self::STATUS_PREFIX . 'data_' . $idea_id );
 		if ( ! is_array( $idea_data ) ) {
-			set_transient( $key, [ 'status' => 'error', 'message' => 'Idea data expired.' ], self::STATUS_TTL );
+			set_transient(
+				$key,
+				array(
+					'status'  => 'error',
+					'message' => 'Idea data expired.',
+				),
+				self::STATUS_TTL
+			);
 			return;
 		}
 
 		if ( ! PRAutoBlogger_Generation_Lock::acquire() ) {
-			set_transient( $key, [ 'status' => 'error', 'message' => 'Another generation is running.' ], self::STATUS_TTL );
+			set_transient(
+				$key,
+				array(
+					'status'  => 'error',
+					'message' => 'Another generation is running.',
+				),
+				self::STATUS_TTL
+			);
 			return;
 		}
 
@@ -166,19 +188,30 @@ class PRAutoBlogger_Ideas_Browser {
 			// Find the generated post ID for the "View" link.
 			$post_id = self::find_post_by_run_id( $cost_tracker->get_run_id() );
 
-			set_transient( $key, [
-				'status'    => 'complete',
-				'generated' => $result['generated'],
-				'published' => $result['published'],
-				'cost'      => $result['cost'],
-				'post_id'   => $post_id,
-			], self::STATUS_TTL );
+			set_transient(
+				$key,
+				array(
+					'status'    => 'complete',
+					'generated' => $result['generated'],
+					'published' => $result['published'],
+					'cost'      => $result['cost'],
+					'post_id'   => $post_id,
+				),
+				self::STATUS_TTL
+			);
 		} catch ( \Throwable $e ) {
 			PRAutoBlogger_Logger::instance()->error(
 				sprintf( 'Idea generation %s for #%d: %s', get_class( $e ), $idea_id, $e->getMessage() ),
 				'pipeline'
 			);
-			set_transient( $key, [ 'status' => 'error', 'message' => $e->getMessage() ], self::STATUS_TTL );
+			set_transient(
+				$key,
+				array(
+					'status'  => 'error',
+					'message' => $e->getMessage(),
+				),
+				self::STATUS_TTL
+			);
 		}
 
 		PRAutoBlogger_Generation_Lock::release();
@@ -231,26 +264,26 @@ class PRAutoBlogger_Ideas_Browser {
 			return null;
 		}
 
-		$meta = json_decode( $row['metadata_json'] ?? '{}', true ) ?: [];
-		return [
+		$meta = json_decode( $row['metadata_json'] ?? '{}', true ) ?: array();
+		return array(
 			'topic'           => $row['topic'],
 			'article_type'    => $row['analysis_type'],
 			'suggested_title' => $meta['suggested_title'] ?? $row['topic'],
 			'summary'         => $row['summary'] ?? '',
 			'score'           => (float) $row['relevance_score'],
 			'analysis_id'     => (int) $row['id'],
-			'source_ids'      => json_decode( $row['source_ids_json'] ?? '[]', true ) ?: [],
-			'key_points'      => $meta['key_points'] ?? [],
-			'target_keywords' => $meta['target_keywords'] ?? [],
-		];
+			'source_ids'      => json_decode( $row['source_ids_json'] ?? '[]', true ) ?: array(),
+			'key_points'      => $meta['key_points'] ?? array(),
+			'target_keywords' => $meta['target_keywords'] ?? array(),
+		);
 	}
 
 	/** Query analysis results with optional filtering and pagination. */
 	private function query_ideas( int $paged, string $type ): array {
 		global $wpdb;
 		$table  = $wpdb->prefix . 'prautoblogger_analysis_results';
-		$where  = [];
-		$params = [];
+		$where  = array();
+		$params = array();
 
 		if ( '' !== $type ) {
 			$where[]  = 'analysis_type = %s';
@@ -276,7 +309,10 @@ class PRAutoBlogger_Ideas_Browser {
 			? $wpdb->get_results( $full_sql, ARRAY_A )
 			: $wpdb->get_results( $wpdb->prepare( $full_sql, ...$params ), ARRAY_A );
 
-		return [ 'rows' => $rows ?: [], 'total' => $total ];
+		return array(
+			'rows'  => $rows ?: array(),
+			'total' => $total,
+		);
 	}
 
 	/** Get counts per analysis_type for the filter badges. */
@@ -290,8 +326,8 @@ class PRAutoBlogger_Ideas_Browser {
 			ARRAY_A
 		);
 
-		$counts = [];
-		foreach ( $rows ?: [] as $row ) {
+		$counts = array();
+		foreach ( $rows ?: array() as $row ) {
 			$counts[ $row['analysis_type'] ] = (int) $row['cnt'];
 		}
 		return $counts;

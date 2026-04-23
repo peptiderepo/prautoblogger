@@ -69,7 +69,7 @@ class PRAutoBlogger_OpenRouter_Image_Support {
 			);
 		}
 
-		$images = $decoded['choices'][0]['message']['images'] ?? [];
+		$images = $decoded['choices'][0]['message']['images'] ?? array();
 		if ( empty( $images ) ) {
 			throw new \RuntimeException(
 				esc_html__( 'OpenRouter response contained no images.', 'prautoblogger' )

@@ -23,11 +23,11 @@ class PRAutoBlogger_Post_List_Columns {
 	 * Side effects: adds WordPress filters/actions for post list customization.
 	 */
 	public function register(): void {
-		add_filter( 'manage_posts_columns', [ $this, 'filter_add_columns' ] );
-		add_action( 'manage_posts_custom_column', [ $this, 'on_render_column' ], 10, 2 );
-		add_filter( 'manage_edit-post_sortable_columns', [ $this, 'filter_sortable_columns' ] );
-		add_action( 'pre_get_posts', [ $this, 'on_sort_by_model' ] );
-		add_action( 'admin_head', [ $this, 'on_column_styles' ] );
+		add_filter( 'manage_posts_columns', array( $this, 'filter_add_columns' ) );
+		add_action( 'manage_posts_custom_column', array( $this, 'on_render_column' ), 10, 2 );
+		add_filter( 'manage_edit-post_sortable_columns', array( $this, 'filter_sortable_columns' ) );
+		add_action( 'pre_get_posts', array( $this, 'on_sort_by_model' ) );
+		add_action( 'admin_head', array( $this, 'on_column_styles' ) );
 	}
 
 	/**
@@ -37,7 +37,7 @@ class PRAutoBlogger_Post_List_Columns {
 	 * @return array<string, string> Modified columns.
 	 */
 	public function filter_add_columns( array $columns ): array {
-		$new = [];
+		$new = array();
 		foreach ( $columns as $key => $label ) {
 			$new[ $key ] = $label;
 			if ( 'title' === $key ) {
@@ -192,7 +192,7 @@ class PRAutoBlogger_Post_List_Columns {
 			return;
 		}
 
-		$total = array_sum( array_column( $rows, 'estimated_cost' ) );
+		$total     = array_sum( array_column( $rows, 'estimated_cost' ) );
 		$formatted = $total < 0.01
 			? sprintf( '$%.4f', $total )
 			: sprintf( '$%.2f', $total );
@@ -243,7 +243,7 @@ class PRAutoBlogger_Post_List_Columns {
 			. '<td><strong>%s</strong></td></tr>',
 			esc_html( $total_f )
 		);
-		$html .= '</table>';
+		$html   .= '</table>';
 
 		return $html;
 	}

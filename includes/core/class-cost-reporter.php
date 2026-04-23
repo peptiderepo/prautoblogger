@@ -54,7 +54,7 @@ class PRAutoBlogger_Cost_Reporter {
 	public function get_daily_spend( int $days = 30 ): array {
 		global $wpdb;
 		if ( null === $wpdb ) {
-			return [];
+			return array();
 		}
 
 		$table = $wpdb->prefix . 'prautoblogger_generation_log';
@@ -74,8 +74,8 @@ class PRAutoBlogger_Cost_Reporter {
 			ARRAY_A
 		);
 
-		$daily = [];
-		foreach ( ( $results ?: [] ) as $row ) {
+		$daily = array();
+		foreach ( ( $results ?: array() ) as $row ) {
 			$daily[ $row['day'] ] = (float) $row['total_cost'];
 		}
 
@@ -93,7 +93,7 @@ class PRAutoBlogger_Cost_Reporter {
 	public function get_spend_by_stage( string $start_date, string $end_date ): array {
 		global $wpdb;
 		if ( null === $wpdb ) {
-			return [];
+			return array();
 		}
 
 		$table = $wpdb->prefix . 'prautoblogger_generation_log';
@@ -114,13 +114,13 @@ class PRAutoBlogger_Cost_Reporter {
 			ARRAY_A
 		);
 
-		$breakdown = [];
-		foreach ( ( $results ?: [] ) as $row ) {
-			$breakdown[ $row['stage'] ] = [
+		$breakdown = array();
+		foreach ( ( $results ?: array() ) as $row ) {
+			$breakdown[ $row['stage'] ] = array(
 				'cost'   => (float) $row['total_cost'],
 				'tokens' => (int) $row['total_tokens'],
 				'calls'  => (int) $row['call_count'],
-			];
+			);
 		}
 
 		return $breakdown;

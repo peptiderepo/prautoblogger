@@ -61,7 +61,7 @@ interface PRAutoBlogger_Image_Provider_Interface {
 	 *                            an invalid response shape.
 	 * @throws \InvalidArgumentException If dimensions are out of range.
 	 */
-	public function generate_image( string $prompt, int $width, int $height, array $options = [] ): array;
+	public function generate_image( string $prompt, int $width, int $height, array $options = array() ): array;
 
 	/**
 	 * Estimate the USD cost of a single generation call before making it.
@@ -75,7 +75,7 @@ interface PRAutoBlogger_Image_Provider_Interface {
 	 *
 	 * @return float Estimated cost in USD for a single image at the given dimensions.
 	 */
-	public function estimate_cost( int $width, int $height, array $options = [] ): float;
+	public function estimate_cost( int $width, int $height, array $options = array() ): float;
 
 	/**
 	 * Machine-readable provider identifier used in logs and settings.

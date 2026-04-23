@@ -30,7 +30,7 @@ class PRAutoBlogger_Content_Request {
 		int $min_word_count,
 		int $max_word_count,
 		string $niche_description,
-		array $topic_exclusions = [],
+		array $topic_exclusions = array(),
 		string $writing_instructions = ''
 	) {
 		$this->idea                 = $idea;

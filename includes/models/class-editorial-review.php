@@ -30,12 +30,12 @@ class PRAutoBlogger_Editorial_Review {
 	 * } $data
 	 */
 	public function __construct( array $data ) {
-		$this->verdict          = $data['verdict']; // 'approved', 'revised', 'rejected'
-		$this->notes            = $data['notes'];
-		$this->revised_content  = $data['revised_content'] ?? null;
-		$this->quality_score    = (float) ( $data['quality_score'] ?? 0.0 );
-		$this->seo_score        = (float) ( $data['seo_score'] ?? 0.0 );
-		$this->issues           = $data['issues'] ?? [];
+		$this->verdict         = $data['verdict']; // 'approved', 'revised', 'rejected'
+		$this->notes           = $data['notes'];
+		$this->revised_content = $data['revised_content'] ?? null;
+		$this->quality_score   = (float) ( $data['quality_score'] ?? 0.0 );
+		$this->seo_score       = (float) ( $data['seo_score'] ?? 0.0 );
+		$this->issues          = $data['issues'] ?? array();
 	}
 
 	public function get_verdict(): string {

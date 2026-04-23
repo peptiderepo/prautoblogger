@@ -41,7 +41,7 @@ class PRAutoBlogger_OpenRouter_Embedding_Provider {
 	 */
 	public function get_embeddings( array $texts, string $model = '' ): array {
 		if ( empty( $texts ) ) {
-			return [];
+			return array();
 		}
 
 		$api_key = $this->get_api_key();
@@ -64,14 +64,16 @@ class PRAutoBlogger_OpenRouter_Embedding_Provider {
 		try {
 			$response = wp_remote_post(
 				$base_url . '/embeddings',
-				[
+				array(
 					'timeout' => 30,
 					'headers' => $request_headers,
-					'body'    => wp_json_encode( [
-						'model' => $model,
-						'input' => array_values( $texts ),
-					] ),
-				]
+					'body'    => wp_json_encode(
+						array(
+							'model' => $model,
+							'input' => array_values( $texts ),
+						)
+					),
+				)
 			);
 
 			if ( is_wp_error( $response ) ) {
@@ -149,11 +151,14 @@ class PRAutoBlogger_OpenRouter_Embedding_Provider {
 		}
 
 		// Sort by index to match input order (API may return out of order).
-		usort( $body['data'], static function ( array $a, array $b ): int {
-			return ( $a['index'] ?? 0 ) <=> ( $b['index'] ?? 0 );
-		} );
+		usort(
+			$body['data'],
+			static function ( array $a, array $b ): int {
+				return ( $a['index'] ?? 0 ) <=> ( $b['index'] ?? 0 );
+			}
+		);
 
-		$embeddings = [];
+		$embeddings = array();
 		foreach ( $body['data'] as $item ) {
 			if ( ! isset( $item['embedding'] ) || ! is_array( $item['embedding'] ) ) {
 				throw new \RuntimeException( 'Embedding item missing "embedding" array.' );

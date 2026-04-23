@@ -37,21 +37,30 @@ class PRAutoBlogger_Content_Score {
 		$this->measured_at      = $data['measured_at'] ?? current_time( 'mysql' );
 	}
 
-	public function get_id(): int { return $this->id; }
-	public function get_post_id(): int { return $this->post_id; }
-	public function get_pageviews(): int { return $this->pageviews; }
-	public function get_avg_time_on_page(): float { return $this->avg_time_on_page; }
-	public function get_bounce_rate(): float { return $this->bounce_rate; }
-	public function get_comment_count(): int { return $this->comment_count; }
-	public function get_composite_score(): float { return $this->composite_score; }
-	public function get_score_factors(): ?array { return $this->score_factors; }
-	public function get_measured_at(): string { return $this->measured_at; }
+	public function get_id(): int {
+		return $this->id; }
+	public function get_post_id(): int {
+		return $this->post_id; }
+	public function get_pageviews(): int {
+		return $this->pageviews; }
+	public function get_avg_time_on_page(): float {
+		return $this->avg_time_on_page; }
+	public function get_bounce_rate(): float {
+		return $this->bounce_rate; }
+	public function get_comment_count(): int {
+		return $this->comment_count; }
+	public function get_composite_score(): float {
+		return $this->composite_score; }
+	public function get_score_factors(): ?array {
+		return $this->score_factors; }
+	public function get_measured_at(): string {
+		return $this->measured_at; }
 
 	/**
 	 * @return array<string, mixed>
 	 */
 	public function to_db_row(): array {
-		return [
+		return array(
 			'post_id'            => $this->post_id,
 			'pageviews'          => $this->pageviews,
 			'avg_time_on_page'   => $this->avg_time_on_page,
@@ -60,6 +69,6 @@ class PRAutoBlogger_Content_Score {
 			'composite_score'    => $this->composite_score,
 			'score_factors_json' => null !== $this->score_factors ? wp_json_encode( $this->score_factors ) : null,
 			'measured_at'        => $this->measured_at,
-		];
+		);
 	}
 }

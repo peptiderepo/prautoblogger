@@ -23,14 +23,14 @@ class PRAutoBlogger_Analysis_Prompts {
 	 * @return string System prompt text.
 	 */
 	public static function build_system_prompt( string $niche, string $performance_context, int $target_count = 6 ): string {
-		$prompt = "You are a content strategist analyzing social media discussions to find article ideas for a blog";
+		$prompt = 'You are a content strategist analyzing social media discussions to find article ideas for a blog';
 		if ( '' !== $niche ) {
 			$prompt .= " in the {$niche} niche";
 		}
 		$prompt .= ".\n\n";
 
 		$prompt .= "IMPORTANT: You must identify exactly {$target_count} DISTINCT article ideas. ";
-		$prompt .= "Each idea must cover a substantially different topic — no two ideas should overlap ";
+		$prompt .= 'Each idea must cover a substantially different topic — no two ideas should overlap ';
 		$prompt .= "in their main subject. Aim for diversity across these categories:\n";
 		$prompt .= "1. QUESTIONS: Recurring questions people ask (\"How do I...\", \"What is...\", \"Is it safe to...\")\n";
 		$prompt .= "2. COMPLAINTS: Pain points, frustrations, or problems people report\n";
@@ -39,7 +39,7 @@ class PRAutoBlogger_Analysis_Prompts {
 		$prompt .= "5. GUIDES: How-to topics, best practices, or educational content people need\n\n";
 
 		$prompt .= "Spread your {$target_count} ideas across multiple categories. ";
-		$prompt .= "Be specific — \"peptide dosing for BPC-157\" is better than \"peptide information\". ";
+		$prompt .= 'Be specific — "peptide dosing for BPC-157" is better than "peptide information". ';
 		$prompt .= "Each idea should be narrow enough to be a single focused blog post.\n\n";
 
 		$prompt .= "For each idea, provide:\n";
@@ -81,7 +81,7 @@ class PRAutoBlogger_Analysis_Prompts {
 	 * @return string User prompt text.
 	 */
 	public static function build_user_prompt( string $summary, int $target_count = 6 ): string {
-		return "Here are the recent social media posts and comments to analyze. "
+		return 'Here are the recent social media posts and comments to analyze. '
 			. "Find {$target_count} distinct, diverse article ideas from this data:\n\n"
 			. $summary;
 	}
@@ -112,7 +112,7 @@ class PRAutoBlogger_Analysis_Prompts {
 			return '';
 		}
 
-		$lines = [ 'Top performing past articles (learn from these):' ];
+		$lines = array( 'Top performing past articles (learn from these):' );
 		foreach ( $top_posts as $post ) {
 			$lines[] = sprintf(
 				'- "%s" (score: %.1f)',
@@ -136,27 +136,29 @@ class PRAutoBlogger_Analysis_Prompts {
 	 * @return string Formatted context block, or empty string if no recent articles.
 	 */
 	public static function get_recent_articles_context(): string {
-		$query = new \WP_Query( [
-			'post_type'      => 'post',
-			'post_status'    => [ 'publish', 'draft', 'pending' ],
-			'meta_key'       => '_prautoblogger_generated',
-			'meta_value'     => '1',
-			'date_query'     => [ [ 'after' => '30 days ago' ] ],
-			'posts_per_page' => 100,
-			'fields'         => 'ids',
-			'no_found_rows'  => true,
-		] );
+		$query = new \WP_Query(
+			array(
+				'post_type'      => 'post',
+				'post_status'    => array( 'publish', 'draft', 'pending' ),
+				'meta_key'       => '_prautoblogger_generated',
+				'meta_value'     => '1',
+				'date_query'     => array( array( 'after' => '30 days ago' ) ),
+				'posts_per_page' => 100,
+				'fields'         => 'ids',
+				'no_found_rows'  => true,
+			)
+		);
 
 		if ( empty( $query->posts ) ) {
 			return '';
 		}
 
-		$titles = [];
+		$titles = array();
 		foreach ( $query->posts as $post_id ) {
 			$titles[] = '- "' . get_the_title( $post_id ) . '"';
 		}
 
-		$block  = "IMPORTANT — Topics already covered (last 30 days). Do NOT suggest topics that overlap with these. ";
+		$block  = 'IMPORTANT — Topics already covered (last 30 days). Do NOT suggest topics that overlap with these. ';
 		$block .= "Find genuinely NEW angles, questions, or subjects that are NOT already covered:\n";
 		$block .= implode( "\n", $titles );
 

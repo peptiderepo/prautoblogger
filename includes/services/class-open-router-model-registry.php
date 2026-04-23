@@ -52,11 +52,11 @@ class PRAutoBlogger_OpenRouter_Model_Registry implements PRAutoBlogger_Model_Reg
 	) {
 		$this->option_name        = $option_name;
 		$this->fetched_at_option  = $option_name . '_fetched_at';
-		$this->transient_name    = $transient_name;
-		$this->endpoint          = $endpoint;
-		$this->cache_ttl         = $cache_ttl_seconds;
+		$this->transient_name     = $transient_name;
+		$this->endpoint           = $endpoint;
+		$this->cache_ttl          = $cache_ttl_seconds;
 		$this->idempotency_window = $idempotency_seconds;
-		$this->normalizer        = new PRAutoBlogger_OpenRouter_Model_Normalizer();
+		$this->normalizer         = new PRAutoBlogger_OpenRouter_Model_Normalizer();
 	}
 
 	/** {@inheritDoc} */
@@ -70,7 +70,7 @@ class PRAutoBlogger_OpenRouter_Model_Registry implements PRAutoBlogger_Model_Reg
 			array_filter(
 				$this->load_payload(),
 				static function ( array $model ) use ( $capability ): bool {
-					return in_array( $capability, $model['capabilities'] ?? [], true );
+					return in_array( $capability, $model['capabilities'] ?? array(), true );
 				}
 			)
 		);
@@ -92,14 +92,20 @@ class PRAutoBlogger_OpenRouter_Model_Registry implements PRAutoBlogger_Model_Reg
 
 		if ( ! $force && $fetched_at > 0 && ( time() - $fetched_at ) < $this->idempotency_window ) {
 			$payload = $this->load_payload();
-			return [ 'count' => count( $payload ), 'fetched_at' => $fetched_at ];
+			return array(
+				'count'      => count( $payload ),
+				'fetched_at' => $fetched_at,
+			);
 		}
 
 		$raw_models = $this->fetch_from_api();
 		if ( null === $raw_models ) {
 			$this->flag_stale();
 			$stale = $this->load_from_option();
-			return [ 'count' => count( $stale ), 'fetched_at' => $fetched_at ];
+			return array(
+				'count'      => count( $stale ),
+				'fetched_at' => $fetched_at,
+			);
 		}
 
 		$normalized = $this->normalizer->normalize( $raw_models );
@@ -113,7 +119,10 @@ class PRAutoBlogger_OpenRouter_Model_Registry implements PRAutoBlogger_Model_Reg
 			self::LOG_CONTEXT
 		);
 
-		return [ 'count' => count( $normalized ), 'fetched_at' => $now ];
+		return array(
+			'count'      => count( $normalized ),
+			'fetched_at' => $now,
+		);
 	}
 
 	/** {@inheritDoc} */
@@ -141,8 +150,8 @@ class PRAutoBlogger_OpenRouter_Model_Registry implements PRAutoBlogger_Model_Reg
 
 	/** @return array<int, array> */
 	private function load_from_option(): array {
-		$data = get_option( $this->option_name, [] );
-		return is_array( $data ) ? $data : [];
+		$data = get_option( $this->option_name, array() );
+		return is_array( $data ) ? $data : array();
 	}
 
 	private function save_payload( array $payload, int $now ): void {
@@ -161,7 +170,7 @@ class PRAutoBlogger_OpenRouter_Model_Registry implements PRAutoBlogger_Model_Reg
 		$base_delay  = defined( 'PRAUTOBLOGGER_RETRY_BASE_DELAY_SECONDS' ) ? PRAUTOBLOGGER_RETRY_BASE_DELAY_SECONDS : 2;
 
 		for ( $attempt = 1; $attempt <= $max_retries; $attempt++ ) {
-			$response = wp_remote_get( $this->endpoint, [ 'timeout' => self::HTTP_TIMEOUT ] );
+			$response = wp_remote_get( $this->endpoint, array( 'timeout' => self::HTTP_TIMEOUT ) );
 
 			if ( is_wp_error( $response ) ) {
 				PRAutoBlogger_Logger::instance()->warning(

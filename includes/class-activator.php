@@ -49,27 +49,27 @@ class PRAutoBlogger_Activator {
 	 * @return void
 	 */
 	private static function set_default_options(): void {
-		$defaults = [
+		$defaults = array(
 			'prautoblogger_analysis_model'       => PRAUTOBLOGGER_DEFAULT_ANALYSIS_MODEL,
 			'prautoblogger_writing_model'        => PRAUTOBLOGGER_DEFAULT_WRITING_MODEL,
 			'prautoblogger_editor_model'         => PRAUTOBLOGGER_DEFAULT_EDITOR_MODEL,
-			'prautoblogger_daily_article_target'  => 1,
-			'prautoblogger_writing_pipeline'      => 'multi_step',
-			'prautoblogger_niche_description'     => '',
-			'prautoblogger_target_subreddits'     => '[]',
-			'prautoblogger_monthly_budget_usd'    => 50.00,
-			'prautoblogger_tone'                  => 'informational',
-			'prautoblogger_min_word_count'        => 800,
-			'prautoblogger_max_word_count'        => 2000,
-			'prautoblogger_topic_exclusions'      => '[]',
-			'prautoblogger_enabled_sources'       => '["reddit"]',
-			'prautoblogger_article_font_family'   => 'default',
-			'prautoblogger_article_font_size'     => 0,
-			'prautoblogger_table_borders'         => '1',
-			'prautoblogger_schedule_time'         => '03:00',
-			'prautoblogger_log_level'             => 'info',
-			'prautoblogger_image_nsfw_retry'      => '1',
-		];
+			'prautoblogger_daily_article_target' => 1,
+			'prautoblogger_writing_pipeline'     => 'multi_step',
+			'prautoblogger_niche_description'    => '',
+			'prautoblogger_target_subreddits'    => '[]',
+			'prautoblogger_monthly_budget_usd'   => 50.00,
+			'prautoblogger_tone'                 => 'informational',
+			'prautoblogger_min_word_count'       => 800,
+			'prautoblogger_max_word_count'       => 2000,
+			'prautoblogger_topic_exclusions'     => '[]',
+			'prautoblogger_enabled_sources'      => '["reddit"]',
+			'prautoblogger_article_font_family'  => 'default',
+			'prautoblogger_article_font_size'    => 0,
+			'prautoblogger_table_borders'        => '1',
+			'prautoblogger_schedule_time'        => '03:00',
+			'prautoblogger_log_level'            => 'info',
+			'prautoblogger_image_nsfw_retry'     => '1',
+		);
 
 		foreach ( $defaults as $key => $value ) {
 			add_option( $key, $value );
@@ -101,13 +101,16 @@ class PRAutoBlogger_Activator {
 		// in class-prautoblogger.php may not be hooked yet.
 		$schedules = wp_get_schedules();
 		if ( ! isset( $schedules['prautoblogger_six_hours'] ) ) {
-			add_filter( 'cron_schedules', static function ( array $scheds ): array {
-				$scheds['prautoblogger_six_hours'] = [
-					'interval' => 6 * HOUR_IN_SECONDS,
-					'display'  => __( 'Every Six Hours', 'prautoblogger' ),
-				];
-				return $scheds;
-			} );
+			add_filter(
+				'cron_schedules',
+				static function ( array $scheds ): array {
+					$scheds['prautoblogger_six_hours'] = array(
+						'interval' => 6 * HOUR_IN_SECONDS,
+						'display'  => __( 'Every Six Hours', 'prautoblogger' ),
+					);
+					return $scheds;
+				}
+			);
 		}
 
 		// Schedule a separate metrics collection job (runs every 6 hours).
@@ -146,7 +149,7 @@ class PRAutoBlogger_Activator {
 			$site_tz = function_exists( 'wp_timezone' )
 				? wp_timezone()
 				: new \DateTimeZone( 'UTC' );
-			$local = ( new \DateTimeImmutable( 'tomorrow', $site_tz ) )
+			$local   = ( new \DateTimeImmutable( 'tomorrow', $site_tz ) )
 				->setTime( $hour, $minute, 0 );
 			return (int) $local->getTimestamp();
 		} catch ( \Exception $e ) {
@@ -256,7 +259,7 @@ class PRAutoBlogger_Activator {
 			return;
 		}
 		$curr = (string) get_option( 'prautoblogger_image_model', '' );
-		if ( in_array( $curr, [ '', 'google/gemini-2.5-flash-image' ], true ) ) {
+		if ( in_array( $curr, array( '', 'google/gemini-2.5-flash-image' ), true ) ) {
 			update_option( 'prautoblogger_image_model', 'runware:100@1' );
 		}
 		$final = (string) get_option( 'prautoblogger_image_model', 'runware:100@1' );

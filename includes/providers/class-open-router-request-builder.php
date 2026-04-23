@@ -29,12 +29,12 @@ class PRAutoBlogger_OpenRouter_Request_Builder {
 	 * @return array<string, string> HTTP headers ready for wp_remote_post().
 	 */
 	public function build_headers( string $api_key, bool $via_gateway, int $cache_ttl ): array {
-		$headers = [
+		$headers = array(
 			'Authorization' => 'Bearer ' . $api_key,
 			'Content-Type'  => 'application/json',
 			'HTTP-Referer'  => home_url(),
 			'X-Title'       => 'PRAutoBlogger WordPress Plugin',
-		];
+		);
 
 		if ( $via_gateway && $cache_ttl > 0 ) {
 			$headers['cf-aig-cache-ttl'] = (string) $cache_ttl;
@@ -66,7 +66,7 @@ class PRAutoBlogger_OpenRouter_Request_Builder {
 			if ( '' === $base_host || false === strpos( (string) $url, $base_host ) ) {
 				return;
 			}
-			$curl_headers = [];
+			$curl_headers = array();
 			foreach ( $request_headers as $name => $value ) {
 				$curl_headers[] = $name . ': ' . $value;
 			}

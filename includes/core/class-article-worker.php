@@ -47,20 +47,20 @@ class PRAutoBlogger_Article_Worker {
 
 		$auto_publish = in_array(
 			get_option( 'prautoblogger_auto_publish', '0' ),
-			[ '1', 'yes' ],
+			array( '1', 'yes' ),
 			true
 		);
 
-		$result = [
+		$result = array(
 			'generated' => 0,
 			'published' => 0,
 			'rejected'  => 0,
 			'cost'      => 0.0,
-		];
+		);
 
 		try {
 			$this->broadcast_stage( __( 'Generating article draft via AI…', 'prautoblogger' ) );
-			$content = $generator->generate( $idea );
+			$content             = $generator->generate( $idea );
 			$result['generated'] = 1;
 
 			$this->broadcast_stage( __( 'Running editorial pass…', 'prautoblogger' ) );
@@ -68,7 +68,12 @@ class PRAutoBlogger_Article_Worker {
 
 			$this->broadcast_stage( __( 'Saving and publishing…', 'prautoblogger' ) );
 			$this->publish_or_draft(
-				$content, $idea, $review, $publisher, $auto_publish, $result
+				$content,
+				$idea,
+				$review,
+				$publisher,
+				$auto_publish,
+				$result
 			);
 		} catch ( \Throwable $e ) {
 			PRAutoBlogger_Logger::instance()->error(
@@ -114,13 +119,13 @@ class PRAutoBlogger_Article_Worker {
 
 			if ( $auto_publish ) {
 				$publisher->publish( $final, $idea, $review, $run_id );
-				$result['published']++;
+				++$result['published'];
 			} else {
 				$publisher->save_as_draft( $final, $idea, $review, $run_id );
 			}
 		} else {
 			$publisher->save_as_draft( $content, $idea, $review, $run_id );
-			$result['rejected']++;
+			++$result['rejected'];
 			PRAutoBlogger_Logger::instance()->info(
 				'Article rejected by editor: ' . $idea->get_topic(),
 				'pipeline'

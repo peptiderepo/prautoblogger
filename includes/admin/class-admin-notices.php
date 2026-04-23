@@ -62,11 +62,13 @@ class PRAutoBlogger_Admin_Notices {
 		} elseif ( $utilization >= 80.0 ) {
 			printf(
 				'<div class="notice notice-warning"><p>%s</p></div>',
-				esc_html( sprintf(
+				esc_html(
+					sprintf(
 					/* translators: %s: budget utilization percentage */
-					__( 'PRAutoBlogger: Monthly API budget is at %.0f%%. Consider increasing the budget or reducing daily article count.', 'prautoblogger' ),
-					$utilization
-				) )
+						__( 'PRAutoBlogger: Monthly API budget is at %.0f%%. Consider increasing the budget or reducing daily article count.', 'prautoblogger' ),
+						$utilization
+					)
+				)
 			);
 		}
 	}

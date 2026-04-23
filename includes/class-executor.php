@@ -83,7 +83,7 @@ class PRAutoBlogger_Executor {
 		check_ajax_referer( 'prautoblogger_generate_now', 'nonce' );
 
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'prautoblogger' ) ], 403 );
+			wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'prautoblogger' ) ), 403 );
 			return;
 		}
 
@@ -96,20 +96,26 @@ class PRAutoBlogger_Executor {
 		// Check if a run is already in progress.
 		$current = get_transient( self::STATUS_TRANSIENT );
 		if ( is_array( $current ) && 'running' === ( $current['status'] ?? '' ) ) {
-			wp_send_json_success( [
-				'background' => true,
-				'message'    => __( 'Generation already in progress.', 'prautoblogger' ),
-			] );
+			wp_send_json_success(
+				array(
+					'background' => true,
+					'message'    => __( 'Generation already in progress.', 'prautoblogger' ),
+				)
+			);
 			return;
 		}
 
 		// Write initial "running" status for the frontend to poll.
-		set_transient( self::STATUS_TRANSIENT, [
-			'status'       => 'running',
-			'stage'        => __( 'Starting generation...', 'prautoblogger' ),
-			'started'      => time(),
-			'last_updated' => time(),
-		], self::STATUS_TTL );
+		set_transient(
+			self::STATUS_TRANSIENT,
+			array(
+				'status'       => 'running',
+				'stage'        => __( 'Starting generation...', 'prautoblogger' ),
+				'started'      => time(),
+				'last_updated' => time(),
+			),
+			self::STATUS_TTL
+		);
 
 		// Schedule immediate one-shot cron event. WordPress will fire this
 		// on the next page load (or via wp-cron.php) in a separate PHP process
@@ -126,17 +132,19 @@ class PRAutoBlogger_Executor {
 		// fires even if DISABLE_WP_CRON is true or spawn_cron() no-ops.
 		wp_remote_post(
 			site_url( 'wp-cron.php?doing_wp_cron=' . sprintf( '%.22F', microtime( true ) ) ),
-			[
+			array(
 				'timeout'   => 0.01,
 				'blocking'  => false,
 				'sslverify' => false,
-			]
+			)
 		);
 
-		wp_send_json_success( [
-			'background' => true,
-			'message'    => __( 'Generation started in background. Polling for status...', 'prautoblogger' ),
-		] );
+		wp_send_json_success(
+			array(
+				'background' => true,
+				'message'    => __( 'Generation started in background. Polling for status...', 'prautoblogger' ),
+			)
+		);
 	}
 
 	/**
@@ -153,10 +161,14 @@ class PRAutoBlogger_Executor {
 		@set_time_limit( 300 );
 
 		if ( ! PRAutoBlogger_Generation_Lock::acquire() ) {
-			set_transient( self::STATUS_TRANSIENT, [
-				'status'  => 'error',
-				'message' => __( 'Could not acquire generation lock. Another run may be in progress.', 'prautoblogger' ),
-			], self::STATUS_TTL );
+			set_transient(
+				self::STATUS_TRANSIENT,
+				array(
+					'status'  => 'error',
+					'message' => __( 'Could not acquire generation lock. Another run may be in progress.', 'prautoblogger' ),
+				),
+				self::STATUS_TTL
+			);
 			return;
 		}
 
@@ -169,13 +181,17 @@ class PRAutoBlogger_Executor {
 			// If no articles were queued (target=1 or 0 ideas), finalize here.
 			// When articles ARE queued, the pipeline handles status + lock release.
 			if ( ! get_option( 'prautoblogger_article_queue' ) ) {
-				set_transient( self::STATUS_TRANSIENT, [
-					'status'    => 'complete',
-					'generated' => $results['generated'],
-					'published' => $results['published'],
-					'rejected'  => $results['rejected'],
-					'cost'      => $results['cost'],
-				], self::STATUS_TTL );
+				set_transient(
+					self::STATUS_TRANSIENT,
+					array(
+						'status'    => 'complete',
+						'generated' => $results['generated'],
+						'published' => $results['published'],
+						'rejected'  => $results['rejected'],
+						'cost'      => $results['cost'],
+					),
+					self::STATUS_TTL
+				);
 				PRAutoBlogger_Generation_Lock::release();
 			}
 		} catch ( \Throwable $e ) {
@@ -183,10 +199,14 @@ class PRAutoBlogger_Executor {
 				sprintf( 'Manual generation %s: %s', get_class( $e ), $e->getMessage() ),
 				'pipeline'
 			);
-			set_transient( self::STATUS_TRANSIENT, [
-				'status'  => 'error',
-				'message' => $e->getMessage(),
-			], self::STATUS_TTL );
+			set_transient(
+				self::STATUS_TRANSIENT,
+				array(
+					'status'  => 'error',
+					'message' => $e->getMessage(),
+				),
+				self::STATUS_TTL
+			);
 			PRAutoBlogger_Generation_Lock::release();
 		}
 	}
@@ -208,10 +228,14 @@ class PRAutoBlogger_Executor {
 			// Clean up on catastrophic failure.
 			delete_option( 'prautoblogger_article_queue' );
 			PRAutoBlogger_Generation_Lock::release();
-			set_transient( self::STATUS_TRANSIENT, [
-				'status'  => 'error',
-				'message' => $e->getMessage(),
-			], self::STATUS_TTL );
+			set_transient(
+				self::STATUS_TRANSIENT,
+				array(
+					'status'  => 'error',
+					'message' => $e->getMessage(),
+				),
+				self::STATUS_TTL
+			);
 		}
 	}
 
@@ -219,13 +243,13 @@ class PRAutoBlogger_Executor {
 	public function on_ajax_generation_status(): void {
 		check_ajax_referer( 'prautoblogger_generate_now', 'nonce' );
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'prautoblogger' ) ], 403 );
+			wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'prautoblogger' ) ), 403 );
 			return;
 		}
 
 		$status = get_transient( self::STATUS_TRANSIENT );
 		if ( ! is_array( $status ) ) {
-			wp_send_json_success( [ 'status' => 'idle' ] );
+			wp_send_json_success( array( 'status' => 'idle' ) );
 			return;
 		}
 
@@ -263,7 +287,12 @@ class PRAutoBlogger_Executor {
 		delete_transient( self::STATUS_TRANSIENT );
 		delete_option( 'prautoblogger_article_queue' );
 		PRAutoBlogger_Generation_Lock::release();
-		wp_send_json_success( [ 'status' => 'error', 'message' => $message ] );
+		wp_send_json_success(
+			array(
+				'status'  => 'error',
+				'message' => $message,
+			)
+		);
 	}
 
 	/**

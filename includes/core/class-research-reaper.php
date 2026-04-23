@@ -63,7 +63,11 @@ class PRAutoBlogger_Research_Reaper {
 	 * @return array{reaped: int, deleted: int, skipped: int}
 	 */
 	public static function reap(): array {
-		$stats = [ 'reaped' => 0, 'deleted' => 0, 'skipped' => 0 ];
+		$stats = array(
+			'reaped'  => 0,
+			'deleted' => 0,
+			'skipped' => 0,
+		);
 
 		try {
 			global $wpdb;
@@ -115,10 +119,10 @@ class PRAutoBlogger_Research_Reaper {
 		if ( '' === $run_id ) {
 			if ( $is_stale ) {
 				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-				$wpdb->delete( $log_table, [ 'id' => (int) $orphan->id ] );
-				$stats['deleted']++;
+				$wpdb->delete( $log_table, array( 'id' => (int) $orphan->id ) );
+				++$stats['deleted'];
 			} else {
-				$stats['skipped']++;
+				++$stats['skipped'];
 			}
 			return;
 		}
@@ -130,22 +134,22 @@ class PRAutoBlogger_Research_Reaper {
 				sprintf( 'Reaped research cost across %d articles for run %s.', count( $post_ids ), $run_id ),
 				'cost-tracker'
 			);
-			$stats['reaped']++;
+			++$stats['reaped'];
 			return;
 		}
 
 		if ( $is_stale ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-			$wpdb->delete( $log_table, [ 'id' => (int) $orphan->id ] );
+			$wpdb->delete( $log_table, array( 'id' => (int) $orphan->id ) );
 			PRAutoBlogger_Logger::instance()->info(
 				sprintf( 'Deleted 7-day-stale orphan research row for run %s — no articles to attribute.', $run_id ),
 				'cost-tracker'
 			);
-			$stats['deleted']++;
+			++$stats['deleted'];
 			return;
 		}
 
-		$stats['skipped']++;
+		++$stats['skipped'];
 	}
 
 	/**
@@ -156,15 +160,17 @@ class PRAutoBlogger_Research_Reaper {
 	 * @return int[] Distinct post IDs.
 	 */
 	private static function find_posts_for_run_id( string $run_id ): array {
-		$meta_ids = get_posts( [
-			'post_type'        => 'any',
-			'post_status'      => 'any',
-			'meta_key'         => '_prautoblogger_run_id',
-			'meta_value'       => $run_id,
-			'fields'           => 'ids',
-			'posts_per_page'   => -1,
-			'suppress_filters' => true,
-		] );
+		$meta_ids = get_posts(
+			array(
+				'post_type'        => 'any',
+				'post_status'      => 'any',
+				'meta_key'         => '_prautoblogger_run_id',
+				'meta_value'       => $run_id,
+				'fields'           => 'ids',
+				'posts_per_page'   => -1,
+				'suppress_filters' => true,
+			)
+		);
 		if ( is_array( $meta_ids ) && ! empty( $meta_ids ) ) {
 			return array_map( 'intval', $meta_ids );
 		}
@@ -178,6 +184,6 @@ class PRAutoBlogger_Research_Reaper {
 				$run_id
 			)
 		);
-		return is_array( $ids ) ? array_map( 'intval', $ids ) : [];
+		return is_array( $ids ) ? array_map( 'intval', $ids ) : array();
 	}
 }

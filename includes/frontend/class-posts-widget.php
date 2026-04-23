@@ -43,7 +43,7 @@ class PRAutoBlogger_Posts_Widget {
 	 * @return void
 	 */
 	public function on_register_shortcode(): void {
-		add_shortcode( 'prautoblogger_posts', [ $this, 'render_shortcode' ] );
+		add_shortcode( 'prautoblogger_posts', array( $this, 'render_shortcode' ) );
 	}
 
 	/**
@@ -59,9 +59,9 @@ class PRAutoBlogger_Posts_Widget {
 		register_rest_route(
 			self::REST_NAMESPACE,
 			self::REST_ROUTE,
-			[
+			array(
 				'methods'             => \WP_REST_Server::READABLE,
-				'callback'            => [ $this, 'handle_rest_request' ],
+				'callback'            => array( $this, 'handle_rest_request' ),
 				'permission_callback' => function () {
 					/**
 					 * Filter whether the posts widget REST endpoint is publicly accessible.
@@ -73,21 +73,21 @@ class PRAutoBlogger_Posts_Widget {
 					 */
 					return (bool) apply_filters( 'prautoblogger_rest_posts_public', true );
 				},
-				'args'                => [
-					'per_page' => [
+				'args'                => array(
+					'per_page' => array(
 						'type'              => 'integer',
 						'default'           => 6,
 						'minimum'           => 1,
 						'maximum'           => self::MAX_POSTS_PER_REQUEST,
 						'sanitize_callback' => 'absint',
-					],
-					'category' => [
+					),
+					'category' => array(
 						'type'              => 'string',
 						'default'           => '',
 						'sanitize_callback' => 'sanitize_text_field',
-					],
-				],
-			]
+					),
+				),
+			)
 		);
 	}
 
@@ -109,12 +109,12 @@ class PRAutoBlogger_Posts_Widget {
 	 */
 	public function render_shortcode( $atts ): string {
 		$atts = shortcode_atts(
-			[
+			array(
 				'count'    => '6',
 				'category' => '',
 				'title'    => __( 'Latest Research & Insights', 'prautoblogger' ),
 				'subtitle' => __( 'Evidence-based articles on peptides, protocols, and emerging research', 'prautoblogger' ),
-			],
+			),
 			$atts,
 			'prautoblogger_posts'
 		);
@@ -148,14 +148,14 @@ class PRAutoBlogger_Posts_Widget {
 		wp_enqueue_style(
 			'prautoblogger-posts-widget',
 			PRAUTOBLOGGER_PLUGIN_URL . 'assets/css/posts-widget.css',
-			[],
+			array(),
 			$version
 		);
 
 		wp_enqueue_script(
 			'prautoblogger-posts-widget',
 			PRAUTOBLOGGER_PLUGIN_URL . 'assets/js/posts-widget.js',
-			[ 'wp-element' ], // WordPress-bundled React.
+			array( 'wp-element' ), // WordPress-bundled React.
 			$version,
 			true // Load in footer for performance.
 		);
@@ -163,14 +163,14 @@ class PRAutoBlogger_Posts_Widget {
 		wp_localize_script(
 			'prautoblogger-posts-widget',
 			'prabPostsWidget',
-			[
+			array(
 				'restUrl'    => esc_url_raw( rest_url( self::REST_NAMESPACE . self::REST_ROUTE ) ),
 				'count'      => $count,
 				'category'   => sanitize_text_field( $atts['category'] ),
 				'title'      => sanitize_text_field( $atts['title'] ),
 				'subtitle'   => sanitize_text_field( $atts['subtitle'] ),
 				'archiveUrl' => esc_url( get_post_type_archive_link( 'post' ) ?: '' ),
-			]
+			)
 		);
 	}
 
@@ -191,19 +191,19 @@ class PRAutoBlogger_Posts_Widget {
 		}
 		$category = sanitize_text_field( $request->get_param( 'category' ) ?? '' );
 
-		$query_args = [
+		$query_args = array(
 			'post_type'      => 'post',
 			'post_status'    => 'publish',
 			'posts_per_page' => $per_page,
 			'orderby'        => 'date',
 			'order'          => 'DESC',
-			'meta_query'     => [
-				[
+			'meta_query'     => array(
+				array(
 					'key'   => '_prautoblogger_generated',
 					'value' => '1',
-				],
-			],
-		];
+				),
+			),
+		);
 
 		// Optional category filter.
 		if ( ! empty( $category ) ) {
@@ -211,7 +211,7 @@ class PRAutoBlogger_Posts_Widget {
 		}
 
 		$query = new \WP_Query( $query_args );
-		$posts = [];
+		$posts = array();
 
 		foreach ( $query->posts as $post ) {
 			$posts[] = $this->format_post_for_response( $post );
@@ -249,7 +249,7 @@ class PRAutoBlogger_Posts_Widget {
 		$title   = html_entity_decode( get_the_title( $post ), ENT_QUOTES | ENT_HTML5, 'UTF-8' );
 		$excerpt = html_entity_decode( get_the_excerpt( $post ), ENT_QUOTES | ENT_HTML5, 'UTF-8' );
 
-		return [
+		return array(
 			'id'             => $post->ID,
 			'title'          => $title,
 			'excerpt'        => $excerpt,
@@ -259,6 +259,6 @@ class PRAutoBlogger_Posts_Widget {
 			'category_slug'  => $category_slug,
 			'featured_image' => $featured_image ?: '',
 			'word_count'     => $word_count,
-		];
+		);
 	}
 }

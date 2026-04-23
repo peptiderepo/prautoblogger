@@ -45,25 +45,38 @@ class PRAutoBlogger_Generation_Log {
 		$this->created_at        = $data['created_at'] ?? current_time( 'mysql' );
 	}
 
-	public function get_id(): int { return $this->id; }
-	public function get_post_id(): ?int { return $this->post_id; }
-	public function get_run_id(): ?string { return $this->run_id; }
-	public function get_stage(): string { return $this->stage; }
-	public function get_provider(): string { return $this->provider; }
-	public function get_model(): string { return $this->model; }
-	public function get_prompt_tokens(): int { return $this->prompt_tokens; }
-	public function get_completion_tokens(): int { return $this->completion_tokens; }
-	public function get_estimated_cost(): float { return $this->estimated_cost; }
-	public function get_request_json(): ?string { return $this->request_json; }
-	public function get_response_status(): string { return $this->response_status; }
-	public function get_error_message(): ?string { return $this->error_message; }
-	public function get_created_at(): string { return $this->created_at; }
+	public function get_id(): int {
+		return $this->id; }
+	public function get_post_id(): ?int {
+		return $this->post_id; }
+	public function get_run_id(): ?string {
+		return $this->run_id; }
+	public function get_stage(): string {
+		return $this->stage; }
+	public function get_provider(): string {
+		return $this->provider; }
+	public function get_model(): string {
+		return $this->model; }
+	public function get_prompt_tokens(): int {
+		return $this->prompt_tokens; }
+	public function get_completion_tokens(): int {
+		return $this->completion_tokens; }
+	public function get_estimated_cost(): float {
+		return $this->estimated_cost; }
+	public function get_request_json(): ?string {
+		return $this->request_json; }
+	public function get_response_status(): string {
+		return $this->response_status; }
+	public function get_error_message(): ?string {
+		return $this->error_message; }
+	public function get_created_at(): string {
+		return $this->created_at; }
 
 	/**
 	 * @return array<string, mixed>
 	 */
 	public function to_db_row(): array {
-		return [
+		return array(
 			'post_id'           => $this->post_id,
 			'run_id'            => $this->run_id,
 			'stage'             => $this->stage,
@@ -76,6 +89,6 @@ class PRAutoBlogger_Generation_Log {
 			'response_status'   => $this->response_status,
 			'error_message'     => $this->error_message,
 			'created_at'        => $this->created_at,
-		];
+		);
 	}
 }

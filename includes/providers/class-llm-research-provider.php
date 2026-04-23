@@ -45,7 +45,7 @@ class PRAutoBlogger_LLM_Research_Provider implements PRAutoBlogger_Source_Provid
 
 		if ( '' === trim( $prompt ) ) {
 			PRAutoBlogger_Logger::instance()->warning( 'LLM Research prompt is empty. Skipping.', 'llm-research' );
-			return [];
+			return array();
 		}
 
 		$system_prompt = $this->build_system_prompt();
@@ -53,16 +53,22 @@ class PRAutoBlogger_LLM_Research_Provider implements PRAutoBlogger_Source_Provid
 
 		$llm      = new PRAutoBlogger_OpenRouter_Provider();
 		$response = $llm->send_chat_completion(
-			[
-				[ 'role' => 'system', 'content' => $system_prompt ],
-				[ 'role' => 'user', 'content' => $user_prompt ],
-			],
+			array(
+				array(
+					'role'    => 'system',
+					'content' => $system_prompt,
+				),
+				array(
+					'role'    => 'user',
+					'content' => $user_prompt,
+				),
+			),
 			$model,
-			[
+			array(
 				'temperature'     => 0.7,
 				'max_tokens'      => 8000,
-				'response_format' => [ 'type' => 'json_object' ],
-			]
+				'response_format' => array( 'type' => 'json_object' ),
+			)
 		);
 
 		// Use the pipeline's cost tracker if provided (for run_id tagging),
@@ -102,11 +108,11 @@ class PRAutoBlogger_LLM_Research_Provider implements PRAutoBlogger_Source_Provid
 	 * @return array{remaining: int, limit: int, resets_at: string}
 	 */
 	public function get_rate_limit_status(): array {
-		return [
+		return array(
 			'remaining' => 999,
 			'limit'     => 999,
-			'resets_at'  => '',
-		];
+			'resets_at' => '',
+		);
 	}
 
 	/**
@@ -133,7 +139,7 @@ class PRAutoBlogger_LLM_Research_Provider implements PRAutoBlogger_Source_Provid
 			. "Respond with valid JSON only (no preamble, no markdown fences):\n"
 			. '{"findings": [{"title": "string", "content": "string (2-3 paragraphs)", '
 			. '"relevance_score": 0-100, "category": "question|trend|comparison|guide|misconception|safety"}]}' . "\n\n"
-			. "Generate 8-12 findings. Prioritize depth over breadth. Avoid generic or surface-level topics.";
+			. 'Generate 8-12 findings. Prioritize depth over breadth. Avoid generic or surface-level topics.';
 	}
 
 	/**
@@ -164,16 +170,16 @@ class PRAutoBlogger_LLM_Research_Provider implements PRAutoBlogger_Source_Provid
 				. mb_substr( $content, 0, 500 ),
 				'llm-research'
 			);
-			return [];
+			return array();
 		}
 
-		$items    = [];
+		$items    = array();
 		$run_date = gmdate( 'Y-m-d' );
 
 		foreach ( $data['findings'] as $index => $finding ) {
-			$title   = sanitize_text_field( $finding['title'] ?? '' );
-			$body    = sanitize_textarea_field( $finding['content'] ?? '' );
-			$score   = min( 100, max( 0, (int) ( $finding['relevance_score'] ?? 50 ) ) );
+			$title    = sanitize_text_field( $finding['title'] ?? '' );
+			$body     = sanitize_textarea_field( $finding['content'] ?? '' );
+			$score    = min( 100, max( 0, (int) ( $finding['relevance_score'] ?? 50 ) ) );
 			$category = sanitize_text_field( $finding['category'] ?? 'guide' );
 
 			if ( '' === $title || '' === $body ) {
@@ -184,23 +190,25 @@ class PRAutoBlogger_LLM_Research_Provider implements PRAutoBlogger_Source_Provid
 			// but a new day produces fresh entries.
 			$source_id = 'llm_' . $run_date . '_' . $index;
 
-			$items[] = new PRAutoBlogger_Source_Data( [
-				'source_type'   => self::SOURCE_TYPE,
-				'source_id'     => $source_id,
-				'subreddit'     => null,
-				'title'         => $title,
-				'content'       => $body,
-				'author'        => $model,
-				'score'         => $score,
-				'comment_count' => 0,
-				'permalink'     => null,
-				'collected_at'  => current_time( 'mysql' ),
-				'metadata'      => [
-					'category'    => $category,
-					'data_source' => 'llm_research',
-					'model'       => $model,
-				],
-			] );
+			$items[] = new PRAutoBlogger_Source_Data(
+				array(
+					'source_type'   => self::SOURCE_TYPE,
+					'source_id'     => $source_id,
+					'subreddit'     => null,
+					'title'         => $title,
+					'content'       => $body,
+					'author'        => $model,
+					'score'         => $score,
+					'comment_count' => 0,
+					'permalink'     => null,
+					'collected_at'  => current_time( 'mysql' ),
+					'metadata'      => array(
+						'category'    => $category,
+						'data_source' => 'llm_research',
+						'model'       => $model,
+					),
+				)
+			);
 		}
 
 		PRAutoBlogger_Logger::instance()->info(

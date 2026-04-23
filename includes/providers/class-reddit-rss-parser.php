@@ -41,7 +41,7 @@ class PRAutoBlogger_Reddit_RSS_Parser {
 
 		if ( false === $feed ) {
 			PRAutoBlogger_Logger::instance()->error( 'Failed to parse Reddit RSS XML.', 'reddit' );
-			return [];
+			return array();
 		}
 
 		// Register the Atom namespace.
@@ -49,10 +49,10 @@ class PRAutoBlogger_Reddit_RSS_Parser {
 		$entries = $feed->xpath( '//atom:entry' );
 
 		if ( empty( $entries ) ) {
-			return [];
+			return array();
 		}
 
-		$posts = [];
+		$posts = array();
 		foreach ( $entries as $entry ) {
 			$post = $this->parse_entry( $entry, $subreddit );
 			if ( null !== $post ) {
@@ -118,7 +118,7 @@ class PRAutoBlogger_Reddit_RSS_Parser {
 			$permalink = $parsed['path'] ?? '';
 		}
 
-		return [
+		return array(
 			'id'                  => $post_id,
 			'title'               => $title,
 			'selftext'            => $content,
@@ -132,6 +132,6 @@ class PRAutoBlogger_Reddit_RSS_Parser {
 			'upvote_ratio'        => null,
 			'is_original_content' => false,
 			'data_source'         => 'reddit_rss',
-		];
+		);
 	}
 }

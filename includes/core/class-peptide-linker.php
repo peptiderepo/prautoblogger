@@ -38,13 +38,19 @@ class PRAutoBlogger_Peptide_Linker {
 		// Build a single regex alternation of all peptide names, longest first
 		// so "BPC-157" matches before a hypothetical "BPC" would.
 		$names = array_keys( $link_map );
-		usort( $names, static function ( string $a, string $b ): int {
-			return strlen( $b ) - strlen( $a );
-		} );
+		usort(
+			$names,
+			static function ( string $a, string $b ): int {
+				return strlen( $b ) - strlen( $a );
+			}
+		);
 
-		$escaped = array_map( static function ( string $name ): string {
-			return preg_quote( $name, '/' );
-		}, $names );
+		$escaped = array_map(
+			static function ( string $name ): string {
+				return preg_quote( $name, '/' );
+			},
+			$names
+		);
 
 		// Word-boundary match, case-insensitive.
 		$pattern = '/\b(' . implode( '|', $escaped ) . ')\b/iu';
@@ -63,16 +69,18 @@ class PRAutoBlogger_Peptide_Linker {
 	 * @return array<string, string> Name → URL pairs, case-preserved keys.
 	 */
 	private static function build_link_map(): array {
-		$peptides = get_posts( [
-			'post_type'      => 'pr_peptide',
-			'post_status'    => 'publish',
-			'posts_per_page' => 200,
-			'orderby'        => 'title',
-			'order'          => 'ASC',
-			'fields'         => 'ids',
-		] );
+		$peptides = get_posts(
+			array(
+				'post_type'      => 'pr_peptide',
+				'post_status'    => 'publish',
+				'posts_per_page' => 200,
+				'orderby'        => 'title',
+				'order'          => 'ASC',
+				'fields'         => 'ids',
+			)
+		);
 
-		$map = [];
+		$map = array();
 		foreach ( $peptides as $peptide_id ) {
 			$title = get_the_title( $peptide_id );
 			$url   = get_permalink( $peptide_id );
@@ -86,7 +94,7 @@ class PRAutoBlogger_Peptide_Linker {
 			// If the name contains hyphens, also match the space-separated
 			// variant (e.g., "BPC 157" → same URL as "BPC-157").
 			if ( strpos( $title, '-' ) !== false ) {
-				$space_variant = str_replace( '-', ' ', $title );
+				$space_variant         = str_replace( '-', ' ', $title );
 				$map[ $space_variant ] = $url;
 			}
 		}
@@ -115,7 +123,7 @@ class PRAutoBlogger_Peptide_Linker {
 		}
 
 		// Build a lowercase → URL lookup for case-insensitive matching.
-		$lower_map = [];
+		$lower_map = array();
 		foreach ( $link_map as $name => $url ) {
 			$lower_map[ mb_strtolower( $name ) ] = $url;
 		}

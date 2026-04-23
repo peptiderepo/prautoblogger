@@ -44,8 +44,8 @@ class PRAutoBlogger_Idea_Scorer {
 	 * @return PRAutoBlogger_Article_Idea[] Top-ranked ideas, sorted by score desc.
 	 */
 	public function score_and_rank( array $analysis_results, int $target_count ): array {
-		$exclusions     = json_decode( get_option( 'prautoblogger_topic_exclusions', '[]' ), true ) ?: [];
-		$ideas          = [];
+		$exclusions     = json_decode( get_option( 'prautoblogger_topic_exclusions', '[]' ), true ) ?: array();
+		$ideas          = array();
 		$excluded_count = 0;
 		$deduped_count  = 0;
 
@@ -55,11 +55,11 @@ class PRAutoBlogger_Idea_Scorer {
 		}
 
 		// Keyword sets kept for fallback (passed through to Semantic_Dedup).
-		$accepted_keyword_sets = [];
+		$accepted_keyword_sets = array();
 
 		foreach ( $analysis_results as $result ) {
 			if ( $this->is_excluded( $result->get_topic(), $exclusions ) ) {
-				$excluded_count++;
+				++$excluded_count;
 				continue;
 			}
 
@@ -68,7 +68,7 @@ class PRAutoBlogger_Idea_Scorer {
 				$topic_keywords = $this->extract_meaningful_keywords( $topic );
 
 				if ( $dedup->is_batch_duplicate( $topic, $topic_keywords, $accepted_keyword_sets ) ) {
-					$deduped_count++;
+					++$deduped_count;
 					PRAutoBlogger_Logger::instance()->info(
 						sprintf( 'Dedup(batch): skipping "%s"', substr( $topic, 0, 80 ) ),
 						'scorer'
@@ -77,7 +77,7 @@ class PRAutoBlogger_Idea_Scorer {
 				}
 
 				if ( $dedup->is_recent_duplicate( $topic, $topic_keywords ) ) {
-					$deduped_count++;
+					++$deduped_count;
 					PRAutoBlogger_Logger::instance()->info(
 						sprintf( 'Dedup(recent): skipping "%s"', substr( $topic, 0, 80 ) ),
 						'scorer'
@@ -89,19 +89,21 @@ class PRAutoBlogger_Idea_Scorer {
 				$dedup->record_accepted( $topic );
 			}
 
-			$metadata = $result->get_metadata() ?? [];
+			$metadata = $result->get_metadata() ?? array();
 
-			$ideas[] = new PRAutoBlogger_Article_Idea( [
-				'topic'           => $result->get_topic(),
-				'article_type'    => $this->map_type( $result->get_analysis_type() ),
-				'suggested_title' => $metadata['suggested_title'] ?? $result->get_topic(),
-				'summary'         => $result->get_summary() ?? '',
-				'score'           => $this->compute_score( $result ),
-				'analysis_id'     => $result->get_id(),
-				'source_ids'      => $result->get_source_ids(),
-				'key_points'      => $metadata['key_points'] ?? [],
-				'target_keywords' => $metadata['target_keywords'] ?? [],
-			] );
+			$ideas[] = new PRAutoBlogger_Article_Idea(
+				array(
+					'topic'           => $result->get_topic(),
+					'article_type'    => $this->map_type( $result->get_analysis_type() ),
+					'suggested_title' => $metadata['suggested_title'] ?? $result->get_topic(),
+					'summary'         => $result->get_summary() ?? '',
+					'score'           => $this->compute_score( $result ),
+					'analysis_id'     => $result->get_id(),
+					'source_ids'      => $result->get_source_ids(),
+					'key_points'      => $metadata['key_points'] ?? array(),
+					'target_keywords' => $metadata['target_keywords'] ?? array(),
+				)
+			);
 		}
 
 		PRAutoBlogger_Logger::instance()->info(
@@ -116,9 +118,12 @@ class PRAutoBlogger_Idea_Scorer {
 			'scorer'
 		);
 
-		usort( $ideas, static function ( PRAutoBlogger_Article_Idea $a, PRAutoBlogger_Article_Idea $b ): int {
-			return $b->get_score() <=> $a->get_score();
-		} );
+		usort(
+			$ideas,
+			static function ( PRAutoBlogger_Article_Idea $a, PRAutoBlogger_Article_Idea $b ): int {
+				return $b->get_score() <=> $a->get_score();
+			}
+		);
 
 		return array_slice( $ideas, 0, $target_count );
 	}
@@ -165,27 +170,122 @@ class PRAutoBlogger_Idea_Scorer {
 	 * @return string[] Unique lowercase keywords.
 	 */
 	private function extract_meaningful_keywords( string $text ): array {
-		static $stopwords = [
-			'a', 'an', 'the', 'and', 'or', 'but', 'is', 'are', 'was', 'were',
-			'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'as',
-			'it', 'its', 'this', 'that', 'your', 'you', 'how', 'what', 'when',
-			'why', 'where', 'which', 'who', 'do', 'does', 'did', 'not', 'no',
-			'can', 'will', 'should', 'could', 'would', 'may', 'might', 'have',
-			'has', 'had', 'be', 'been', 'being', 'about', 'into', 'through',
-			'during', 'before', 'after', 'above', 'below', 'between', 'same',
-			'up', 'down', 'out', 'off', 'over', 'under', 'again', 'then',
-			'here', 'there', 'all', 'each', 'every', 'both', 'few', 'more',
-			'most', 'other', 'some', 'such', 'than', 'too', 'very', 'just',
-			'also', 'only', 'own', 'so', 'if', 'while', 'because', 'until',
-			'vs', 'versus', 'guide', 'complete', 'ultimate', 'best', 'top',
-			'new', 'first', 'need', 'know', 'everything',
-		];
+		static $stopwords = array(
+			'a',
+			'an',
+			'the',
+			'and',
+			'or',
+			'but',
+			'is',
+			'are',
+			'was',
+			'were',
+			'in',
+			'on',
+			'at',
+			'to',
+			'for',
+			'of',
+			'with',
+			'by',
+			'from',
+			'as',
+			'it',
+			'its',
+			'this',
+			'that',
+			'your',
+			'you',
+			'how',
+			'what',
+			'when',
+			'why',
+			'where',
+			'which',
+			'who',
+			'do',
+			'does',
+			'did',
+			'not',
+			'no',
+			'can',
+			'will',
+			'should',
+			'could',
+			'would',
+			'may',
+			'might',
+			'have',
+			'has',
+			'had',
+			'be',
+			'been',
+			'being',
+			'about',
+			'into',
+			'through',
+			'during',
+			'before',
+			'after',
+			'above',
+			'below',
+			'between',
+			'same',
+			'up',
+			'down',
+			'out',
+			'off',
+			'over',
+			'under',
+			'again',
+			'then',
+			'here',
+			'there',
+			'all',
+			'each',
+			'every',
+			'both',
+			'few',
+			'more',
+			'most',
+			'other',
+			'some',
+			'such',
+			'than',
+			'too',
+			'very',
+			'just',
+			'also',
+			'only',
+			'own',
+			'so',
+			'if',
+			'while',
+			'because',
+			'until',
+			'vs',
+			'versus',
+			'guide',
+			'complete',
+			'ultimate',
+			'best',
+			'top',
+			'new',
+			'first',
+			'need',
+			'know',
+			'everything',
+		);
 
 		$text  = strtolower( $text );
 		$words = preg_split( '/[^a-z0-9-]+/', $text, -1, PREG_SPLIT_NO_EMPTY );
-		$words = array_filter( $words, static function ( string $w ) use ( $stopwords ): bool {
-			return strlen( $w ) >= 2 && ! in_array( $w, $stopwords, true );
-		} );
+		$words = array_filter(
+			$words,
+			static function ( string $w ) use ( $stopwords ): bool {
+				return strlen( $w ) >= 2 && ! in_array( $w, $stopwords, true );
+			}
+		);
 
 		return array_values( array_unique( $words ) );
 	}
@@ -197,13 +297,13 @@ class PRAutoBlogger_Idea_Scorer {
 	 * @return string Article type label.
 	 */
 	private function map_type( string $analysis_type ): string {
-		$map = [
+		$map = array(
 			'question'   => 'guide',
 			'complaint'  => 'solution',
 			'comparison' => 'comparison',
 			'news'       => 'news',
 			'guide'      => 'guide',
-		];
+		);
 		return $map[ $analysis_type ] ?? 'article';
 	}
 }

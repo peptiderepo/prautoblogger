@@ -33,11 +33,11 @@ class PRAutoBlogger_Deactivator {
 	 * @return void
 	 */
 	private static function clear_cron(): void {
-		$hooks = [
+		$hooks = array(
 			'prautoblogger_daily_generation',
 			'prautoblogger_collect_metrics',
 			'prautoblogger_reap_orphan_research_rows',
-		];
+		);
 
 		foreach ( $hooks as $hook ) {
 			$timestamp = wp_next_scheduled( $hook );
@@ -55,11 +55,11 @@ class PRAutoBlogger_Deactivator {
 	 * @return void
 	 */
 	private static function clear_transients(): void {
-		$transients = [
+		$transients = array(
 			'prautoblogger_reddit_token',
 			'prautoblogger_generation_lock',
 			'prautoblogger_openrouter_models',
-		];
+		);
 
 		foreach ( $transients as $transient ) {
 			delete_transient( $transient );

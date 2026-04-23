@@ -47,7 +47,7 @@ class PRAutoBlogger_Reddit_Provider implements PRAutoBlogger_Source_Provider_Int
 		$comments_limit   = $config['comments_per_post'] ?? 5;
 
 		$client    = new PRAutoBlogger_Reddit_JSON_Client();
-		$collected = [];
+		$collected = array();
 
 		PRAutoBlogger_Logger::instance()->info(
 			sprintf(
@@ -72,26 +72,28 @@ class PRAutoBlogger_Reddit_Provider implements PRAutoBlogger_Source_Provider_Int
 				foreach ( $posts as $post ) {
 					$data_source = $post['data_source'] ?? 'reddit';
 
-					$collected[] = new PRAutoBlogger_Source_Data( [
-						'source_type'   => 'reddit',
-						'source_id'     => 't3_' . ( $post['id'] ?? '' ),
-						'subreddit'     => $subreddit,
-						'title'         => $post['title'] ?? '',
-						'content'       => $post['selftext'] ?? '',
-						'author'        => $post['author'] ?? '[deleted]',
-						'score'         => (int) ( $post['score'] ?? 0 ),
-						'comment_count' => (int) ( $post['num_comments'] ?? 0 ),
-						'permalink'     => 'https://reddit.com' . ( $post['permalink'] ?? '' ),
-						'collected_at'  => current_time( 'mysql' ),
-						'metadata'      => [
-							'post_type'   => ( $post['is_self'] ?? false ) ? 'self' : 'link',
-							'flair'       => $post['link_flair_text'] ?? null,
-							'created_utc' => $post['created_utc'] ?? null,
-							'upvote_ratio' => $post['upvote_ratio'] ?? null,
-							'is_original' => $post['is_original_content'] ?? false,
-							'data_source' => $data_source,
-						],
-					] );
+					$collected[] = new PRAutoBlogger_Source_Data(
+						array(
+							'source_type'   => 'reddit',
+							'source_id'     => 't3_' . ( $post['id'] ?? '' ),
+							'subreddit'     => $subreddit,
+							'title'         => $post['title'] ?? '',
+							'content'       => $post['selftext'] ?? '',
+							'author'        => $post['author'] ?? '[deleted]',
+							'score'         => (int) ( $post['score'] ?? 0 ),
+							'comment_count' => (int) ( $post['num_comments'] ?? 0 ),
+							'permalink'     => 'https://reddit.com' . ( $post['permalink'] ?? '' ),
+							'collected_at'  => current_time( 'mysql' ),
+							'metadata'      => array(
+								'post_type'    => ( $post['is_self'] ?? false ) ? 'self' : 'link',
+								'flair'        => $post['link_flair_text'] ?? null,
+								'created_utc'  => $post['created_utc'] ?? null,
+								'upvote_ratio' => $post['upvote_ratio'] ?? null,
+								'is_original'  => $post['is_original_content'] ?? false,
+								'data_source'  => $data_source,
+							),
+						)
+					);
 
 					// Fetch comments for high-engagement posts via .json
 					// (comments are not available in RSS feeds).
@@ -100,25 +102,27 @@ class PRAutoBlogger_Reddit_Provider implements PRAutoBlogger_Source_Provider_Int
 						$comments = $client->fetch_comments( $subreddit, $post_id, $comments_limit );
 
 						foreach ( $comments as $comment ) {
-							$collected[] = new PRAutoBlogger_Source_Data( [
-								'source_type'   => 'reddit',
-								'source_id'     => 't1_' . ( $comment['id'] ?? '' ),
-								'subreddit'     => $subreddit,
-								'title'         => null,
-								'content'       => $comment['body'] ?? '',
-								'author'        => $comment['author'] ?? '[deleted]',
-								'score'         => (int) ( $comment['score'] ?? 0 ),
-								'comment_count' => 0,
-								'permalink'     => 'https://reddit.com' . ( $comment['permalink'] ?? '' ),
-								'collected_at'  => current_time( 'mysql' ),
-								'metadata'      => [
-									'parent_post_id' => 't3_' . $post_id,
-									'parent_title'   => $post['title'] ?? '',
-									'is_comment'     => true,
-									'created_utc'    => $comment['created_utc'] ?? null,
-									'data_source'    => 'reddit_json',
-								],
-							] );
+							$collected[] = new PRAutoBlogger_Source_Data(
+								array(
+									'source_type'   => 'reddit',
+									'source_id'     => 't1_' . ( $comment['id'] ?? '' ),
+									'subreddit'     => $subreddit,
+									'title'         => null,
+									'content'       => $comment['body'] ?? '',
+									'author'        => $comment['author'] ?? '[deleted]',
+									'score'         => (int) ( $comment['score'] ?? 0 ),
+									'comment_count' => 0,
+									'permalink'     => 'https://reddit.com' . ( $comment['permalink'] ?? '' ),
+									'collected_at'  => current_time( 'mysql' ),
+									'metadata'      => array(
+										'parent_post_id' => 't3_' . $post_id,
+										'parent_title'   => $post['title'] ?? '',
+										'is_comment'     => true,
+										'created_utc'    => $comment['created_utc'] ?? null,
+										'data_source'    => 'reddit_json',
+									),
+								)
+							);
 						}
 					}
 				}
@@ -184,6 +188,6 @@ class PRAutoBlogger_Reddit_Provider implements PRAutoBlogger_Source_Provider_Int
 	private function get_configured_subreddits(): array {
 		$json = get_option( 'prautoblogger_target_subreddits', '' );
 		$list = json_decode( $json, true );
-		return is_array( $list ) ? $list : [];
+		return is_array( $list ) ? $list : array();
 	}
 }

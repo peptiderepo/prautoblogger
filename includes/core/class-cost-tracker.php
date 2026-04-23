@@ -87,19 +87,21 @@ class PRAutoBlogger_Cost_Tracker {
 
 		$this->current_run_cost += $cost;
 
-		$log_entry = new PRAutoBlogger_Generation_Log( [
-			'post_id'           => $post_id,
-			'run_id'            => $this->run_id,
-			'stage'             => $stage,
-			'provider'          => $provider,
-			'model'             => $model,
-			'prompt_tokens'     => $prompt_tokens,
-			'completion_tokens' => $completion_tokens,
-			'estimated_cost'    => $cost,
-			'response_status'   => $response_status,
-			'error_message'     => $error_message,
-			'created_at'        => current_time( 'mysql' ),
-		] );
+		$log_entry = new PRAutoBlogger_Generation_Log(
+			array(
+				'post_id'           => $post_id,
+				'run_id'            => $this->run_id,
+				'stage'             => $stage,
+				'provider'          => $provider,
+				'model'             => $model,
+				'prompt_tokens'     => $prompt_tokens,
+				'completion_tokens' => $completion_tokens,
+				'estimated_cost'    => $cost,
+				'response_status'   => $response_status,
+				'error_message'     => $error_message,
+				'created_at'        => current_time( 'mysql' ),
+			)
+		);
 
 		global $wpdb;
 		$table = $wpdb->prefix . 'prautoblogger_generation_log';
@@ -158,19 +160,22 @@ class PRAutoBlogger_Cost_Tracker {
 		$table = $wpdb->prefix . 'prautoblogger_generation_log';
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$wpdb->insert( $table, [
-			'post_id'           => $post_id,
-			'run_id'            => $this->run_id,
-			'stage'             => $stage,
-			'provider'          => 'cloudflare-workers-ai',
-			'model'             => $model,
-			'prompt_tokens'     => 0,
-			'completion_tokens' => 0,
-			'estimated_cost'    => $cost_usd,
-			'response_status'   => 'success',
-			'error_message'     => '',
-			'created_at'        => current_time( 'mysql' ),
-		] );
+		$wpdb->insert(
+			$table,
+			array(
+				'post_id'           => $post_id,
+				'run_id'            => $this->run_id,
+				'stage'             => $stage,
+				'provider'          => 'cloudflare-workers-ai',
+				'model'             => $model,
+				'prompt_tokens'     => 0,
+				'completion_tokens' => 0,
+				'estimated_cost'    => $cost_usd,
+				'response_status'   => 'success',
+				'error_message'     => '',
+				'created_at'        => current_time( 'mysql' ),
+			)
+		);
 	}
 
 	/**

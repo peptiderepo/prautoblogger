@@ -45,7 +45,7 @@ class PRAutoBlogger_Runware_Image_Provider implements PRAutoBlogger_Image_Provid
 	 * backoff; 4xx (except 429) fail immediately. The image download GET
 	 * is not retried — signed URLs are short-lived.
 	 */
-	public function generate_image( string $prompt, int $width, int $height, array $options = [] ): array {
+	public function generate_image( string $prompt, int $width, int $height, array $options = array() ): array {
 		$this->assert_valid_dimensions( $width, $height );
 		$prompt = trim( $prompt );
 		if ( '' === $prompt ) {
@@ -61,16 +61,19 @@ class PRAutoBlogger_Runware_Image_Provider implements PRAutoBlogger_Image_Provid
 		$seed       = $this->support->normalize_seed( isset( $options['seed'] ) ? (int) $options['seed'] : null );
 		$steps      = isset( $options['steps'] ) ? (int) $options['steps'] : $this->pricing->default_steps( $model );
 		$body       = $this->build_request_body( $api_key, $prompt, $snap_w, $snap_h, $model, $seed, $steps );
-		$headers    = [ 'Content-Type' => 'application/json' ];
+		$headers    = array( 'Content-Type' => 'application/json' );
 		$started_at = microtime( true );
 		$last_error = '';
 
 		for ( $attempt = 1; $attempt <= PRAUTOBLOGGER_MAX_RETRIES; $attempt++ ) {
-			$response = wp_remote_post( PRAutoBlogger_Runware_Image_Support::API_URL, [
-				'timeout' => PRAUTOBLOGGER_API_TIMEOUT_SECONDS,
-				'headers' => $headers,
-				'body'    => wp_json_encode( $body ),
-			] );
+			$response = wp_remote_post(
+				PRAutoBlogger_Runware_Image_Support::API_URL,
+				array(
+					'timeout' => PRAUTOBLOGGER_API_TIMEOUT_SECONDS,
+					'headers' => $headers,
+					'body'    => wp_json_encode( $body ),
+				)
+			);
 
 			if ( is_wp_error( $response ) ) {
 				$last_error = $response->get_error_message();
@@ -109,7 +112,7 @@ class PRAutoBlogger_Runware_Image_Provider implements PRAutoBlogger_Image_Provid
 			$image_url   = $this->support->extract_image_url( $raw );
 			$image_bytes = $this->support->download_image_bytes( $image_url );
 
-			return [
+			return array(
 				'bytes'      => $image_bytes,
 				'mime_type'  => 'image/png',
 				'width'      => $snap_w,
@@ -118,7 +121,7 @@ class PRAutoBlogger_Runware_Image_Provider implements PRAutoBlogger_Image_Provid
 				'seed'       => $seed,
 				'cost_usd'   => $this->pricing->estimate_cost( $snap_w, $snap_h, $model ),
 				'latency_ms' => (int) ( ( microtime( true ) - $started_at ) * 1000 ),
-			];
+			);
 		}
 
 		throw new \RuntimeException(
@@ -160,7 +163,7 @@ class PRAutoBlogger_Runware_Image_Provider implements PRAutoBlogger_Image_Provid
 	}
 
 	/** {@inheritDoc} */
-	public function estimate_cost( int $width, int $height, array $options = [] ): float {
+	public function estimate_cost( int $width, int $height, array $options = array() ): float {
 		$model = $this->pricing->resolve_model( (string) ( $options['model'] ?? '' ) );
 		return $this->pricing->estimate_cost( $width, $height, $model );
 	}
@@ -181,50 +184,62 @@ class PRAutoBlogger_Runware_Image_Provider implements PRAutoBlogger_Image_Provid
 		try {
 			$api_key = $this->support->get_api_key();
 		} catch ( \RuntimeException $e ) {
-			return [ 'status' => 'error', 'message' => $e->getMessage() ];
+			return array(
+				'status'  => 'error',
+				'message' => $e->getMessage(),
+			);
 		}
 
-		$body = [
-			[ 'taskType' => 'authentication', 'apiKey' => $api_key ],
-		];
+		$body = array(
+			array(
+				'taskType' => 'authentication',
+				'apiKey'   => $api_key,
+			),
+		);
 
-		$response = wp_remote_post( PRAutoBlogger_Runware_Image_Support::API_URL, [
-			'timeout' => 15,
-			'headers' => [ 'Content-Type' => 'application/json' ],
-			'body'    => wp_json_encode( $body ),
-		] );
+		$response = wp_remote_post(
+			PRAutoBlogger_Runware_Image_Support::API_URL,
+			array(
+				'timeout' => 15,
+				'headers' => array( 'Content-Type' => 'application/json' ),
+				'body'    => wp_json_encode( $body ),
+			)
+		);
 
 		if ( is_wp_error( $response ) ) {
-			return [
+			return array(
 				'status'  => 'error',
 				'message' => __( 'Could not reach Runware API.', 'prautoblogger' ),
 				'debug'   => $response->get_error_message(),
-			];
+			);
 		}
 
 		$status = (int) wp_remote_retrieve_response_code( $response );
 		$raw    = (string) wp_remote_retrieve_body( $response );
 
 		if ( 200 !== $status ) {
-			return [
+			return array(
 				'status'  => 'error',
 				'message' => sprintf( __( 'Runware returned HTTP %d.', 'prautoblogger' ), $status ),
 				'debug'   => substr( $raw, 0, 200 ),
-			];
+			);
 		}
 
 		$decoded = json_decode( $raw, true );
 		if ( is_array( $decoded ) && isset( $decoded['errors'] ) && ! empty( $decoded['errors'] ) ) {
-			$first = $decoded['errors'][0] ?? [];
+			$first = $decoded['errors'][0] ?? array();
 			$msg   = is_array( $first ) ? (string) ( $first['message'] ?? '' ) : (string) $first;
-			return [
+			return array(
 				'status'  => 'error',
 				'message' => __( 'Runware rejected the API key.', 'prautoblogger' ),
 				'debug'   => substr( $msg, 0, 200 ),
-			];
+			);
 		}
 
-		return [ 'status' => 'ok', 'message' => __( 'Runware API key valid.', 'prautoblogger' ) ];
+		return array(
+			'status'  => 'ok',
+			'message' => __( 'Runware API key valid.', 'prautoblogger' ),
+		);
 	}
 
 	/**
@@ -250,12 +265,12 @@ class PRAutoBlogger_Runware_Image_Provider implements PRAutoBlogger_Image_Provid
 		int $seed,
 		int $steps
 	): array {
-		return [
-			[
+		return array(
+			array(
 				'taskType' => 'authentication',
 				'apiKey'   => $api_key,
-			],
-			[
+			),
+			array(
 				'taskType'       => 'imageInference',
 				'taskUUID'       => wp_generate_uuid4(),
 				'positivePrompt' => $prompt,
@@ -267,8 +282,8 @@ class PRAutoBlogger_Runware_Image_Provider implements PRAutoBlogger_Image_Provid
 				'outputFormat'   => 'PNG',
 				'outputType'     => 'URL',
 				'seed'           => $seed,
-			],
-		];
+			),
+		);
 	}
 
 	/**
@@ -286,7 +301,10 @@ class PRAutoBlogger_Runware_Image_Provider implements PRAutoBlogger_Image_Provid
 			throw new \InvalidArgumentException(
 				sprintf(
 					esc_html__( 'Image dimensions %1$dx%2$d outside supported range (%3$d–%4$d px).', 'prautoblogger' ),
-					$width, $height, self::MIN_DIMENSION_PX, self::MAX_DIMENSION_PX
+					$width,
+					$height,
+					self::MIN_DIMENSION_PX,
+					self::MAX_DIMENSION_PX
 				)
 			);
 		}

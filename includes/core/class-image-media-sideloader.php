@@ -61,10 +61,10 @@ class PRAutoBlogger_Image_Media_Sideloader {
 		}
 
 		// Prepare file array for media_handle_sideload().
-		$file_array = [
+		$file_array = array(
 			'name'     => $this->generate_filename( $image_data['model'], $image_data['width'], $image_data['height'] ),
 			'tmp_name' => $temp_file,
-		];
+		);
 
 		// Import the file into media library.
 		$attachment_id = media_handle_sideload( $file_array, $post_id );
@@ -108,8 +108,8 @@ class PRAutoBlogger_Image_Media_Sideloader {
 	 * @return string|\WP_Error Path to temporary file on success, WP_Error on failure.
 	 */
 	private function create_temp_file( string $bytes, string $mime_type ) {
-		$temp_dir = get_temp_dir();
-		$filename = 'prautoblogger_img_' . wp_generate_uuid4() . $this->get_extension_for_mime( $mime_type );
+		$temp_dir  = get_temp_dir();
+		$filename  = 'prautoblogger_img_' . wp_generate_uuid4() . $this->get_extension_for_mime( $mime_type );
 		$temp_path = $temp_dir . $filename;
 
 		$written = file_put_contents( $temp_path, $bytes );
@@ -156,11 +156,11 @@ class PRAutoBlogger_Image_Media_Sideloader {
 	 * @return string File extension with leading dot (e.g., '.png').
 	 */
 	private function get_extension_for_mime( string $mime_type ): string {
-		$map = [
+		$map = array(
 			'image/png'  => '.png',
 			'image/jpeg' => '.jpg',
 			'image/jpg'  => '.jpg',
-		];
+		);
 
 		return $map[ strtolower( $mime_type ) ] ?? '.png';
 	}

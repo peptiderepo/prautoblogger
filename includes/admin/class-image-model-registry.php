@@ -33,64 +33,64 @@ class PRAutoBlogger_Image_Model_Registry {
 	 * @return array<int, array<string, mixed>>
 	 */
 	public static function get_models(): array {
-		return [
-			[
+		return array(
+			array(
 				'id'             => 'runware:100@1',
 				'name'           => 'FLUX.1 schnell (Runware)',
 				'provider'       => 'runware',
 				'cost_per_image' => 0.0006,
-				'capabilities'   => [ 'image_generation' ],
+				'capabilities'   => array( 'image_generation' ),
 				'description'    => __( 'Default. Fast, very cheap, comic-friendly fidelity.', 'prautoblogger' ),
-			],
-			[
+			),
+			array(
 				'id'             => 'runware:101@1',
 				'name'           => 'FLUX.1 dev (Runware)',
 				'provider'       => 'runware',
 				'cost_per_image' => 0.02,
-				'capabilities'   => [ 'image_generation' ],
+				'capabilities'   => array( 'image_generation' ),
 				'description'    => __( 'Higher fidelity FLUX. ~30x schnell cost.', 'prautoblogger' ),
-			],
-			[
+			),
+			array(
 				'id'             => 'google/gemini-2.5-flash-image',
 				'name'           => 'Gemini 2.5 Flash Image (Nano Banana)',
 				'provider'       => 'openrouter',
 				'cost_per_image' => 0.005,
-				'capabilities'   => [ 'image_generation' ],
+				'capabilities'   => array( 'image_generation' ),
 				'description'    => __( 'Mid-tier quality, proven.', 'prautoblogger' ),
-			],
-			[
+			),
+			array(
 				'id'             => 'google/gemini-3.1-flash-image-preview',
 				'name'           => 'Gemini 3.1 Flash Image (Nano Banana 2)',
 				'provider'       => 'openrouter',
 				'cost_per_image' => 0.008,
-				'capabilities'   => [ 'image_generation' ],
+				'capabilities'   => array( 'image_generation' ),
 				'description'    => __( 'Latest Google. Better quality.', 'prautoblogger' ),
-			],
-			[
+			),
+			array(
 				'id'             => 'google/gemini-3-pro-image-preview',
 				'name'           => 'Gemini 3 Pro Image (Nano Banana Pro)',
 				'provider'       => 'openrouter',
 				'cost_per_image' => 0.03,
-				'capabilities'   => [ 'image_generation' ],
+				'capabilities'   => array( 'image_generation' ),
 				'description'    => __( 'Highest quality Google. Premium.', 'prautoblogger' ),
-			],
-			[
+			),
+			array(
 				'id'             => 'openai/gpt-5-image-mini',
 				'name'           => 'GPT-5 Image Mini',
 				'provider'       => 'openrouter',
 				'cost_per_image' => 0.02,
-				'capabilities'   => [ 'image_generation' ],
+				'capabilities'   => array( 'image_generation' ),
 				'description'    => __( 'OpenAI budget image model.', 'prautoblogger' ),
-			],
-			[
+			),
+			array(
 				'id'             => 'openai/gpt-5-image',
 				'name'           => 'GPT-5 Image',
 				'provider'       => 'openrouter',
 				'cost_per_image' => 0.08,
-				'capabilities'   => [ 'image_generation' ],
+				'capabilities'   => array( 'image_generation' ),
 				'description'    => __( 'OpenAI premium. Photorealistic.', 'prautoblogger' ),
-			],
-		];
+			),
+		);
 	}
 
 	/**

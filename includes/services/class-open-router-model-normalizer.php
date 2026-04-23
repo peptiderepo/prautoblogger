@@ -23,15 +23,36 @@ class PRAutoBlogger_OpenRouter_Model_Normalizer {
 	 *
 	 * @var array<string, array{in: string[], out: string[]}>
 	 */
-	private const CAPABILITY_MAP = [
-		'text→text'        => [ 'in' => [ 'text' ],            'out' => [ 'text' ] ],
-		'text+image→text'  => [ 'in' => [ 'text', 'image' ],   'out' => [ 'text' ] ],
-		'text+audio→text'  => [ 'in' => [ 'text', 'audio' ],   'out' => [ 'text' ] ],
-		'text→image'       => [ 'in' => [ 'text' ],            'out' => [ 'image' ] ],
-		'text→audio'       => [ 'in' => [ 'text' ],            'out' => [ 'audio' ] ],
-		'text→video'       => [ 'in' => [ 'text' ],            'out' => [ 'video' ] ],
-		'text→embedding'   => [ 'in' => [ 'text' ],            'out' => [ 'embedding' ] ],
-	];
+	private const CAPABILITY_MAP = array(
+		'text→text'       => array(
+			'in'  => array( 'text' ),
+			'out' => array( 'text' ),
+		),
+		'text+image→text' => array(
+			'in'  => array( 'text', 'image' ),
+			'out' => array( 'text' ),
+		),
+		'text+audio→text' => array(
+			'in'  => array( 'text', 'audio' ),
+			'out' => array( 'text' ),
+		),
+		'text→image'      => array(
+			'in'  => array( 'text' ),
+			'out' => array( 'image' ),
+		),
+		'text→audio'      => array(
+			'in'  => array( 'text' ),
+			'out' => array( 'audio' ),
+		),
+		'text→video'      => array(
+			'in'  => array( 'text' ),
+			'out' => array( 'video' ),
+		),
+		'text→embedding'  => array(
+			'in'  => array( 'text' ),
+			'out' => array( 'embedding' ),
+		),
+	);
 
 	/**
 	 * Normalize raw OpenRouter model records into the standardized shape.
@@ -54,15 +75,15 @@ class PRAutoBlogger_OpenRouter_Model_Normalizer {
 	 * }> Normalized records, sorted by name ascending.
 	 */
 	public function normalize( array $raw_models ): array {
-		$normalized = [];
+		$normalized = array();
 
 		foreach ( $raw_models as $model ) {
 			if ( ! is_array( $model ) || ! isset( $model['id'] ) ) {
 				continue;
 			}
 
-			$input_modalities  = (array) ( $model['architecture']['input_modalities'] ?? [ 'text' ] );
-			$output_modalities = (array) ( $model['architecture']['output_modalities'] ?? [ 'text' ] );
+			$input_modalities  = (array) ( $model['architecture']['input_modalities'] ?? array( 'text' ) );
+			$output_modalities = (array) ( $model['architecture']['output_modalities'] ?? array( 'text' ) );
 
 			$name_parts = explode( '/', (string) $model['id'], 2 );
 
@@ -70,7 +91,7 @@ class PRAutoBlogger_OpenRouter_Model_Normalizer {
 			$prompt_price     = (float) ( $model['pricing']['prompt'] ?? 0 );
 			$completion_price = (float) ( $model['pricing']['completion'] ?? 0 );
 
-			$normalized[] = [
+			$normalized[] = array(
 				'id'                 => (string) $model['id'],
 				'name'               => (string) ( $model['name'] ?? $model['id'] ),
 				'provider'           => $name_parts[0] ?? 'unknown',
@@ -80,12 +101,15 @@ class PRAutoBlogger_OpenRouter_Model_Normalizer {
 				'capabilities'       => $this->derive_capabilities( $input_modalities, $output_modalities ),
 				'deprecated'         => false,
 				'updated_at'         => (int) ( $model['created'] ?? 0 ),
-			];
+			);
 		}
 
-		usort( $normalized, static function ( array $a, array $b ): int {
-			return strcasecmp( $a['name'], $b['name'] );
-		} );
+		usort(
+			$normalized,
+			static function ( array $a, array $b ): int {
+				return strcasecmp( $a['name'], $b['name'] );
+			}
+		);
 
 		return $normalized;
 	}
@@ -99,7 +123,7 @@ class PRAutoBlogger_OpenRouter_Model_Normalizer {
 	 * @return string[] Matched capability labels. Defaults to ['text→text'].
 	 */
 	private function derive_capabilities( array $input_modalities, array $output_modalities ): array {
-		$caps = [];
+		$caps = array();
 
 		foreach ( self::CAPABILITY_MAP as $label => $requirements ) {
 			$input_match  = empty( array_diff( $requirements['in'], $input_modalities ) );
@@ -109,6 +133,6 @@ class PRAutoBlogger_OpenRouter_Model_Normalizer {
 			}
 		}
 
-		return empty( $caps ) ? [ 'text→text' ] : $caps;
+		return empty( $caps ) ? array( 'text→text' ) : $caps;
 	}
 }

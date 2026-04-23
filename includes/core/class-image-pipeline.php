@@ -47,10 +47,10 @@ class PRAutoBlogger_Image_Pipeline {
 		?PRAutoBlogger_Image_Provider_Interface $provider = null,
 		?PRAutoBlogger_Cost_Tracker $cost_tracker = null
 	) {
-		$this->provider         = $provider ?? self::create_default_provider();
-		$this->prompt_builder   = new PRAutoBlogger_Image_Prompt_Builder();
-		$this->sideloader       = new PRAutoBlogger_Image_Media_Sideloader();
-		$this->cost_tracker     = $cost_tracker ?? new PRAutoBlogger_Cost_Tracker();
+		$this->provider       = $provider ?? self::create_default_provider();
+		$this->prompt_builder = new PRAutoBlogger_Image_Prompt_Builder();
+		$this->sideloader     = new PRAutoBlogger_Image_Media_Sideloader();
+		$this->cost_tracker   = $cost_tracker ?? new PRAutoBlogger_Cost_Tracker();
 	}
 
 	/**
@@ -85,7 +85,10 @@ class PRAutoBlogger_Image_Pipeline {
 		array $article_data,
 		?array $source_data = null
 	): array {
-		$result = [ 'cost_usd' => 0.0, 'errors' => [] ];
+		$result = array(
+			'cost_usd' => 0.0,
+			'errors'   => array(),
+		);
 
 		if ( ! get_option( 'prautoblogger_image_enabled' ) ) {
 			PRAutoBlogger_Logger::instance()->info( 'Image generation disabled in settings.', 'image_pipeline' );
@@ -107,24 +110,24 @@ class PRAutoBlogger_Image_Pipeline {
 
 		// Build all prompts upfront (LLM calls happen here, sequentially).
 		$article_prompt = $this->prompt_builder->build_article_prompt( $article_data );
-		$batch_requests = [
-			'image_a' => [
+		$batch_requests = array(
+			'image_a' => array(
 				'prompt' => $article_prompt['prompt'],
 				'width'  => self::DEFAULT_WIDTH,
 				'height' => self::DEFAULT_HEIGHT,
-			],
-		];
-		$captions = [ 'image_a' => $article_prompt['caption'] ];
+			),
+		);
+		$captions       = array( 'image_a' => $article_prompt['caption'] );
 
 		$source_prompt = null;
 		if ( $generate_b ) {
-			$source_prompt = $this->prompt_builder->build_source_prompt( $source_data );
-			$batch_requests['image_b'] = [
+			$source_prompt             = $this->prompt_builder->build_source_prompt( $source_data );
+			$batch_requests['image_b'] = array(
 				'prompt' => $source_prompt['prompt'],
 				'width'  => self::DEFAULT_WIDTH,
 				'height' => self::DEFAULT_HEIGHT,
-			];
-			$captions['image_b'] = $source_prompt['caption'];
+			);
+			$captions['image_b']       = $source_prompt['caption'];
 		}
 
 		// Fire all image generation requests in parallel.
@@ -290,9 +293,11 @@ class PRAutoBlogger_Image_Pipeline {
 			esc_html( $caption )
 		);
 
-		wp_update_post( [
-			'ID'           => $post_id,
-			'post_content' => $caption_html . "\n\n" . $post->post_content,
-		] );
+		wp_update_post(
+			array(
+				'ID'           => $post_id,
+				'post_content' => $caption_html . "\n\n" . $post->post_content,
+			)
+		);
 	}
 }

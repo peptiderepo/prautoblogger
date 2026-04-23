@@ -91,8 +91,8 @@ require_once PRAUTOBLOGGER_PLUGIN_DIR . 'includes/class-prautoblogger.php';
 |--------------------------------------------------------------------------
 */
 
-register_activation_hook( __FILE__, [ 'PRAutoBlogger_Activator', 'activate' ] );
-register_deactivation_hook( __FILE__, [ 'PRAutoBlogger_Deactivator', 'deactivate' ] );
+register_activation_hook( __FILE__, array( 'PRAutoBlogger_Activator', 'activate' ) );
+register_deactivation_hook( __FILE__, array( 'PRAutoBlogger_Deactivator', 'deactivate' ) );
 
 /*
 |--------------------------------------------------------------------------
@@ -116,6 +116,9 @@ function prautoblogger(): PRAutoBlogger {
 }
 
 // Initialize on plugins_loaded so all dependencies are available.
-add_action( 'plugins_loaded', static function (): void {
-	prautoblogger()->run();
-} );
+add_action(
+	'plugins_loaded',
+	static function (): void {
+		prautoblogger()->run();
+	}
+);

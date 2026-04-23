@@ -81,14 +81,14 @@ class PRAutoBlogger_Publisher {
 		$clean_content  = PRAutoBlogger_Post_Assembler::sanitize_llm_content( $content );
 		$linked_content = PRAutoBlogger_Peptide_Linker::inject_links( $clean_content );
 
-		$post_data = [
+		$post_data = array(
 			'post_title'   => sanitize_text_field( $idea->get_suggested_title() ),
 			'post_content' => wp_kses_post( $linked_content ),
 			'post_status'  => $post_status,
 			'post_type'    => 'post',
 			'post_author'  => PRAutoBlogger_Post_Assembler::get_default_author_id(),
 			'meta_input'   => $this->build_meta( $idea, $review, $run_id ),
-		];
+		);
 
 		/** @see class-prautoblogger.php — listeners registered in main loader. */
 		$post_data = apply_filters( 'prautoblogger_filter_post_data', $post_data, $idea, $review );
@@ -135,7 +135,7 @@ class PRAutoBlogger_Publisher {
 		PRAutoBlogger_Editorial_Review $review,
 		?string $run_id = null
 	): array {
-		$meta = [
+		$meta = array(
 			'_prautoblogger_generated'       => '1',
 			'_prautoblogger_analysis_id'     => $idea->get_analysis_id(),
 			'_prautoblogger_source_ids'      => wp_json_encode( $idea->get_source_ids() ),
@@ -149,7 +149,7 @@ class PRAutoBlogger_Publisher {
 			'_prautoblogger_topic'           => $idea->get_topic(),
 			'_prautoblogger_article_type'    => $idea->get_article_type(),
 			'_prautoblogger_target_keywords' => wp_json_encode( $idea->get_target_keywords() ),
-		];
+		);
 		if ( null !== $run_id && '' !== $run_id ) {
 			$meta['_prautoblogger_run_id'] = $run_id;
 		}

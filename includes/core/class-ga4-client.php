@@ -29,32 +29,32 @@ class PRAutoBlogger_GA4_Client {
 	public function fetch_data( array $posts ): array {
 		$property_id = get_option( 'prautoblogger_ga4_property_id', '' );
 		if ( '' === $property_id ) {
-			return [];
+			return array();
 		}
 
 		$credentials_encrypted = get_option( 'prautoblogger_ga4_credentials_json', '' );
 		if ( '' === $credentials_encrypted ) {
-			return [];
+			return array();
 		}
 
 		$credentials = PRAutoBlogger_Encryption::decrypt( $credentials_encrypted );
 		if ( '' === $credentials ) {
-			return [];
+			return array();
 		}
 
 		// Build page paths for the GA4 query.
-		$page_paths = [];
-		$path_to_id = [];
+		$page_paths = array();
+		$path_to_id = array();
 		foreach ( $posts as $post ) {
 			$path = wp_parse_url( get_permalink( $post->ID ), PHP_URL_PATH );
 			if ( $path ) {
-				$page_paths[]         = $path;
+				$page_paths[]        = $path;
 				$path_to_id[ $path ] = (int) $post->ID;
 			}
 		}
 
 		if ( empty( $page_paths ) ) {
-			return [];
+			return array();
 		}
 
 		// GA4 Data API request.
@@ -62,40 +62,45 @@ class PRAutoBlogger_GA4_Client {
 		$access_token = $this->get_access_token( $credentials );
 		if ( '' === $access_token ) {
 			PRAutoBlogger_Logger::instance()->error( 'GA4: Failed to get access token. Possible causes: invalid service account JSON, expired or revoked private key, or network error reaching oauth2.googleapis.com. Verify credentials in PRAutoBlogger → Settings.', 'ga4' );
-			return [];
+			return array();
 		}
 
-		$request_body = [
-			'dateRanges'  => [ [ 'startDate' => '30daysAgo', 'endDate' => 'today' ] ],
-			'dimensions'  => [ [ 'name' => 'pagePath' ] ],
-			'metrics'     => [
-				[ 'name' => 'screenPageViews' ],
-				[ 'name' => 'averageSessionDuration' ],
-				[ 'name' => 'bounceRate' ],
-			],
-			'dimensionFilter' => [
-				'filter' => [
+		$request_body = array(
+			'dateRanges'      => array(
+				array(
+					'startDate' => '30daysAgo',
+					'endDate'   => 'today',
+				),
+			),
+			'dimensions'      => array( array( 'name' => 'pagePath' ) ),
+			'metrics'         => array(
+				array( 'name' => 'screenPageViews' ),
+				array( 'name' => 'averageSessionDuration' ),
+				array( 'name' => 'bounceRate' ),
+			),
+			'dimensionFilter' => array(
+				'filter' => array(
 					'fieldName'    => 'pagePath',
-					'inListFilter' => [ 'values' => $page_paths ],
-				],
-			],
-		];
+					'inListFilter' => array( 'values' => $page_paths ),
+				),
+			),
+		);
 
 		$response = wp_remote_post(
 			"https://analyticsdata.googleapis.com/v1beta/properties/{$property_id}:runReport",
-			[
+			array(
 				'timeout' => 30,
-				'headers' => [
+				'headers' => array(
 					'Authorization' => 'Bearer ' . $access_token,
 					'Content-Type'  => 'application/json',
-				],
+				),
 				'body'    => wp_json_encode( $request_body ),
-			]
+			)
 		);
 
 		if ( is_wp_error( $response ) ) {
 			PRAutoBlogger_Logger::instance()->error( 'GA4 API request failed (WP HTTP error): ' . $response->get_error_message(), 'ga4' );
-			return [];
+			return array();
 		}
 
 		$ga4_status = wp_remote_retrieve_response_code( $response );
@@ -105,20 +110,20 @@ class PRAutoBlogger_GA4_Client {
 				sprintf( 'GA4 API request failed (HTTP %d): %s', $ga4_status, substr( $ga4_body, 0, 500 ) ),
 				'ga4'
 			);
-			return [];
+			return array();
 		}
 
 		$data    = json_decode( wp_remote_retrieve_body( $response ), true );
-		$results = [];
+		$results = array();
 
-		foreach ( ( $data['rows'] ?? [] ) as $row ) {
+		foreach ( ( $data['rows'] ?? array() ) as $row ) {
 			$path = $row['dimensionValues'][0]['value'] ?? '';
 			if ( isset( $path_to_id[ $path ] ) ) {
-				$results[ $path_to_id[ $path ] ] = [
+				$results[ $path_to_id[ $path ] ] = array(
 					'pageviews'        => (int) ( $row['metricValues'][0]['value'] ?? 0 ),
 					'avg_time_on_page' => (float) ( $row['metricValues'][1]['value'] ?? 0 ),
 					'bounce_rate'      => (float) ( $row['metricValues'][2]['value'] ?? 0 ),
-				];
+				);
 			}
 		}
 
@@ -140,19 +145,26 @@ class PRAutoBlogger_GA4_Client {
 
 		// Build JWT for service account auth.
 		$now    = time();
-		$header = wp_json_encode( [ 'alg' => 'RS256', 'typ' => 'JWT' ] );
-		$claim  = wp_json_encode( [
-			'iss'   => $creds['client_email'],
-			'scope' => 'https://www.googleapis.com/auth/analytics.readonly',
-			'aud'   => 'https://oauth2.googleapis.com/token',
-			'exp'   => $now + 3600,
-			'iat'   => $now,
-		] );
+		$header = wp_json_encode(
+			array(
+				'alg' => 'RS256',
+				'typ' => 'JWT',
+			)
+		);
+		$claim  = wp_json_encode(
+			array(
+				'iss'   => $creds['client_email'],
+				'scope' => 'https://www.googleapis.com/auth/analytics.readonly',
+				'aud'   => 'https://oauth2.googleapis.com/token',
+				'exp'   => $now + 3600,
+				'iat'   => $now,
+			)
+		);
 
 		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
 		$base64_header = rtrim( strtr( base64_encode( $header ), '+/', '-_' ), '=' );
 		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
-		$base64_claim  = rtrim( strtr( base64_encode( $claim ), '+/', '-_' ), '=' );
+		$base64_claim = rtrim( strtr( base64_encode( $claim ), '+/', '-_' ), '=' );
 
 		$signing_input = $base64_header . '.' . $base64_claim;
 		$signature     = '';
@@ -171,13 +183,13 @@ class PRAutoBlogger_GA4_Client {
 
 		$response = wp_remote_post(
 			'https://oauth2.googleapis.com/token',
-			[
+			array(
 				'timeout' => 15,
-				'body'    => [
+				'body'    => array(
 					'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
 					'assertion'  => $jwt,
-				],
-			]
+				),
+			)
 		);
 
 		if ( is_wp_error( $response ) ) {

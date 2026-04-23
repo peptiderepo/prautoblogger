@@ -63,12 +63,12 @@ class PRAutoBlogger_Reddit_Availability {
 		$url      = self::BASE_URL . '/r/all/hot.rss?limit=1';
 		$response = wp_remote_get(
 			$url,
-			[
+			array(
 				'timeout' => 10,
-				'headers' => [
+				'headers' => array(
 					'User-Agent' => self::USER_AGENT,
-				],
-			]
+				),
+			)
 		);
 
 		if ( is_wp_error( $response ) ) {
@@ -91,12 +91,12 @@ class PRAutoBlogger_Reddit_Availability {
 		$url      = self::BASE_URL . '/r/all/hot.json?limit=1';
 		$response = wp_remote_get(
 			$url,
-			[
+			array(
 				'timeout' => 10,
-				'headers' => [
+				'headers' => array(
 					'User-Agent' => self::USER_AGENT,
-				],
-			]
+				),
+			)
 		);
 
 		if ( is_wp_error( $response ) ) {
@@ -121,11 +121,11 @@ class PRAutoBlogger_Reddit_Availability {
 			return $status;
 		}
 
-		return [
+		return array(
 			'remaining' => 10,
 			'limit'     => 10,
 			'resets_at' => '',
-		];
+		);
 	}
 
 	/**
@@ -143,13 +143,13 @@ class PRAutoBlogger_Reddit_Availability {
 	public function api_get( string $url ): ?array {
 		$response = wp_remote_get(
 			$url,
-			[
+			array(
 				'timeout' => 30,
-				'headers' => [
+				'headers' => array(
 					'User-Agent' => self::USER_AGENT,
 					'Accept'     => 'application/json',
-				],
-			]
+				),
+			)
 		);
 
 		if ( is_wp_error( $response ) ) {
@@ -168,11 +168,11 @@ class PRAutoBlogger_Reddit_Availability {
 		if ( '' !== $rate_remaining ) {
 			set_transient(
 				self::RATE_LIMIT_TRANSIENT,
-				[
+				array(
 					'remaining' => (int) $rate_remaining,
 					'limit'     => (int) $rate_used + (int) $rate_remaining,
 					'resets_at' => gmdate( 'Y-m-d H:i:s', time() + (int) $rate_reset ),
-				],
+				),
 				120
 			);
 		}
