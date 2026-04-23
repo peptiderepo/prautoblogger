@@ -8,6 +8,13 @@
 		<!-- This is an architectural choice: we use short class names (class-logger.php)
 		     instead of full names (class-prautoblogger-logger.php) for readability. -->
 		<exclude name="WordPress.Files.FileName.InvalidClassFileName" />
+		
+		<!-- Exclude $wpdb->prepare() sniff for dynamic table names -->
+		<!-- PRAutoBlogger uses dynamically-constructed table names like {$prab_generation_logs}
+		     that cannot be parameterized with $wpdb->prepare() since prepare() only supports
+		     value placeholders, not table-name placeholders. These table names are validated
+		     internally and do not come from user input. -->
+		<exclude name="WordPress.DB.PreparedSQL.InterpolatedNotPrepared" />
 	</rule>
 	
 	<!-- File scope -->
