@@ -70,7 +70,7 @@ jobs:
             --extensions=php \
             --ignore=vendor/*,tests/*,node_modules/* \
             --warning-severity=0 \
-            --report=full -s \
+            --report=summary \
             includes/ prautoblogger.php uninstall.php
 
   phpunit:
