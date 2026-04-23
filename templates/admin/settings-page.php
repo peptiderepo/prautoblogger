@@ -102,8 +102,8 @@ $next_run       = wp_next_scheduled( 'prautoblogger_daily_generation' );
 
 				<?php foreach ( $sections as $sid => $sec ) : ?>
 					<div class="ab-panel <?php echo $active_tab === $sid ? 'ab-panel-active' : ''; ?>"
-					     data-tab="<?php echo esc_attr( $sid ); ?>"
-					     role="tabpanel">
+						data-tab="<?php echo esc_attr( $sid ); ?>"
+						role="tabpanel">
 					<div class="ab-panel-head">
 						<h2 class="ab-panel-title"><?php echo esc_html( $sec['title'] ); ?></h2>
 						<?php if ( ! empty( $sec['description'] ) ) : ?>
