@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Response parser for OpenRouter API responses.
  *
  * Encapsulates the logic for parsing and validating OpenRouter chat completion
@@ -94,12 +96,12 @@ class PRAutoBlogger_OpenRouter_Response_Parser {
 			$content = '';
 		}
 
-		$usage = $data['usage'] ?? [];
+		$usage = $data['usage'] ?? array();
 
 		// Reasoning content lives alongside 'content' in the message object.
 		$reasoning_content = $data['choices'][0]['message']['reasoning'] ?? '';
 
-		return [
+		return array(
 			'content'           => (string) $content,
 			'model'             => $data['model'] ?? $model,
 			'prompt_tokens'     => (int) ( $usage['prompt_tokens'] ?? 0 ),
@@ -108,7 +110,7 @@ class PRAutoBlogger_OpenRouter_Response_Parser {
 			'total_tokens'      => (int) ( $usage['total_tokens'] ?? 0 ),
 			'finish_reason'     => $data['choices'][0]['finish_reason'] ?? 'unknown',
 			'reasoning_content' => (string) $reasoning_content,
-		];
+		);
 	}
 
 	/**

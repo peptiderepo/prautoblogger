@@ -35,7 +35,7 @@ interface PRAutoBlogger_LLM_Provider_Interface {
 	 *
 	 * @throws \RuntimeException On API error after retries exhausted.
 	 */
-	public function send_chat_completion( array $messages, string $model, array $options = [] ): array;
+	public function send_chat_completion( array $messages, string $model, array $options = array() ): array;
 
 	/**
 	 * Get the list of available models from the provider.

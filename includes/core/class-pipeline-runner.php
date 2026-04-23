@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Executes the content generation pipeline using a chained-job architecture.
  *
  * Orchestrates: Budget check → Collect source data → Analyze patterns →
@@ -63,7 +65,12 @@ class PRAutoBlogger_Pipeline_Runner {
 
 		$ideas = $this->orchestrate( $cost_tracker );
 		if ( empty( $ideas ) ) {
-			return [ 'generated' => 0, 'published' => 0, 'rejected' => 0, 'cost' => 0.0 ];
+			return array(
+				'generated' => 0,
+				'published' => 0,
+				'rejected'  => 0,
+				'cost'      => 0.0,
+			);
 		}
 
 		// Generate article 1 in this process — always fits within time limit.
@@ -156,7 +163,7 @@ class PRAutoBlogger_Pipeline_Runner {
 	private function orchestrate( PRAutoBlogger_Cost_Tracker $cost_tracker ): array {
 		$target = absint( get_option( 'prautoblogger_daily_article_target', 1 ) );
 
-		$enabled = json_decode( get_option( 'prautoblogger_enabled_sources', '["reddit"]' ), true );
+		$enabled       = json_decode( get_option( 'prautoblogger_enabled_sources', '["reddit"]' ), true );
 		$source_labels = is_array( $enabled ) ? implode( ', ', $enabled ) : 'reddit';
 		/* translators: %s is a comma-separated list of enabled source names, e.g. "reddit, llm_research". */
 		$this->broadcast_stage( sprintf( __( 'Collecting sources from %s…', 'prautoblogger' ), $source_labels ) );
@@ -197,11 +204,11 @@ class PRAutoBlogger_Pipeline_Runner {
 			$ideas
 		);
 
-		$queue = [
+		$queue = array(
 			'run_id'  => $run_id,
 			'ideas'   => $serialized,
 			'results' => $first,
-		];
+		);
 
 		update_option( self::QUEUE_KEY, $queue, false );
 		$this->update_queue_status( $queue );
@@ -221,7 +228,11 @@ class PRAutoBlogger_Pipeline_Runner {
 		spawn_cron();
 		wp_remote_post(
 			site_url( 'wp-cron.php?doing_wp_cron=' . sprintf( '%.22F', microtime( true ) ) ),
-			[ 'timeout' => 0.01, 'blocking' => false, 'sslverify' => false ]
+			array(
+				'timeout'   => 0.01,
+				'blocking'  => false,
+				'sslverify' => false,
+			)
 		);
 	}
 
@@ -231,23 +242,31 @@ class PRAutoBlogger_Pipeline_Runner {
 		$total = $done + count( $queue['ideas'] );
 
 		$current = get_transient( 'prautoblogger_generation_status' );
-		set_transient( 'prautoblogger_generation_status', [
-			'status'       => 'running',
-			'stage'        => sprintf( __( 'Generating article %1$d of %2$d…', 'prautoblogger' ), $done + 1, $total ),
-			'started'      => is_array( $current ) ? ( $current['started'] ?? time() ) : time(),
-			'last_updated' => time(),
-		], 600 );
+		set_transient(
+			'prautoblogger_generation_status',
+			array(
+				'status'       => 'running',
+				'stage'        => sprintf( __( 'Generating article %1$d of %2$d…', 'prautoblogger' ), $done + 1, $total ),
+				'started'      => is_array( $current ) ? ( $current['started'] ?? time() ) : time(),
+				'last_updated' => time(),
+			),
+			600
+		);
 	}
 
 	/** Write the final "complete" status transient. */
 	private function write_final_status( array $r ): void {
-		set_transient( 'prautoblogger_generation_status', [
-			'status'    => 'complete',
-			'generated' => $r['generated'],
-			'published' => $r['published'],
-			'rejected'  => $r['rejected'],
-			'cost'      => $r['cost'],
-		], 600 );
+		set_transient(
+			'prautoblogger_generation_status',
+			array(
+				'status'    => 'complete',
+				'generated' => $r['generated'],
+				'published' => $r['published'],
+				'rejected'  => $r['rejected'],
+				'cost'      => $r['cost'],
+			),
+			600
+		);
 	}
 
 	/** Clean up a stale or empty queue. */
@@ -265,7 +284,10 @@ class PRAutoBlogger_Pipeline_Runner {
 		PRAutoBlogger_Logger::instance()->info(
 			sprintf(
 				'Pipeline complete: %d generated, %d published, %d rejected. Cost: $%.4f',
-				$r['generated'], $r['published'], $r['rejected'], $r['cost']
+				$r['generated'],
+				$r['published'],
+				$r['rejected'],
+				$r['cost']
 			),
 			'pipeline'
 		);

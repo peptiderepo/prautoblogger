@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Value object representing a scored article idea ready for content generation.
  *
  * Created by the Idea_Scorer from Analysis_Results. Consumed by Content_Generator.
@@ -38,15 +40,15 @@ class PRAutoBlogger_Article_Idea {
 	 * } $data
 	 */
 	public function __construct( array $data ) {
-		$this->topic            = $data['topic'];
-		$this->article_type     = $data['article_type'];
-		$this->suggested_title  = $data['suggested_title'];
-		$this->summary          = $data['summary'];
-		$this->score            = (float) ( $data['score'] ?? 0.0 );
-		$this->analysis_id      = (int) ( $data['analysis_id'] ?? 0 );
-		$this->source_ids       = $data['source_ids'] ?? [];
-		$this->key_points       = $data['key_points'] ?? [];
-		$this->target_keywords  = $data['target_keywords'] ?? [];
+		$this->topic           = $data['topic'];
+		$this->article_type    = $data['article_type'];
+		$this->suggested_title = $data['suggested_title'];
+		$this->summary         = $data['summary'];
+		$this->score           = (float) ( $data['score'] ?? 0.0 );
+		$this->analysis_id     = (int) ( $data['analysis_id'] ?? 0 );
+		$this->source_ids      = $data['source_ids'] ?? array();
+		$this->key_points      = $data['key_points'] ?? array();
+		$this->target_keywords = $data['target_keywords'] ?? array();
 	}
 
 	public function get_topic(): string {
@@ -93,7 +95,7 @@ class PRAutoBlogger_Article_Idea {
 	 * @return array<string, mixed> Constructor-compatible array.
 	 */
 	public function to_array(): array {
-		return [
+		return array(
 			'topic'           => $this->topic,
 			'article_type'    => $this->article_type,
 			'suggested_title' => $this->suggested_title,
@@ -103,6 +105,6 @@ class PRAutoBlogger_Article_Idea {
 			'source_ids'      => $this->source_ids,
 			'key_points'      => $this->key_points,
 			'target_keywords' => $this->target_keywords,
-		];
+		);
 	}
 }

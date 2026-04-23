@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Handles plugin deactivation: clears scheduled cron events and transients.
  *
  * Note: does NOT delete data or options — that happens in uninstall.php.
@@ -33,11 +35,11 @@ class PRAutoBlogger_Deactivator {
 	 * @return void
 	 */
 	private static function clear_cron(): void {
-		$hooks = [
+		$hooks = array(
 			'prautoblogger_daily_generation',
 			'prautoblogger_collect_metrics',
 			'prautoblogger_reap_orphan_research_rows',
-		];
+		);
 
 		foreach ( $hooks as $hook ) {
 			$timestamp = wp_next_scheduled( $hook );
@@ -55,11 +57,11 @@ class PRAutoBlogger_Deactivator {
 	 * @return void
 	 */
 	private static function clear_transients(): void {
-		$transients = [
+		$transients = array(
 			'prautoblogger_reddit_token',
 			'prautoblogger_generation_lock',
 			'prautoblogger_openrouter_models',
-		];
+		);
 
 		foreach ( $transients as $transient ) {
 			delete_transient( $transient );

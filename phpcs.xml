@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<ruleset name="PRAutoBlogger">
+	<description>Custom PHPCS ruleset for PRAutoBlogger based on WordPress-Core</description>
+	
+	<!-- Use WordPress-Core as the base standard -->
+	<rule ref="WordPress-Core">
+		<!-- Exclude the class file naming convention check -->
+		<!-- This is an architectural choice: we use short class names (class-logger.php)
+		     instead of full names (class-prautoblogger-logger.php) for readability. -->
+		<exclude name="WordPress.Files.FileName.InvalidClassFileName" />
+		
+		<!-- Exclude $wpdb->prepare() sniff for dynamic table names -->
+		<!-- PRAutoBlogger uses dynamically-constructed table names like {$prab_generation_logs}
+		     that cannot be parameterized with $wpdb->prepare() since prepare() only supports
+		     value placeholders, not table-name placeholders. These table names are validated
+		     internally and do not come from user input. -->
+		<exclude name="WordPress.DB.PreparedSQL.InterpolatedNotPrepared" />
+	</rule>
+	
+	<!-- File scope -->
+	<arg name="extensions" value="php" />
+	<arg name="ignore" value="vendor/*,tests/*,node_modules/*" />
+	<arg name="warning-severity" value="0" />
+</ruleset>

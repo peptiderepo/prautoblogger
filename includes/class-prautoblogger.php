@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Main orchestrator for the PRAutoBlogger plugin.
  *
  * Registers all WordPress hooks (actions and filters) and wires up dependencies.
@@ -39,12 +41,12 @@ class PRAutoBlogger {
 		if ( $this->initialized ) {
 			return;
 		}
-		$this->initialized  = true;
-		$this->executor     = new PRAutoBlogger_Executor();
+		$this->initialized   = true;
+		$this->executor      = new PRAutoBlogger_Executor();
 		$this->ajax_handlers = new PRAutoBlogger_Ajax_Handlers( $this->executor->get_model_registry() );
 
-		add_action( 'admin_init', [ $this, 'on_check_db_version' ] );
-		add_filter( 'cron_schedules', [ $this, 'filter_add_cron_schedules' ] );
+		add_action( 'admin_init', array( $this, 'on_check_db_version' ) );
+		add_filter( 'cron_schedules', array( $this, 'filter_add_cron_schedules' ) );
 
 		if ( is_admin() ) {
 			$this->register_admin_hooks();
@@ -61,101 +63,106 @@ class PRAutoBlogger {
 	/** Register admin-only hooks (settings, notices, metabox, dashboard widget). */
 	private function register_admin_hooks(): void {
 		$admin_page = new PRAutoBlogger_Admin_Page();
-		add_action( 'admin_menu', [ $admin_page, 'on_register_menu' ] );
-		add_action( 'admin_init', [ $admin_page, 'on_register_settings' ] );
-		add_action( 'admin_enqueue_scripts', [ $admin_page, 'on_enqueue_assets' ] );
+		add_action( 'admin_menu', array( $admin_page, 'on_register_menu' ) );
+		add_action( 'admin_init', array( $admin_page, 'on_register_settings' ) );
+		add_action( 'admin_enqueue_scripts', array( $admin_page, 'on_enqueue_assets' ) );
 
-		add_action( 'admin_notices', [ new PRAutoBlogger_Admin_Notices(), 'on_display_notices' ] );
-		add_action( 'add_meta_boxes', [ new PRAutoBlogger_Post_Metabox(), 'on_register_metabox' ] );
-		add_action( 'admin_menu', [ new PRAutoBlogger_Metrics_Page(), 'on_register_menu' ] );
-		add_action( 'wp_dashboard_setup', [ new PRAutoBlogger_Dashboard_Widget(), 'on_register_widget' ] );
+		add_action( 'admin_notices', array( new PRAutoBlogger_Admin_Notices(), 'on_display_notices' ) );
+		add_action( 'add_meta_boxes', array( new PRAutoBlogger_Post_Metabox(), 'on_register_metabox' ) );
+		add_action( 'admin_menu', array( new PRAutoBlogger_Metrics_Page(), 'on_register_menu' ) );
+		add_action( 'wp_dashboard_setup', array( new PRAutoBlogger_Dashboard_Widget(), 'on_register_widget' ) );
 
 		$review_queue = new PRAutoBlogger_Review_Queue();
-		add_action( 'admin_menu', [ $review_queue, 'on_register_menu' ] );
+		add_action( 'admin_menu', array( $review_queue, 'on_register_menu' ) );
 
 		$ideas_browser = new PRAutoBlogger_Ideas_Browser();
-		add_action( 'admin_menu', [ $ideas_browser, 'on_register_menu' ] );
-		add_action( 'admin_menu', [ new PRAutoBlogger_Log_Viewer(), 'on_register_menu' ] );
+		add_action( 'admin_menu', array( $ideas_browser, 'on_register_menu' ) );
+		add_action( 'admin_menu', array( new PRAutoBlogger_Log_Viewer(), 'on_register_menu' ) );
 
 		( new PRAutoBlogger_Post_List_Columns() )->register();
 
 		// Block false update notifications — our slug collides with another plugin.
-		add_filter( 'site_transient_update_plugins', [ $this, 'filter_block_false_updates' ] );
+		add_filter( 'site_transient_update_plugins', array( $this, 'filter_block_false_updates' ) );
 	}
 
 	/** Register frontend hooks (shortcode, REST, typography). */
 	private function register_frontend_hooks(): void {
 		$posts_widget = new PRAutoBlogger_Posts_Widget();
-		add_action( 'init', [ $posts_widget, 'on_register_shortcode' ] );
-		add_action( 'rest_api_init', [ $posts_widget, 'on_register_rest_route' ] );
+		add_action( 'init', array( $posts_widget, 'on_register_shortcode' ) );
+		add_action( 'rest_api_init', array( $posts_widget, 'on_register_rest_route' ) );
 
 		$typography = new PRAutoBlogger_Article_Typography();
-		add_action( 'wp_head', [ $typography, 'on_wp_head' ] );
-		add_action( 'wp_enqueue_scripts', [ $typography, 'on_enqueue_fonts' ] );
-		add_filter( 'the_content', [ $typography, 'on_wrap_tables' ], 99 );
+		add_action( 'wp_head', array( $typography, 'on_wp_head' ) );
+		add_action( 'wp_enqueue_scripts', array( $typography, 'on_enqueue_fonts' ) );
+		add_filter( 'the_content', array( $typography, 'on_wrap_tables' ), 99 );
 	}
 
 	/** Register cron-triggered hooks for scheduled generation and metrics. */
 	private function register_cron_hooks(): void {
-		add_action( 'prautoblogger_daily_generation', [ $this->executor, 'on_daily_generation' ] );
-		add_action( 'prautoblogger_collect_metrics', [ $this->executor, 'on_collect_metrics' ] );
+		add_action( 'prautoblogger_daily_generation', array( $this->executor, 'on_daily_generation' ) );
+		add_action( 'prautoblogger_collect_metrics', array( $this->executor, 'on_collect_metrics' ) );
 
 		// Manual "Generate Now" runs as a one-shot cron event to avoid
 		// Hostinger's 120-second web-server connection timeout.
-		add_action( 'prautoblogger_manual_generation', [ $this->executor, 'on_manual_generation' ] );
+		add_action( 'prautoblogger_manual_generation', array( $this->executor, 'on_manual_generation' ) );
 
 		// Chained article generation — each queued article fires as its own
 		// cron event so it gets a fresh PHP process and execution time budget.
 		add_action(
 			PRAutoBlogger_Pipeline_Runner::CRON_ACTION,
-			[ $this->executor, 'on_process_article_queue' ]
+			array( $this->executor, 'on_process_article_queue' )
 		);
 
 		$registry = $this->executor->get_model_registry();
-		add_action( 'prautoblogger_refresh_model_registry', [ $registry, 'refresh' ] );
+		add_action( 'prautoblogger_refresh_model_registry', array( $registry, 'refresh' ) );
 
 		// Single-idea generation from the Ideas browser page.
-		add_action( 'prautoblogger_generate_from_idea', [ 'PRAutoBlogger_Ideas_Browser', 'on_cron_generate_from_idea' ] );
+		add_action( 'prautoblogger_generate_from_idea', array( 'PRAutoBlogger_Ideas_Browser', 'on_cron_generate_from_idea' ) );
 
 		// v0.8.1: daily reaper for orphan `llm_research` rows (when a
 		// pipeline dies before amortize_research_costs runs).
-		add_action( 'prautoblogger_reap_orphan_research_rows', [ 'PRAutoBlogger_Research_Reaper', 'on_cron' ] );
+		add_action( 'prautoblogger_reap_orphan_research_rows', array( 'PRAutoBlogger_Research_Reaper', 'on_cron' ) );
 
 		// v0.8.1: WP-CLI manual trigger for the reaper. Only registers when
 		// WP-CLI is present; no-op in normal HTTP requests.
 		if ( defined( 'WP_CLI' ) && WP_CLI ) {
-			\WP_CLI::add_command( 'prautoblogger reap-research', static function (): void {
-				$stats = PRAutoBlogger_Research_Reaper::reap();
-				\WP_CLI::success( sprintf(
-					'Reaped %d, deleted %d (stale), skipped %d.',
-					(int) $stats['reaped'],
-					(int) $stats['deleted'],
-					(int) $stats['skipped']
-				) );
-			} );
+			\WP_CLI::add_command(
+				'prautoblogger reap-research',
+				static function (): void {
+					$stats = PRAutoBlogger_Research_Reaper::reap();
+					\WP_CLI::success(
+						sprintf(
+							'Reaped %d, deleted %d (stale), skipped %d.',
+							(int) $stats['reaped'],
+							(int) $stats['deleted'],
+							(int) $stats['skipped']
+						)
+					);
+				}
+			);
 		}
 	}
 
 	/** Register AJAX handlers for admin actions. */
 	private function register_ajax_hooks(): void {
 		// Generation AJAX (start + status polling) stays on executor.
-		add_action( 'wp_ajax_prautoblogger_generate_now', [ $this->executor, 'on_ajax_generate_now' ] );
-		add_action( 'wp_ajax_prautoblogger_generation_status', [ $this->executor, 'on_ajax_generation_status' ] );
+		add_action( 'wp_ajax_prautoblogger_generate_now', array( $this->executor, 'on_ajax_generate_now' ) );
+		add_action( 'wp_ajax_prautoblogger_generation_status', array( $this->executor, 'on_ajax_generation_status' ) );
 
 		// Non-generation AJAX (images, models, test) on dedicated handler.
-		add_action( 'wp_ajax_prautoblogger_generate_image', [ $this->ajax_handlers, 'on_ajax_generate_image' ] );
-		add_action( 'wp_ajax_prautoblogger_test_connection', [ $this->ajax_handlers, 'on_ajax_test_connection' ] );
-		add_action( 'wp_ajax_prautoblogger_get_models', [ $this->ajax_handlers, 'on_ajax_get_models' ] );
+		add_action( 'wp_ajax_prautoblogger_generate_image', array( $this->ajax_handlers, 'on_ajax_generate_image' ) );
+		add_action( 'wp_ajax_prautoblogger_test_connection', array( $this->ajax_handlers, 'on_ajax_test_connection' ) );
+		add_action( 'wp_ajax_prautoblogger_get_models', array( $this->ajax_handlers, 'on_ajax_get_models' ) );
 
 		$review_queue = new PRAutoBlogger_Review_Queue();
-		add_action( 'wp_ajax_prautoblogger_approve_post', [ $review_queue, 'on_ajax_approve_post' ] );
-		add_action( 'wp_ajax_prautoblogger_reject_post', [ $review_queue, 'on_ajax_reject_post' ] );
+		add_action( 'wp_ajax_prautoblogger_approve_post', array( $review_queue, 'on_ajax_approve_post' ) );
+		add_action( 'wp_ajax_prautoblogger_reject_post', array( $review_queue, 'on_ajax_reject_post' ) );
 
-		add_action( 'wp_ajax_prautoblogger_clear_logs', [ new PRAutoBlogger_Log_Viewer(), 'on_ajax_clear_logs' ] );
+		add_action( 'wp_ajax_prautoblogger_clear_logs', array( new PRAutoBlogger_Log_Viewer(), 'on_ajax_clear_logs' ) );
 
 		$ideas = new PRAutoBlogger_Ideas_Browser();
-		add_action( 'wp_ajax_prautoblogger_generate_from_idea', [ $ideas, 'on_ajax_generate_from_idea' ] );
-		add_action( 'wp_ajax_prautoblogger_idea_gen_status', [ $ideas, 'on_ajax_idea_gen_status' ] );
+		add_action( 'wp_ajax_prautoblogger_generate_from_idea', array( $ideas, 'on_ajax_generate_from_idea' ) );
+		add_action( 'wp_ajax_prautoblogger_idea_gen_status', array( $ideas, 'on_ajax_idea_gen_status' ) );
 	}
 
 	/**
@@ -203,12 +210,12 @@ class PRAutoBlogger {
 		// Replaces both the old infomercial pastiche and the short-lived premium
 		// photography style. Force-update unless the user has a truly custom value.
 		if ( ! get_option( 'prautoblogger_migrated_style_suffix_v3' ) ) {
-			$known_old_prefixes = [
+			$known_old_prefixes = array(
 				'Style: a screengrab from a 1995',       // v1: infomercial.
 				'Style: premium scientific lifestyle',    // v2: photography.
-			];
-			$current = get_option( 'prautoblogger_image_style_suffix', '' );
-			$is_old  = ( '' === $current );
+			);
+			$current            = get_option( 'prautoblogger_image_style_suffix', '' );
+			$is_old             = ( '' === $current );
 			foreach ( $known_old_prefixes as $prefix ) {
 				if ( false !== strpos( $current, $prefix ) ) {
 					$is_old = true;
@@ -237,7 +244,7 @@ class PRAutoBlogger {
 
 		// One-time migration: re-wrap existing encrypted values with "enc:" prefix.
 		if ( ! get_option( 'prautoblogger_migrated_enc_prefix' ) ) {
-			$enc_options = [ 'prautoblogger_openrouter_api_key', 'prautoblogger_ga4_credentials_json', 'prautoblogger_runware_api_key' ];
+			$enc_options = array( 'prautoblogger_openrouter_api_key', 'prautoblogger_ga4_credentials_json', 'prautoblogger_runware_api_key' );
 			foreach ( $enc_options as $opt ) {
 				$val = get_option( $opt, '' );
 				if ( '' !== $val && ! PRAutoBlogger_Encryption::is_encrypted( $val ) ) {
@@ -255,10 +262,10 @@ class PRAutoBlogger {
 	 * @return array<string, array{interval: int, display: string}>
 	 */
 	public function filter_add_cron_schedules( array $schedules ): array {
-		$schedules['prautoblogger_six_hours'] = [
+		$schedules['prautoblogger_six_hours'] = array(
 			'interval' => 6 * HOUR_IN_SECONDS,
 			'display'  => __( 'Every Six Hours', 'prautoblogger' ),
-		];
+		);
 		return $schedules;
 	}
 
@@ -284,17 +291,22 @@ class PRAutoBlogger {
 	// ── Backward-compatible proxies ──
 
 	/** @see PRAutoBlogger_Executor::on_daily_generation() */
-	public function on_daily_generation(): void { $this->executor->on_daily_generation(); }
+	public function on_daily_generation(): void {
+		$this->executor->on_daily_generation(); }
 
 	/** @see PRAutoBlogger_Executor::on_collect_metrics() */
-	public function on_collect_metrics(): void { $this->executor->on_collect_metrics(); }
+	public function on_collect_metrics(): void {
+		$this->executor->on_collect_metrics(); }
 
 	/** @see PRAutoBlogger_Executor::on_ajax_generate_now() */
-	public function on_ajax_generate_now(): void { $this->executor->on_ajax_generate_now(); }
+	public function on_ajax_generate_now(): void {
+		$this->executor->on_ajax_generate_now(); }
 
 	/** @see PRAutoBlogger_Ajax_Handlers::on_ajax_test_connection() */
-	public function on_ajax_test_connection(): void { $this->ajax_handlers->on_ajax_test_connection(); }
+	public function on_ajax_test_connection(): void {
+		$this->ajax_handlers->on_ajax_test_connection(); }
 
 	/** @see PRAutoBlogger_Executor::get_model_registry() */
-	public function get_model_registry(): PRAutoBlogger_OpenRouter_Model_Registry { return $this->executor->get_model_registry(); }
+	public function get_model_registry(): PRAutoBlogger_OpenRouter_Model_Registry {
+		return $this->executor->get_model_registry(); }
 }

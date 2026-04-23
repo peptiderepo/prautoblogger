@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Renders the interactive model-picker field for OpenRouter models.
  *
  * What: a button showing the current model's name + pricing. Clicking it
@@ -25,9 +27,8 @@ class PRAutoBlogger_OpenRouter_Model_Field {
 	 */
 	public static function render( string $id, string $value, array $args ): void {
 		$capability    = $args['capability'] ?? 'text→text';
-		$display_name  = $value ?: __( '— Select a model —', 'prautoblogger' );
+		$display_name  = '' !== $value ? $value : __( '— Select a model —', 'prautoblogger' );
 		$display_price = '';
-
 		if ( 'image_generation' === $capability ) {
 			// Resolve from the static image model list defined in settings.
 			$image_models = PRAutoBlogger_Settings_Fields_Extended::get_image_models();

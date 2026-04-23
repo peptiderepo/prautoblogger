@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Daily cron that retroactively amortizes orphan `llm_research` rows.
  *
  * When a pipeline run dies between post creation and the final
@@ -63,7 +65,11 @@ class PRAutoBlogger_Research_Reaper {
 	 * @return array{reaped: int, deleted: int, skipped: int}
 	 */
 	public static function reap(): array {
-		$stats = [ 'reaped' => 0, 'deleted' => 0, 'skipped' => 0 ];
+		$stats = array(
+			'reaped'  => 0,
+			'deleted' => 0,
+			'skipped' => 0,
+		);
 
 		try {
 			global $wpdb;
@@ -72,7 +78,7 @@ class PRAutoBlogger_Research_Reaper {
 
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 			$orphans = $wpdb->get_results(
-				$wpdb->prepare(
+				$wpdb->prepare(  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 					"SELECT id, run_id, created_at FROM {$log_table}
 					WHERE stage = 'llm_research' AND post_id IS NULL AND created_at < %s",
 					$grace
@@ -115,10 +121,10 @@ class PRAutoBlogger_Research_Reaper {
 		if ( '' === $run_id ) {
 			if ( $is_stale ) {
 				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-				$wpdb->delete( $log_table, [ 'id' => (int) $orphan->id ] );
-				$stats['deleted']++;
+				$wpdb->delete( $log_table, array( 'id' => (int) $orphan->id ) );
+				++$stats['deleted'];
 			} else {
-				$stats['skipped']++;
+				++$stats['skipped'];
 			}
 			return;
 		}
@@ -130,22 +136,22 @@ class PRAutoBlogger_Research_Reaper {
 				sprintf( 'Reaped research cost across %d articles for run %s.', count( $post_ids ), $run_id ),
 				'cost-tracker'
 			);
-			$stats['reaped']++;
+			++$stats['reaped'];
 			return;
 		}
 
 		if ( $is_stale ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-			$wpdb->delete( $log_table, [ 'id' => (int) $orphan->id ] );
+			$wpdb->delete( $log_table, array( 'id' => (int) $orphan->id ) );
 			PRAutoBlogger_Logger::instance()->info(
 				sprintf( 'Deleted 7-day-stale orphan research row for run %s — no articles to attribute.', $run_id ),
 				'cost-tracker'
 			);
-			$stats['deleted']++;
+			++$stats['deleted'];
 			return;
 		}
 
-		$stats['skipped']++;
+		++$stats['skipped'];
 	}
 
 	/**
@@ -156,15 +162,17 @@ class PRAutoBlogger_Research_Reaper {
 	 * @return int[] Distinct post IDs.
 	 */
 	private static function find_posts_for_run_id( string $run_id ): array {
-		$meta_ids = get_posts( [
-			'post_type'        => 'any',
-			'post_status'      => 'any',
-			'meta_key'         => '_prautoblogger_run_id',
-			'meta_value'       => $run_id,
-			'fields'           => 'ids',
-			'posts_per_page'   => -1,
-			'suppress_filters' => true,
-		] );
+		$meta_ids = get_posts(
+			array(
+				'post_type'        => 'any',
+				'post_status'      => 'any',
+				'meta_key'         => '_prautoblogger_run_id',
+				'meta_value'       => $run_id,
+				'fields'           => 'ids',
+				'posts_per_page'   => -1,
+				'suppress_filters' => true,
+			)
+		);
 		if ( is_array( $meta_ids ) && ! empty( $meta_ids ) ) {
 			return array_map( 'intval', $meta_ids );
 		}
@@ -173,11 +181,11 @@ class PRAutoBlogger_Research_Reaper {
 		$log_table = $wpdb->prefix . 'prautoblogger_generation_log';
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$ids = $wpdb->get_col(
-			$wpdb->prepare(
+			$wpdb->prepare(  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				"SELECT DISTINCT post_id FROM {$log_table} WHERE run_id = %s AND post_id IS NOT NULL",
 				$run_id
 			)
 		);
-		return is_array( $ids ) ? array_map( 'intval', $ids ) : [];
+		return is_array( $ids ) ? array_map( 'intval', $ids ) : array();
 	}
 }

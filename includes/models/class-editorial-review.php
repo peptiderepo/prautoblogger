@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Value object representing the chief editor agent's review of generated content.
  *
  * Triggered by: Chief_Editor creates these; Publisher consumes them.
@@ -30,12 +32,12 @@ class PRAutoBlogger_Editorial_Review {
 	 * } $data
 	 */
 	public function __construct( array $data ) {
-		$this->verdict          = $data['verdict']; // 'approved', 'revised', 'rejected'
-		$this->notes            = $data['notes'];
-		$this->revised_content  = $data['revised_content'] ?? null;
-		$this->quality_score    = (float) ( $data['quality_score'] ?? 0.0 );
-		$this->seo_score        = (float) ( $data['seo_score'] ?? 0.0 );
-		$this->issues           = $data['issues'] ?? [];
+		$this->verdict         = $data['verdict']; // 'approved', 'revised', 'rejected'
+		$this->notes           = $data['notes'];
+		$this->revised_content = $data['revised_content'] ?? null;
+		$this->quality_score   = (float) ( $data['quality_score'] ?? 0.0 );
+		$this->seo_score       = (float) ( $data['seo_score'] ?? 0.0 );
+		$this->issues          = $data['issues'] ?? array();
 	}
 
 	public function get_verdict(): string {

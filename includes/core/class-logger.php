@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Structured logging with configurable verbosity levels.
  *
  * Writes log entries to a custom database table and optionally forwards
@@ -26,19 +28,19 @@ class PRAutoBlogger_Logger {
 	public const LEVEL_INFO    = 2;
 	public const LEVEL_DEBUG   = 3;
 
-	private const LEVEL_MAP = [
+	private const LEVEL_MAP = array(
 		'error'   => self::LEVEL_ERROR,
 		'warning' => self::LEVEL_WARNING,
 		'info'    => self::LEVEL_INFO,
 		'debug'   => self::LEVEL_DEBUG,
-	];
+	);
 
-	private const LEVEL_LABELS = [
+	private const LEVEL_LABELS = array(
 		self::LEVEL_ERROR   => 'error',
 		self::LEVEL_WARNING => 'warning',
 		self::LEVEL_INFO    => 'info',
 		self::LEVEL_DEBUG   => 'debug',
-	];
+	);
 
 	/** Singleton instance. */
 	private static ?self $instance = null;
@@ -66,7 +68,7 @@ class PRAutoBlogger_Logger {
 	 * @param string $context  Origin class or pipeline stage.
 	 * @param array<string, mixed> $meta Optional structured data.
 	 */
-	public function error( string $message, string $context = '', array $meta = [] ): void {
+	public function error( string $message, string $context = '', array $meta = array() ): void {
 		$this->log( self::LEVEL_ERROR, $message, $context, $meta );
 	}
 
@@ -77,7 +79,7 @@ class PRAutoBlogger_Logger {
 	 * @param string $context
 	 * @param array<string, mixed> $meta
 	 */
-	public function warning( string $message, string $context = '', array $meta = [] ): void {
+	public function warning( string $message, string $context = '', array $meta = array() ): void {
 		$this->log( self::LEVEL_WARNING, $message, $context, $meta );
 	}
 
@@ -88,7 +90,7 @@ class PRAutoBlogger_Logger {
 	 * @param string $context
 	 * @param array<string, mixed> $meta
 	 */
-	public function info( string $message, string $context = '', array $meta = [] ): void {
+	public function info( string $message, string $context = '', array $meta = array() ): void {
 		$this->log( self::LEVEL_INFO, $message, $context, $meta );
 	}
 
@@ -99,7 +101,7 @@ class PRAutoBlogger_Logger {
 	 * @param string $context
 	 * @param array<string, mixed> $meta
 	 */
-	public function debug( string $message, string $context = '', array $meta = [] ): void {
+	public function debug( string $message, string $context = '', array $meta = array() ): void {
 		$this->log( self::LEVEL_DEBUG, $message, $context, $meta );
 	}
 
@@ -134,13 +136,16 @@ class PRAutoBlogger_Logger {
 		$table = $wpdb->prefix . 'prautoblogger_event_log';
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$wpdb->insert( $table, [
-			'level'      => $label,
-			'context'    => substr( $context, 0, 100 ),
-			'message'    => substr( $message, 0, 2000 ),
-			'meta_json'  => ! empty( $meta ) ? wp_json_encode( $meta ) : null,
-			'created_at' => current_time( 'mysql' ),
-		] );
+		$wpdb->insert(
+			$table,
+			array(
+				'level'      => $label,
+				'context'    => substr( $context, 0, 100 ),
+				'message'    => substr( $message, 0, 2000 ),
+				'meta_json'  => ! empty( $meta ) ? wp_json_encode( $meta ) : null,
+				'created_at' => current_time( 'mysql' ),
+			)
+		);
 	}
 
 	/**
@@ -161,8 +166,8 @@ class PRAutoBlogger_Logger {
 	): array {
 		global $wpdb;
 		$table  = $wpdb->prefix . 'prautoblogger_event_log';
-		$where  = [];
-		$params = [];
+		$where  = array();
+		$params = array();
 
 		if ( 'all' !== $level_filter && isset( self::LEVEL_MAP[ $level_filter ] ) ) {
 			$where[]  = 'level = %s';
@@ -181,10 +186,10 @@ class PRAutoBlogger_Logger {
 
 		// Total count.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		$total = (int) $wpdb->get_var(
-			empty( $params )
-				? "SELECT COUNT(*) FROM {$table} {$where_sql}"
-				: $wpdb->prepare( "SELECT COUNT(*) FROM {$table} {$where_sql}", ...$params )
+		$total = (int) $wpdb->get_var(  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			empty( $params )  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
+				? "SELECT COUNT(*) FROM {$table} {$where_sql}"  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
+			: $wpdb->prepare( "SELECT COUNT(*) FROM {$table} {$where_sql}", ...$params )  // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 		);
 
 		// Rows.
@@ -194,14 +199,17 @@ class PRAutoBlogger_Logger {
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		$rows = $wpdb->get_results(
-			$wpdb->prepare(
+			$wpdb->prepare(  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				"SELECT * FROM {$table} {$where_sql} ORDER BY created_at DESC LIMIT %d OFFSET %d",
 				...$query_params
 			),
 			ARRAY_A
 		);
 
-		return [ 'rows' => $rows ?: [], 'total' => $total ];
+		return array(
+			'rows'  => $rows ?? array(),
+			'total' => $total,
+		);
 	}
 
 	/**
@@ -216,7 +224,7 @@ class PRAutoBlogger_Logger {
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		return (int) $wpdb->query(
-			$wpdb->prepare(
+			$wpdb->prepare(  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				"DELETE FROM {$table} WHERE created_at < %s",
 				gmdate( 'Y-m-d H:i:s', time() - ( $days * DAY_IN_SECONDS ) )
 			)

@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Single-shot retry of NSFW-blocked image slots with a sanitized prompt.
  *
  * When an image provider rejects a prompt via its content filter, its
@@ -106,15 +108,15 @@ class PRAutoBlogger_Image_NSFW_Retry {
 				'image_pipeline'
 			);
 
-			$retry_request = [
+			$retry_request = array(
 				'prompt'  => $fallback['prompt'],
-				'width'   => (int) ( $batch_requests[ $key ]['width']  ?? 0 ),
+				'width'   => (int) ( $batch_requests[ $key ]['width'] ?? 0 ),
 				'height'  => (int) ( $batch_requests[ $key ]['height'] ?? 0 ),
-				'options' => $batch_requests[ $key ]['options'] ?? [],
-			];
+				'options' => $batch_requests[ $key ]['options'] ?? array(),
+			);
 
-			$retry_results = $this->provider->generate_image_batch( [ $key => $retry_request ] );
-			$retry_entry   = $retry_results[ $key ] ?? [ 'error' => 'Retry provider returned no result.' ];
+			$retry_results = $this->provider->generate_image_batch( array( $key => $retry_request ) );
+			$retry_entry   = $retry_results[ $key ] ?? array( 'error' => 'Retry provider returned no result.' );
 
 			if ( isset( $retry_entry['error'] ) ) {
 				PRAutoBlogger_Logger::instance()->warning(

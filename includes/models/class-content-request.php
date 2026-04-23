@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Value object encapsulating all parameters for a content generation request.
  *
  * Bundles the article idea with user-configured generation preferences
@@ -30,7 +32,7 @@ class PRAutoBlogger_Content_Request {
 		int $min_word_count,
 		int $max_word_count,
 		string $niche_description,
-		array $topic_exclusions = [],
+		array $topic_exclusions = array(),
 		string $writing_instructions = ''
 	) {
 		$this->idea                 = $idea;

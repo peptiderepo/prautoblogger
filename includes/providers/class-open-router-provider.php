@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * OpenRouter API integration for all LLM calls (analysis, writing, editing).
  *
  * OpenRouter provides a unified API to access models from Anthropic, OpenAI,
@@ -50,7 +52,7 @@ class PRAutoBlogger_OpenRouter_Provider implements PRAutoBlogger_LLM_Provider_In
 	 *
 	 * @throws \RuntimeException On API error after retries exhausted.
 	 */
-	public function send_chat_completion( array $messages, string $model, array $options = [] ): array {
+	public function send_chat_completion( array $messages, string $model, array $options = array() ): array {
 		$api_key = $this->get_api_key();
 		if ( '' === $api_key ) {
 			throw new \RuntimeException(
@@ -74,10 +76,10 @@ class PRAutoBlogger_OpenRouter_Provider implements PRAutoBlogger_LLM_Provider_In
 			);
 		}
 
-		$body = [
+		$body = array(
 			'model'    => $model,
 			'messages' => $messages,
-		];
+		);
 
 		if ( isset( $options['temperature'] ) ) {
 			$body['temperature'] = $options['temperature'];
@@ -93,10 +95,10 @@ class PRAutoBlogger_OpenRouter_Provider implements PRAutoBlogger_LLM_Provider_In
 		if ( isset( $options['reasoning'] ) ) {
 			$body['reasoning'] = $options['reasoning'];
 		} elseif ( '1' === get_option( 'prautoblogger_reasoning_enabled', '0' ) ) {
-			$body['reasoning'] = [
+			$body['reasoning'] = array(
 				'enabled' => true,
 				'effort'  => get_option( 'prautoblogger_reasoning_effort', 'medium' ),
-			];
+			);
 		}
 
 		$last_error = '';
@@ -107,8 +109,8 @@ class PRAutoBlogger_OpenRouter_Provider implements PRAutoBlogger_LLM_Provider_In
 		$cache_ttl   = $config->get_cache_ttl_seconds();
 		$via_gateway = $config->is_via_gateway();
 
-		$builder         = new PRAutoBlogger_OpenRouter_Request_Builder();
-		$request_headers = $builder->build_headers( $api_key, $via_gateway, $cache_ttl );
+		$builder          = new PRAutoBlogger_OpenRouter_Request_Builder();
+		$request_headers  = $builder->build_headers( $api_key, $via_gateway, $cache_ttl );
 		$curl_auth_filter = $builder->register_curl_auth_filter( $request_headers, $base_host );
 
 		try {
@@ -117,11 +119,11 @@ class PRAutoBlogger_OpenRouter_Provider implements PRAutoBlogger_LLM_Provider_In
 			for ( $attempt = 1; $attempt <= PRAUTOBLOGGER_MAX_RETRIES; $attempt++ ) {
 				$response = wp_remote_post(
 					$base_url . '/chat/completions',
-					[
+					array(
 						'timeout' => PRAUTOBLOGGER_API_TIMEOUT_SECONDS,
 						'headers' => $request_headers,
 						'body'    => wp_json_encode( $body ),
-					]
+					)
 				);
 
 				if ( is_wp_error( $response ) ) {

@@ -38,6 +38,17 @@ abstract class BaseTestCase extends TestCase {
 
         // home_url is used by OpenRouter provider in request headers.
         Functions\when( 'home_url' )->justReturn( 'https://test.example.com' );
+        // post_type_exists is used by PeptideLinker to check if PR Core is active.
+        // Stub returns false to simulate when PR Core is not installed.
+        Functions\when( 'post_type_exists' )->justReturn( false );
+
+        // wp_salt is used by PRAutoBlogger_Encryption to derive encryption keys.
+        // Used when decrypting stored API keys. Stub returns a deterministic value.
+        Functions\when( 'wp_salt' )->justReturn( 'test-salt-deterministic-value' );
+
+        // wp_generate_uuid4 is used by CostTracker, ImageSideloader, and Runware provider.
+        // Stub returns a deterministic UUID so tests are reproducible.
+        Functions\when( 'wp_generate_uuid4' )->justReturn( '00000000-0000-0000-0000-000000000000' );
 
         // current_time is called by Logger on every log write. Stub returns a
         // deterministic timestamp so tests are reproducible.

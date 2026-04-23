@@ -228,6 +228,12 @@ class PublisherTest extends BaseTestCase {
     public function test_publish_links_generation_logs_by_run_id(): void {
         Functions\when( 'wp_insert_post' )->justReturn( 48 );
 
+        // Create an idea fixture without source_ids to avoid triggering SourceCollector
+        // queries that would overwrite captured_query in the mock.
+        $fixture = $this->get_article_idea_fixture();
+        $fixture['source_ids'] = [];
+        $idea = new \PRAutoBlogger_Article_Idea( $fixture );
+
         $captured_query = null;
         $wpdb = $this->create_mock_wpdb();
         $wpdb->method( 'prepare' )->willReturnCallback( function ( $sql, ...$args ) use ( &$captured_query ) {
@@ -238,7 +244,7 @@ class PublisherTest extends BaseTestCase {
         $GLOBALS['wpdb'] = $wpdb;
 
         $publisher = new \PRAutoBlogger_Publisher();
-        $publisher->publish( '<p>Content</p>', $this->idea, $this->review, 'run_link_test' );
+        $publisher->publish( '<p>Content</p>', $idea, $this->review, 'run_link_test' );
 
         // Should use run_id-based query, not timestamp-based.
         $this->assertStringContainsString( 'run_id', $captured_query );

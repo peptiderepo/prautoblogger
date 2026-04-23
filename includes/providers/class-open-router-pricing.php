@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * OpenRouter model pricing and availability lookup.
  *
  * Manages pricing tables, model lists, and cost estimation. Decoupled from
@@ -21,15 +23,36 @@ class PRAutoBlogger_OpenRouter_Pricing {
 	 *
 	 * @var array<string, array{prompt: float, completion: float}>
 	 */
-	private const MODEL_PRICING = [
-		'anthropic/claude-3.5-haiku'  => [ 'prompt' => 0.80,  'completion' => 4.00 ],
-		'anthropic/claude-sonnet-4'   => [ 'prompt' => 3.00,  'completion' => 15.00 ],
-		'anthropic/claude-opus-4'     => [ 'prompt' => 15.00, 'completion' => 75.00 ],
-		'openai/gpt-4o'              => [ 'prompt' => 2.50,  'completion' => 10.00 ],
-		'openai/gpt-4o-mini'         => [ 'prompt' => 0.15,  'completion' => 0.60 ],
-		'google/gemini-2.0-flash'    => [ 'prompt' => 0.10,  'completion' => 0.40 ],
-		'meta-llama/llama-3.3-70b'   => [ 'prompt' => 0.40,  'completion' => 0.40 ],
-	];
+	private const MODEL_PRICING = array(
+		'anthropic/claude-3.5-haiku' => array(
+			'prompt'     => 0.80,
+			'completion' => 4.00,
+		),
+		'anthropic/claude-sonnet-4'  => array(
+			'prompt'     => 3.00,
+			'completion' => 15.00,
+		),
+		'anthropic/claude-opus-4'    => array(
+			'prompt'     => 15.00,
+			'completion' => 75.00,
+		),
+		'openai/gpt-4o'              => array(
+			'prompt'     => 2.50,
+			'completion' => 10.00,
+		),
+		'openai/gpt-4o-mini'         => array(
+			'prompt'     => 0.15,
+			'completion' => 0.60,
+		),
+		'google/gemini-2.0-flash'    => array(
+			'prompt'     => 0.10,
+			'completion' => 0.40,
+		),
+		'meta-llama/llama-3.3-70b'   => array(
+			'prompt'     => 0.40,
+			'completion' => 0.40,
+		),
+	);
 
 	/**
 	 * Get available models from OpenRouter's /models endpoint.
@@ -48,7 +71,7 @@ class PRAutoBlogger_OpenRouter_Pricing {
 
 		$api_key = $this->get_api_key();
 		if ( '' === $api_key ) {
-			return [];
+			return array();
 		}
 
 		// Belt-and-suspenders: inject Authorization at cURL level (see OpenRouter_Provider).
@@ -58,43 +81,47 @@ class PRAutoBlogger_OpenRouter_Pricing {
 				return;
 			}
 			// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt
-			curl_setopt( $handle, CURLOPT_HTTPHEADER, [
-				'Authorization: ' . $auth_header_value,
-			] );
+			curl_setopt(
+				$handle,
+				CURLOPT_HTTPHEADER,
+				array(
+					'Authorization: ' . $auth_header_value,
+				)
+			);
 		};
 		add_action( 'http_api_curl', $curl_auth_filter_mod, 99, 3 );
 
 		$response = wp_remote_get(
 			'https://openrouter.ai/api/v1/models',
-			[
+			array(
 				'timeout' => 30,
-				'headers' => [
+				'headers' => array(
 					'Authorization' => 'Bearer ' . $api_key,
-				],
-			]
+				),
+			)
 		);
 
 		remove_action( 'http_api_curl', $curl_auth_filter_mod, 99 );
 
 		if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
 			PRAutoBlogger_Logger::instance()->warning( 'Failed to fetch OpenRouter models list.', 'openrouter' );
-			return [];
+			return array();
 		}
 
 		$data   = json_decode( wp_remote_retrieve_body( $response ), true );
-		$models = [];
+		$models = array();
 
 		if ( isset( $data['data'] ) && is_array( $data['data'] ) ) {
 			foreach ( $data['data'] as $model ) {
-				$models[] = [
+				$models[] = array(
 					'id'             => $model['id'] ?? '',
 					'name'           => $model['name'] ?? $model['id'] ?? '',
 					'context_length' => (int) ( $model['context_length'] ?? 0 ),
-					'pricing'        => [
+					'pricing'        => array(
 						'prompt'     => (float) ( $model['pricing']['prompt'] ?? 0 ) * 1000000,
 						'completion' => (float) ( $model['pricing']['completion'] ?? 0 ) * 1000000,
-					],
-				];
+					),
+				);
 			}
 		}
 
@@ -135,7 +162,10 @@ class PRAutoBlogger_OpenRouter_Pricing {
 		if ( null === $pricing ) {
 			// Unknown model — use a conservative estimate.
 			PRAutoBlogger_Logger::instance()->warning( "Unknown model pricing for '{$model}'. Using conservative estimate.", 'openrouter' );
-			$pricing = [ 'prompt' => 10.0, 'completion' => 30.0 ];
+			$pricing = array(
+				'prompt'     => 10.0,
+				'completion' => 30.0,
+			);
 		}
 
 		return ( $prompt_tokens * $pricing['prompt'] / 1000000 )

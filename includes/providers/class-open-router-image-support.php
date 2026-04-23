@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Support helpers for the OpenRouter image provider — API key lookup,
  * response parsing, retry backoff, and logging.
  *
@@ -69,7 +71,7 @@ class PRAutoBlogger_OpenRouter_Image_Support {
 			);
 		}
 
-		$images = $decoded['choices'][0]['message']['images'] ?? [];
+		$images = $decoded['choices'][0]['message']['images'] ?? array();
 		if ( empty( $images ) ) {
 			throw new \RuntimeException(
 				esc_html__( 'OpenRouter response contained no images.', 'prautoblogger' )

@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * AJAX endpoint handlers for PRAutoBlogger admin actions.
  *
  * What: Handles image generation, model registry, and connection test AJAX requests.
@@ -38,7 +40,7 @@ class PRAutoBlogger_Ajax_Handlers {
 		check_ajax_referer( 'prautoblogger_generate_image', 'nonce' );
 
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'prautoblogger' ) ], 403 );
+			wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'prautoblogger' ) ), 403 );
 			return;
 		}
 
@@ -48,29 +50,29 @@ class PRAutoBlogger_Ajax_Handlers {
 
 		$post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
 		if ( 0 === $post_id ) {
-			wp_send_json_error( [ 'message' => __( 'Missing post_id parameter.', 'prautoblogger' ) ] );
+			wp_send_json_error( array( 'message' => __( 'Missing post_id parameter.', 'prautoblogger' ) ) );
 			return;
 		}
 
 		$post = get_post( $post_id );
 		if ( ! $post ) {
-			wp_send_json_error( [ 'message' => sprintf( __( 'Post %d not found.', 'prautoblogger' ), $post_id ) ] );
+			wp_send_json_error( array( 'message' => sprintf( __( 'Post %d not found.', 'prautoblogger' ), $post_id ) ) );
 			return;
 		}
 
 		try {
 			$pipeline     = new PRAutoBlogger_Image_Pipeline();
-			$article_data = [
+			$article_data = array(
 				'post_title'   => $post->post_title,
 				'post_content' => $post->post_content,
-			];
+			);
 
 			// Retrieve original source IDs from post meta so Image B can generate
 			// a source-driven prompt even on retroactive regeneration.
 			$source_ids_json = get_post_meta( $post_id, '_prautoblogger_source_ids', true );
-			$source_ids      = is_string( $source_ids_json ) ? json_decode( $source_ids_json, true ) : [];
+			$source_ids      = is_string( $source_ids_json ) ? json_decode( $source_ids_json, true ) : array();
 			$source_data     = ( new PRAutoBlogger_Source_Collector() )->get_source_data_for_image(
-				is_array( $source_ids ) ? array_map( 'absint', $source_ids ) : []
+				is_array( $source_ids ) ? array_map( 'absint', $source_ids ) : array()
 			);
 
 			// The pipeline sets featured image and Image B meta internally.
@@ -82,7 +84,7 @@ class PRAutoBlogger_Ajax_Handlers {
 				sprintf( 'Retroactive image gen %s for post %d: %s', get_class( $e ), $post_id, $e->getMessage() ),
 				'image_pipeline'
 			);
-			wp_send_json_error( [ 'message' => $e->getMessage() ] );
+			wp_send_json_error( array( 'message' => $e->getMessage() ) );
 		}
 	}
 
@@ -98,7 +100,7 @@ class PRAutoBlogger_Ajax_Handlers {
 		check_ajax_referer( 'prautoblogger_get_models', 'nonce' );
 
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'prautoblogger' ) ], 403 );
+			wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'prautoblogger' ) ), 403 );
 			return;
 		}
 
@@ -123,22 +125,28 @@ class PRAutoBlogger_Ajax_Handlers {
 	public function on_ajax_test_connection(): void {
 		check_ajax_referer( 'prautoblogger_test_connection', 'nonce' );
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'prautoblogger' ) ], 403 );
+			wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'prautoblogger' ) ), 403 );
 			return;
 		}
 
 		$service = isset( $_POST['service'] ) ? sanitize_text_field( wp_unslash( $_POST['service'] ) ) : '';
-		$results = [];
+		$results = array();
 
 		if ( 'openrouter' === $service || 'all' === $service ) {
 			$results['openrouter'] = ( new PRAutoBlogger_OpenRouter_Provider() )->validate_credentials_detailed();
 		}
 		if ( 'reddit' === $service || 'all' === $service ) {
-			$reddit  = new PRAutoBlogger_Reddit_Provider();
-			$is_ok   = $reddit->validate_credentials();
+			$reddit            = new PRAutoBlogger_Reddit_Provider();
+			$is_ok             = $reddit->validate_credentials();
 			$results['reddit'] = $is_ok
-				? [ 'status' => 'ok', 'message' => __( 'Reddit source available (RSS primary, .json fallback).', 'prautoblogger' ) ]
-				: [ 'status' => 'error', 'message' => __( 'Reddit sources unreachable (both RSS and .json failed).', 'prautoblogger' ) ];
+				? array(
+					'status'  => 'ok',
+					'message' => __( 'Reddit source available (RSS primary, .json fallback).', 'prautoblogger' ),
+				)
+				: array(
+					'status'  => 'error',
+					'message' => __( 'Reddit sources unreachable (both RSS and .json failed).', 'prautoblogger' ),
+				);
 		}
 		wp_send_json_success( $results );
 	}

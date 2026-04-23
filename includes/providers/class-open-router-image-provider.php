@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * OpenRouter image provider — model-agnostic, works with any image model.
  *
  * Triggered by: PRAutoBlogger_Image_Pipeline during content generation.
@@ -43,7 +45,7 @@ class PRAutoBlogger_OpenRouter_Image_Provider implements PRAutoBlogger_Image_Pro
 	 *
 	 * Retries 5xx/429 with exponential backoff; 4xx (except 429) fail immediately.
 	 */
-	public function generate_image( string $prompt, int $width, int $height, array $options = [] ): array {
+	public function generate_image( string $prompt, int $width, int $height, array $options = array() ): array {
 		$this->assert_valid_dimensions( $width, $height );
 		$prompt = trim( $prompt );
 		if ( '' === $prompt ) {
@@ -66,7 +68,7 @@ class PRAutoBlogger_OpenRouter_Image_Provider implements PRAutoBlogger_Image_Pro
 
 		$curl_filter = $this->request_builder->register_curl_auth_filter(
 			$headers,
-			wp_parse_url( $base_url, PHP_URL_HOST ) ?: ''
+			wp_parse_url( $base_url, PHP_URL_HOST ) ?? ''
 		);
 
 		$started_at = microtime( true );
@@ -74,11 +76,14 @@ class PRAutoBlogger_OpenRouter_Image_Provider implements PRAutoBlogger_Image_Pro
 
 		try {
 			for ( $attempt = 1; $attempt <= PRAUTOBLOGGER_MAX_RETRIES; $attempt++ ) {
-				$response = wp_remote_post( $url, [
-					'timeout' => PRAUTOBLOGGER_API_TIMEOUT_SECONDS,
-					'headers' => $headers,
-					'body'    => wp_json_encode( $body ),
-				] );
+				$response = wp_remote_post(
+					$url,
+					array(
+						'timeout' => PRAUTOBLOGGER_API_TIMEOUT_SECONDS,
+						'headers' => $headers,
+						'body'    => wp_json_encode( $body ),
+					)
+				);
 
 				if ( is_wp_error( $response ) ) {
 					$last_error = $response->get_error_message();
@@ -116,7 +121,7 @@ class PRAutoBlogger_OpenRouter_Image_Provider implements PRAutoBlogger_Image_Pro
 
 				$image_bytes = $this->support->extract_image_bytes( $raw );
 
-				return [
+				return array(
 					'bytes'      => $image_bytes,
 					'mime_type'  => 'image/png',
 					'width'      => $width,
@@ -125,7 +130,7 @@ class PRAutoBlogger_OpenRouter_Image_Provider implements PRAutoBlogger_Image_Pro
 					'seed'       => null,
 					'cost_usd'   => $this->pricing->estimate_cost( $width, $height, $model ),
 					'latency_ms' => (int) ( ( microtime( true ) - $started_at ) * 1000 ),
-				];
+				);
 			}
 		} finally {
 			remove_action( 'http_api_curl', $curl_filter, 99 );
@@ -176,7 +181,7 @@ class PRAutoBlogger_OpenRouter_Image_Provider implements PRAutoBlogger_Image_Pro
 	}
 
 	/** {@inheritDoc} */
-	public function estimate_cost( int $width, int $height, array $options = [] ): float {
+	public function estimate_cost( int $width, int $height, array $options = array() ): float {
 		$model = $this->pricing->resolve_model( (string) ( $options['model'] ?? '' ) );
 		return $this->pricing->estimate_cost( $width, $height, $model );
 	}
@@ -191,32 +196,41 @@ class PRAutoBlogger_OpenRouter_Image_Provider implements PRAutoBlogger_Image_Pro
 		try {
 			$api_key = $this->support->get_api_key();
 		} catch ( \RuntimeException $e ) {
-			return [ 'status' => 'error', 'message' => $e->getMessage() ];
+			return array(
+				'status'  => 'error',
+				'message' => $e->getMessage(),
+			);
 		}
 
-		$response = wp_remote_get( 'https://openrouter.ai/api/v1/auth/key', [
-			'timeout' => 15,
-			'headers' => [ 'Authorization' => 'Bearer ' . $api_key ],
-		] );
+		$response = wp_remote_get(
+			'https://openrouter.ai/api/v1/auth/key',
+			array(
+				'timeout' => 15,
+				'headers' => array( 'Authorization' => 'Bearer ' . $api_key ),
+			)
+		);
 
 		if ( is_wp_error( $response ) ) {
-			return [
+			return array(
 				'status'  => 'error',
 				'message' => __( 'Could not reach OpenRouter API.', 'prautoblogger' ),
 				'debug'   => $response->get_error_message(),
-			];
+			);
 		}
 
 		$status = (int) wp_remote_retrieve_response_code( $response );
 		if ( 200 === $status ) {
-			return [ 'status' => 'ok', 'message' => __( 'OpenRouter API key valid.', 'prautoblogger' ) ];
+			return array(
+				'status'  => 'ok',
+				'message' => __( 'OpenRouter API key valid.', 'prautoblogger' ),
+			);
 		}
 
-		return [
+		return array(
 			'status'  => 'error',
 			'message' => sprintf( __( 'OpenRouter returned HTTP %d.', 'prautoblogger' ), $status ),
 			'debug'   => substr( (string) wp_remote_retrieve_body( $response ), 0, 200 ),
-		];
+		);
 	}
 
 	/**
@@ -224,34 +238,62 @@ class PRAutoBlogger_OpenRouter_Image_Provider implements PRAutoBlogger_Image_Pro
 	 *
 	 * @var array<int, array{w: int, h: int, ratio: float}>
 	 */
-	private const STANDARD_ASPECTS = [
-		[ 'w' => 1,  'h' => 1,  'ratio' => 1.0 ],
-		[ 'w' => 3,  'h' => 2,  'ratio' => 1.5 ],
-		[ 'w' => 2,  'h' => 3,  'ratio' => 0.6667 ],
-		[ 'w' => 4,  'h' => 3,  'ratio' => 1.3333 ],
-		[ 'w' => 3,  'h' => 4,  'ratio' => 0.75 ],
-		[ 'w' => 16, 'h' => 9,  'ratio' => 1.7778 ],
-		[ 'w' => 9,  'h' => 16, 'ratio' => 0.5625 ],
-	];
+	private const STANDARD_ASPECTS = array(
+		array(
+			'w'     => 1,
+			'h'     => 1,
+			'ratio' => 1.0,
+		),
+		array(
+			'w'     => 3,
+			'h'     => 2,
+			'ratio' => 1.5,
+		),
+		array(
+			'w'     => 2,
+			'h'     => 3,
+			'ratio' => 0.6667,
+		),
+		array(
+			'w'     => 4,
+			'h'     => 3,
+			'ratio' => 1.3333,
+		),
+		array(
+			'w'     => 3,
+			'h'     => 4,
+			'ratio' => 0.75,
+		),
+		array(
+			'w'     => 16,
+			'h'     => 9,
+			'ratio' => 1.7778,
+		),
+		array(
+			'w'     => 9,
+			'h'     => 16,
+			'ratio' => 0.5625,
+		),
+	);
 
 	private function build_request_body( string $prompt, int $width, int $height, string $model ): array {
 		$aspect = $this->snap_aspect_ratio( $width, $height );
 
-		return [
-			'model'      => $model,
-			'messages'   => [
-				[
+		return array(
+			'model'        => $model,
+			'messages'     => array(
+				array(
 					'role'    => 'user',
 					'content' => 'Generate an image: ' . $prompt,
-				],
-			],
+				),
+			),
 			// Use ["image", "text"] — some providers (Gemini) require both
 			// modalities even when we only want the image output.
-			'modalities'   => [ 'image', 'text' ],
-			'image_config' => [
+			'modalities'   => array( 'image', 'text' ),
+			'image_config' => array(
 				'aspect_ratio' => $aspect,
-			],
-		];
+			),
+		);
 	}
 
 	/**
@@ -262,9 +304,9 @@ class PRAutoBlogger_OpenRouter_Image_Provider implements PRAutoBlogger_Image_Pro
 	 * @return string Aspect ratio string like "16:9".
 	 */
 	private function snap_aspect_ratio( int $width, int $height ): string {
-		$target  = $height > 0 ? (float) $width / (float) $height : 1.0;
-		$best    = self::STANDARD_ASPECTS[0];
-		$best_d  = abs( $target - $best['ratio'] );
+		$target = $height > 0 ? (float) $width / (float) $height : 1.0;
+		$best   = self::STANDARD_ASPECTS[0];
+		$best_d = abs( $target - $best['ratio'] );
 
 		foreach ( self::STANDARD_ASPECTS as $candidate ) {
 			$d = abs( $target - $candidate['ratio'] );
@@ -292,7 +334,10 @@ class PRAutoBlogger_OpenRouter_Image_Provider implements PRAutoBlogger_Image_Pro
 			throw new \InvalidArgumentException(
 				sprintf(
 					esc_html__( 'Image dimensions %1$dx%2$d outside supported range (%3$d–%4$d px).', 'prautoblogger' ),
-					$width, $height, self::MIN_DIMENSION_PX, self::MAX_DIMENSION_PX
+					$width,
+					$height,
+					self::MIN_DIMENSION_PX,
+					self::MAX_DIMENSION_PX
 				)
 			);
 		}

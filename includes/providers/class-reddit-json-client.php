@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Reddit HTTP client — fetches posts via RSS (primary) and .json (fallback).
  *
  * RSS feeds are the primary data source because they work reliably from datacenter
@@ -97,13 +99,13 @@ class PRAutoBlogger_Reddit_JSON_Client {
 
 		$response = wp_remote_get(
 			$url,
-			[
+			array(
 				'timeout' => self::TIMEOUT_SECONDS,
-				'headers' => [
+				'headers' => array(
 					'User-Agent' => self::USER_AGENT,
 					'Accept'     => 'application/atom+xml, application/rss+xml',
-				],
-			]
+				),
+			)
 		);
 
 		if ( is_wp_error( $response ) ) {
@@ -111,7 +113,7 @@ class PRAutoBlogger_Reddit_JSON_Client {
 				'Reddit RSS GET failed: ' . $response->get_error_message(),
 				'reddit'
 			);
-			return [];
+			return array();
 		}
 
 		$status_code = wp_remote_retrieve_response_code( $response );
@@ -120,10 +122,10 @@ class PRAutoBlogger_Reddit_JSON_Client {
 				sprintf( 'Reddit RSS HTTP %d for r/%s', $status_code, $subreddit ),
 				'reddit'
 			);
-			return [];
+			return array();
 		}
 
-		$body = wp_remote_retrieve_body( $response );
+		$body   = wp_remote_retrieve_body( $response );
 		$parser = new PRAutoBlogger_Reddit_RSS_Parser();
 		return $parser->parse( $body, $subreddit );
 	}
@@ -154,15 +156,15 @@ class PRAutoBlogger_Reddit_JSON_Client {
 		$response = $this->api_get( $url );
 
 		if ( null === $response || ! isset( $response['data']['children'] ) ) {
-			return [];
+			return array();
 		}
 
-		$posts = [];
+		$posts = array();
 		foreach ( $response['data']['children'] as $child ) {
 			if ( isset( $child['data'] ) ) {
-				$post = $child['data'];
+				$post                = $child['data'];
 				$post['data_source'] = 'reddit_json';
-				$posts[] = $post;
+				$posts[]             = $post;
 			}
 		}
 
@@ -197,10 +199,10 @@ class PRAutoBlogger_Reddit_JSON_Client {
 
 		// Comments endpoint returns [post_listing, comments_listing].
 		if ( ! is_array( $response ) || ! isset( $response[1]['data']['children'] ) ) {
-			return [];
+			return array();
 		}
 
-		$comments = [];
+		$comments = array();
 		foreach ( $response[1]['data']['children'] as $child ) {
 			// Filter out "more" type entries, keep only actual comments (kind=t1).
 			if ( isset( $child['data'] ) && 't1' === ( $child['kind'] ?? '' ) ) {

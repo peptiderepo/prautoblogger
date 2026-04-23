@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Support helpers for the Runware image provider — API key lookup,
  * response parsing (URL fetch), retry backoff, and logging.
  *
@@ -68,7 +70,7 @@ class PRAutoBlogger_Runware_Image_Support {
 
 		// Runware wraps errors in an `errors` array.
 		if ( isset( $decoded['errors'] ) && is_array( $decoded['errors'] ) && ! empty( $decoded['errors'] ) ) {
-			$first = $decoded['errors'][0] ?? [];
+			$first = $decoded['errors'][0] ?? array();
 			$msg   = is_array( $first )
 				? (string) ( $first['message'] ?? wp_json_encode( $first ) )
 				: (string) $first;
@@ -80,7 +82,7 @@ class PRAutoBlogger_Runware_Image_Support {
 			);
 		}
 
-		$data = $decoded['data'] ?? [];
+		$data = $decoded['data'] ?? array();
 		if ( ! is_array( $data ) || empty( $data ) ) {
 			throw new \RuntimeException(
 				esc_html__( 'Runware response contained no data.', 'prautoblogger' )
@@ -115,9 +117,12 @@ class PRAutoBlogger_Runware_Image_Support {
 	 * @throws \RuntimeException On HTTP error or empty body.
 	 */
 	public function download_image_bytes( string $image_url ): string {
-		$response = wp_remote_get( $image_url, [
-			'timeout' => 30,
-		] );
+		$response = wp_remote_get(
+			$image_url,
+			array(
+				'timeout' => 30,
+			)
+		);
 
 		if ( is_wp_error( $response ) ) {
 			throw new \RuntimeException(

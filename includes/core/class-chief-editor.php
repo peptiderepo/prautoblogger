@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Chief Editor agent — LLM-powered editorial review of generated content.
  *
  * Reviews articles for quality, accuracy, SEO, and tone before publishing.
@@ -51,16 +53,22 @@ class PRAutoBlogger_Chief_Editor {
 		$user_prompt   = $this->build_review_prompt( $content, $idea );
 
 		$response = $this->llm->send_chat_completion(
-			[
-				[ 'role' => 'system', 'content' => $system_prompt ],
-				[ 'role' => 'user', 'content' => $user_prompt ],
-			],
+			array(
+				array(
+					'role'    => 'system',
+					'content' => $system_prompt,
+				),
+				array(
+					'role'    => 'user',
+					'content' => $user_prompt,
+				),
+			),
 			$model,
-			[
+			array(
 				'temperature'     => 0.3,
 				'max_tokens'      => 5000,
-				'response_format' => [ 'type' => 'json_object' ],
-			]
+				'response_format' => array( 'type' => 'json_object' ),
+			)
 		);
 
 		$this->cost_tracker->log_api_call(
@@ -81,7 +89,7 @@ class PRAutoBlogger_Chief_Editor {
 	 * @return string
 	 */
 	private function build_system_prompt( string $niche ): string {
-		$prompt = "You are a senior blog editor";
+		$prompt = 'You are a senior blog editor';
 		if ( '' !== $niche ) {
 			$prompt .= " specializing in {$niche} content";
 		}
@@ -161,27 +169,31 @@ class PRAutoBlogger_Chief_Editor {
 				. mb_substr( $content, 0, 500 ),
 				'editor'
 			);
-			return new PRAutoBlogger_Editorial_Review( [
-				'verdict'       => 'rejected',
-				'notes'         => 'Editor response could not be parsed.',
-				'quality_score' => 0.0,
-				'seo_score'     => 0.0,
-				'issues'        => [ 'Unparseable editor response' ],
-			] );
+			return new PRAutoBlogger_Editorial_Review(
+				array(
+					'verdict'       => 'rejected',
+					'notes'         => 'Editor response could not be parsed.',
+					'quality_score' => 0.0,
+					'seo_score'     => 0.0,
+					'issues'        => array( 'Unparseable editor response' ),
+				)
+			);
 		}
 
 		$verdict = sanitize_text_field( $data['verdict'] ?? 'rejected' );
-		if ( ! in_array( $verdict, [ 'approved', 'revised', 'rejected' ], true ) ) {
+		if ( ! in_array( $verdict, array( 'approved', 'revised', 'rejected' ), true ) ) {
 			$verdict = 'rejected';
 		}
 
-		return new PRAutoBlogger_Editorial_Review( [
-			'verdict'          => $verdict,
-			'notes'            => sanitize_textarea_field( $data['notes'] ?? '' ),
-			'revised_content'  => isset( $data['revised_content'] ) ? wp_kses_post( $data['revised_content'] ) : null,
-			'quality_score'    => (float) ( $data['quality_score'] ?? 0.0 ),
-			'seo_score'        => (float) ( $data['seo_score'] ?? 0.0 ),
-			'issues'           => array_map( 'sanitize_text_field', $data['issues'] ?? [] ),
-		] );
+		return new PRAutoBlogger_Editorial_Review(
+			array(
+				'verdict'         => $verdict,
+				'notes'           => sanitize_textarea_field( $data['notes'] ?? '' ),
+				'revised_content' => isset( $data['revised_content'] ) ? wp_kses_post( $data['revised_content'] ) : null,
+				'quality_score'   => (float) ( $data['quality_score'] ?? 0.0 ),
+				'seo_score'       => (float) ( $data['seo_score'] ?? 0.0 ),
+				'issues'          => array_map( 'sanitize_text_field', $data['issues'] ?? array() ),
+			)
+		);
 	}
 }

@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Handles plugin activation: creates database tables, sets default options,
  * and schedules the initial cron job.
  *
@@ -49,27 +51,27 @@ class PRAutoBlogger_Activator {
 	 * @return void
 	 */
 	private static function set_default_options(): void {
-		$defaults = [
+		$defaults = array(
 			'prautoblogger_analysis_model'       => PRAUTOBLOGGER_DEFAULT_ANALYSIS_MODEL,
 			'prautoblogger_writing_model'        => PRAUTOBLOGGER_DEFAULT_WRITING_MODEL,
 			'prautoblogger_editor_model'         => PRAUTOBLOGGER_DEFAULT_EDITOR_MODEL,
-			'prautoblogger_daily_article_target'  => 1,
-			'prautoblogger_writing_pipeline'      => 'multi_step',
-			'prautoblogger_niche_description'     => '',
-			'prautoblogger_target_subreddits'     => '[]',
-			'prautoblogger_monthly_budget_usd'    => 50.00,
-			'prautoblogger_tone'                  => 'informational',
-			'prautoblogger_min_word_count'        => 800,
-			'prautoblogger_max_word_count'        => 2000,
-			'prautoblogger_topic_exclusions'      => '[]',
-			'prautoblogger_enabled_sources'       => '["reddit"]',
-			'prautoblogger_article_font_family'   => 'default',
-			'prautoblogger_article_font_size'     => 0,
-			'prautoblogger_table_borders'         => '1',
-			'prautoblogger_schedule_time'         => '03:00',
-			'prautoblogger_log_level'             => 'info',
-			'prautoblogger_image_nsfw_retry'      => '1',
-		];
+			'prautoblogger_daily_article_target' => 1,
+			'prautoblogger_writing_pipeline'     => 'multi_step',
+			'prautoblogger_niche_description'    => '',
+			'prautoblogger_target_subreddits'    => '[]',
+			'prautoblogger_monthly_budget_usd'   => 50.00,
+			'prautoblogger_tone'                 => 'informational',
+			'prautoblogger_min_word_count'       => 800,
+			'prautoblogger_max_word_count'       => 2000,
+			'prautoblogger_topic_exclusions'     => '[]',
+			'prautoblogger_enabled_sources'      => '["reddit"]',
+			'prautoblogger_article_font_family'  => 'default',
+			'prautoblogger_article_font_size'    => 0,
+			'prautoblogger_table_borders'        => '1',
+			'prautoblogger_schedule_time'        => '03:00',
+			'prautoblogger_log_level'            => 'info',
+			'prautoblogger_image_nsfw_retry'     => '1',
+		);
 
 		foreach ( $defaults as $key => $value ) {
 			add_option( $key, $value );
@@ -101,13 +103,16 @@ class PRAutoBlogger_Activator {
 		// in class-prautoblogger.php may not be hooked yet.
 		$schedules = wp_get_schedules();
 		if ( ! isset( $schedules['prautoblogger_six_hours'] ) ) {
-			add_filter( 'cron_schedules', static function ( array $scheds ): array {
-				$scheds['prautoblogger_six_hours'] = [
-					'interval' => 6 * HOUR_IN_SECONDS,
-					'display'  => __( 'Every Six Hours', 'prautoblogger' ),
-				];
-				return $scheds;
-			} );
+			add_filter(
+				'cron_schedules',
+				static function ( array $scheds ): array {
+					$scheds['prautoblogger_six_hours'] = array(
+						'interval' => 6 * HOUR_IN_SECONDS,
+						'display'  => __( 'Every Six Hours', 'prautoblogger' ),
+					);
+					return $scheds;
+				}
+			);
 		}
 
 		// Schedule a separate metrics collection job (runs every 6 hours).
@@ -146,7 +151,7 @@ class PRAutoBlogger_Activator {
 			$site_tz = function_exists( 'wp_timezone' )
 				? wp_timezone()
 				: new \DateTimeZone( 'UTC' );
-			$local = ( new \DateTimeImmutable( 'tomorrow', $site_tz ) )
+			$local   = ( new \DateTimeImmutable( 'tomorrow', $site_tz ) )
 				->setTime( $hour, $minute, 0 );
 			return (int) $local->getTimestamp();
 		} catch ( \Exception $e ) {
@@ -222,8 +227,8 @@ class PRAutoBlogger_Activator {
 		// For each (post_id, run_id) pair present in the gen-log, write
 		// the run_id meta if it's not already set. Uses the first run_id
 		// seen per post — in practice each post is linked to exactly one run.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$pairs = $wpdb->get_results(
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$pairs = $wpdb->get_results(  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			"SELECT post_id, MIN(run_id) AS run_id FROM {$gen_log}
 			WHERE post_id IS NOT NULL AND run_id IS NOT NULL AND run_id != ''
 			GROUP BY post_id"
@@ -256,7 +261,7 @@ class PRAutoBlogger_Activator {
 			return;
 		}
 		$curr = (string) get_option( 'prautoblogger_image_model', '' );
-		if ( in_array( $curr, [ '', 'google/gemini-2.5-flash-image' ], true ) ) {
+		if ( in_array( $curr, array( '', 'google/gemini-2.5-flash-image' ), true ) ) {
 			update_option( 'prautoblogger_image_model', 'runware:100@1' );
 		}
 		$final = (string) get_option( 'prautoblogger_image_model', 'runware:100@1' );

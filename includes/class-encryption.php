@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Encrypts and decrypts sensitive option values (API keys, secrets).
  *
  * Uses OpenSSL AES-256-CBC with a key derived from wp_salt('auth').

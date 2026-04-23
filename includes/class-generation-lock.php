@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Database-level atomic mutex for content generation.
  *
  * What: Provides acquire/release/check semantics for a single-writer generation lock.

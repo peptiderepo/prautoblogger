@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Injects frontend typography and table styles for PRAutoBlogger-generated posts.
  *
  * What: Outputs inline CSS on all single post pages, applying
@@ -63,7 +65,7 @@ class PRAutoBlogger_Article_Typography {
 	 * @return string CSS rules, or empty string if all defaults.
 	 */
 	private function build_css(): string {
-		$rules = [];
+		$rules = array();
 
 		$font_family = $this->get_font_family_stack();
 		if ( '' !== $font_family ) {
@@ -84,60 +86,66 @@ class PRAutoBlogger_Article_Typography {
 		// Restore bullet points — the theme's global reset strips
 		// list-style from all ul/ol, which removes bullets from article
 		// content. This re-applies them inside .entry-content only.
-		$rules[] = implode( "\n", [
-			'.entry-content ul {',
-			"\tlist-style: disc;",
-			"\tpadding-left: 1.5em;",
-			"\tmargin: 1em 0;",
-			'}',
-			'.entry-content ol {',
-			"\tlist-style: decimal;",
-			"\tpadding-left: 1.5em;",
-			"\tmargin: 1em 0;",
-			'}',
-			'.entry-content li {',
-			"\tmargin-bottom: 0.4em;",
-			'}',
-		] );
+		$rules[] = implode(
+			"\n",
+			array(
+				'.entry-content ul {',
+				"\tlist-style: disc;",
+				"\tpadding-left: 1.5em;",
+				"\tmargin: 1em 0;",
+				'}',
+				'.entry-content ol {',
+				"\tlist-style: decimal;",
+				"\tpadding-left: 1.5em;",
+				"\tmargin: 1em 0;",
+				'}',
+				'.entry-content li {',
+				"\tmargin-bottom: 0.4em;",
+				'}',
+			)
+		);
 
 		$table_borders = get_option( self::OPT_TABLE_BORDERS, '1' );
 		if ( '1' === $table_borders ) {
 			// Uses theme CSS custom properties for dark mode compatibility.
 			// --color-border-default, --color-bg-secondary, --color-bg-primary,
 			// --color-text-primary are set by PR Theme for both light and dark.
-			$rules[] = implode( "\n", [
-				'.entry-content .prab-table-wrap {',
-				"\toverflow-x: auto;",
-				"\t-webkit-overflow-scrolling: touch;",
-				"\tmargin: 1.5em 0;",
-				'}',
-				'.entry-content table {',
-				"\tborder-collapse: collapse;",
-				"\twidth: 100%;",
-				"\tmin-width: 480px;",
-				'}',
-				'.entry-content th,',
-				'.entry-content td {',
-				"\tborder: 1px solid var(--color-border-default, #d1d5db);",
-				"\tpadding: 0.6em 1em;",
-				"\ttext-align: left;",
-				"\tcolor: var(--color-text-primary, #111827);",
-				'}',
-				'.entry-content thead th {',
-				"\tbackground: var(--color-bg-secondary, #f3f4f6);",
-				"\tfont-weight: 600;",
-				'}',
-				'.entry-content tbody tr:nth-child(even) {',
-				"\tbackground: var(--color-bg-secondary, #f9fafb);",
-				'}',
-				'@media (max-width: 600px) {',
-				"\t.entry-content th,",
-				"\t.entry-content td {",
-				"\t\tpadding: 0.4em 0.6em;",
-				"\t\tfont-size: 14px;",
-				"\t}",
-				'}',
-			] );
+			$rules[] = implode(
+				"\n",
+				array(
+					'.entry-content .prab-table-wrap {',
+					"\toverflow-x: auto;",
+					"\t-webkit-overflow-scrolling: touch;",
+					"\tmargin: 1.5em 0;",
+					'}',
+					'.entry-content table {',
+					"\tborder-collapse: collapse;",
+					"\twidth: 100%;",
+					"\tmin-width: 480px;",
+					'}',
+					'.entry-content th,',
+					'.entry-content td {',
+					"\tborder: 1px solid var(--color-border-default, #d1d5db);",
+					"\tpadding: 0.6em 1em;",
+					"\ttext-align: left;",
+					"\tcolor: var(--color-text-primary, #111827);",
+					'}',
+					'.entry-content thead th {',
+					"\tbackground: var(--color-bg-secondary, #f3f4f6);",
+					"\tfont-weight: 600;",
+					'}',
+					'.entry-content tbody tr:nth-child(even) {',
+					"\tbackground: var(--color-bg-secondary, #f9fafb);",
+					'}',
+					'@media (max-width: 600px) {',
+					"\t.entry-content th,",
+					"\t.entry-content td {",
+					"\t\tpadding: 0.4em 0.6em;",
+					"\t\tfont-size: 14px;",
+					"\t}",
+					'}',
+				)
+			);
 		}
 
 		return implode( "\n\n", $rules );
@@ -153,16 +161,16 @@ class PRAutoBlogger_Article_Typography {
 	private function get_font_family_stack(): string {
 		$key = sanitize_text_field( get_option( self::OPT_FONT_FAMILY, 'default' ) );
 
-		$stacks = [
-			'default'    => '',
-			'inter'      => '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-			'georgia'    => '"Georgia", "Times New Roman", Times, serif',
+		$stacks = array(
+			'default'      => '',
+			'inter'        => '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+			'georgia'      => '"Georgia", "Times New Roman", Times, serif',
 			'merriweather' => '"Merriweather", Georgia, "Times New Roman", serif',
-			'lora'       => '"Lora", Georgia, "Times New Roman", serif',
-			'open_sans'  => '"Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-			'roboto'     => '"Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-			'system'     => '-apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", sans-serif',
-		];
+			'lora'         => '"Lora", Georgia, "Times New Roman", serif',
+			'open_sans'    => '"Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+			'roboto'       => '"Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+			'system'       => '-apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", sans-serif',
+		);
 
 		return $stacks[ $key ] ?? '';
 	}
@@ -173,7 +181,7 @@ class PRAutoBlogger_Article_Typography {
 	 * @return array<string, string> Map of key => display label.
 	 */
 	public static function get_font_choices(): array {
-		return [
+		return array(
 			'default'      => __( 'Theme Default (Inter)', 'prautoblogger' ),
 			'inter'        => __( 'Inter (Sans-serif)', 'prautoblogger' ),
 			'georgia'      => __( 'Georgia (Serif)', 'prautoblogger' ),
@@ -182,7 +190,7 @@ class PRAutoBlogger_Article_Typography {
 			'open_sans'    => __( 'Open Sans (Sans-serif)', 'prautoblogger' ),
 			'roboto'       => __( 'Roboto (Sans-serif)', 'prautoblogger' ),
 			'system'       => __( 'System Default', 'prautoblogger' ),
-		];
+		);
 	}
 
 	/**
@@ -202,18 +210,18 @@ class PRAutoBlogger_Article_Typography {
 		$font = sanitize_text_field( get_option( self::OPT_FONT_FAMILY, 'default' ) );
 
 		// Map font keys to Google Fonts URLs. Inter is already loaded by the theme.
-		$google_fonts = [
+		$google_fonts = array(
 			'merriweather' => 'https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&display=swap',
 			'lora'         => 'https://fonts.googleapis.com/css2?family=Lora:wght@400;700&display=swap',
 			'open_sans'    => 'https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap',
 			'roboto'       => 'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap',
-		];
+		);
 
 		if ( isset( $google_fonts[ $font ] ) ) {
 			wp_enqueue_style(
 				'prautoblogger-google-font',
 				$google_fonts[ $font ],
-				[],
+				array(),
 				null // No version for external CDN URLs.
 			);
 		}

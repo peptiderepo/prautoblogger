@@ -1,4 +1,5 @@
 <?php
+// phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
 declare(strict_types=1);
 
 // phpcs:disable WordPress.WP.AlternativeFunctions.curl_curl_init
@@ -59,17 +60,17 @@ class PRAutoBlogger_Runware_Image_Batch {
 	 */
 	public function execute( array $requests ): array {
 		if ( empty( $requests ) ) {
-			return [];
+			return array();
 		}
 
 		$api_key     = $this->support->get_api_key();
 		$round1      = $this->round_one_inference( $api_key, $requests );
-		$results     = [];
-		$to_download = [];
+		$results     = array();
+		$to_download = array();
 
 		foreach ( $round1 as $key => $entry ) {
 			if ( isset( $entry['error'] ) ) {
-				$results[ $key ] = [ 'error' => $entry['error'] ];
+				$results[ $key ] = array( 'error' => $entry['error'] );
 				continue;
 			}
 			$to_download[ $key ] = $entry;
@@ -82,10 +83,10 @@ class PRAutoBlogger_Runware_Image_Batch {
 		$bytes_map = $this->round_two_download( $to_download );
 		foreach ( $to_download as $key => $entry ) {
 			if ( isset( $bytes_map[ $key ]['error'] ) ) {
-				$results[ $key ] = [ 'error' => $bytes_map[ $key ]['error'] ];
+				$results[ $key ] = array( 'error' => $bytes_map[ $key ]['error'] );
 				continue;
 			}
-			$results[ $key ] = [
+			$results[ $key ] = array(
 				'bytes'      => $bytes_map[ $key ]['bytes'],
 				'mime_type'  => 'image/png',
 				'width'      => $entry['width'],
@@ -94,7 +95,7 @@ class PRAutoBlogger_Runware_Image_Batch {
 				'seed'       => $entry['seed'],
 				'cost_usd'   => $this->pricing->estimate_cost( $entry['width'], $entry['height'], $entry['model'] ),
 				'latency_ms' => (int) ( ( microtime( true ) - $entry['started_at'] ) * 1000 ),
-			];
+			);
 		}
 
 		return $results;
@@ -108,10 +109,10 @@ class PRAutoBlogger_Runware_Image_Batch {
 	 * @return array<string, array> Map of key => {error} | {image_url, width, height, model, seed, started_at}.
 	 */
 	private function round_one_inference( string $api_key, array $requests ): array {
-		$headers     = [ 'Content-Type: application/json' ];
+		$headers     = array( 'Content-Type: application/json' );
 		$mh          = curl_multi_init();
-		$handles     = [];
-		$start_times = [];
+		$handles     = array();
+		$start_times = array();
 
 		foreach ( $requests as $key => $req ) {
 			$model  = $this->pricing->resolve_model( (string) ( $req['options']['model'] ?? '' ) );
@@ -123,28 +124,32 @@ class PRAutoBlogger_Runware_Image_Batch {
 			$ch = curl_init();
 			curl_setopt( $ch, CURLOPT_URL, PRAutoBlogger_Runware_Image_Support::API_URL );
 			curl_setopt( $ch, CURLOPT_POST, true );
-			curl_setopt( $ch, CURLOPT_POSTFIELDS, wp_json_encode(
-				$this->build_payload( $api_key, (string) $req['prompt'], $snap_w, $snap_h, $model, $seed, $steps )
-			) );
+			curl_setopt(
+				$ch,
+				CURLOPT_POSTFIELDS,
+				wp_json_encode(
+					$this->build_payload( $api_key, (string) $req['prompt'], $snap_w, $snap_h, $model, $seed, $steps )
+				)
+			);
 			curl_setopt( $ch, CURLOPT_HTTPHEADER, $headers );
 			curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
 			curl_setopt( $ch, CURLOPT_TIMEOUT, PRAUTOBLOGGER_API_TIMEOUT_SECONDS );
 			curl_setopt( $ch, CURLOPT_CONNECTTIMEOUT, 10 );
 
 			curl_multi_add_handle( $mh, $ch );
-			$handles[ $key ]     = [
+			$handles[ $key ]     = array(
 				'handle' => $ch,
 				'model'  => $model,
 				'width'  => $snap_w,
 				'height' => $snap_h,
 				'seed'   => $seed,
-			];
+			);
 			$start_times[ $key ] = microtime( true );
 		}
 
 		$this->run_multi( $mh );
 
-		$out = [];
+		$out = array();
 		foreach ( $handles as $key => $entry ) {
 			$out[ $key ] = $this->collect_inference_result( (string) $key, $entry, $start_times[ $key ] );
 			curl_multi_remove_handle( $mh, $entry['handle'] );
@@ -163,7 +168,7 @@ class PRAutoBlogger_Runware_Image_Batch {
 	 */
 	private function round_two_download( array $inferences ): array {
 		$mh      = curl_multi_init();
-		$handles = [];
+		$handles = array();
 
 		foreach ( $inferences as $key => $entry ) {
 			$ch = curl_init();
@@ -177,22 +182,22 @@ class PRAutoBlogger_Runware_Image_Batch {
 
 		$this->run_multi( $mh );
 
-		$out = [];
+		$out = array();
 		foreach ( $handles as $key => $ch ) {
 			$errno = curl_errno( $ch );
 			if ( 0 !== $errno ) {
 				$msg = sprintf( 'Runware image download cURL error %d for "%s": %s', $errno, $key, curl_error( $ch ) );
 				PRAutoBlogger_Logger::instance()->error( $msg, 'runware-image-batch' );
-				$out[ $key ] = [ 'error' => $msg ];
+				$out[ $key ] = array( 'error' => $msg );
 			} else {
 				$code = (int) curl_getinfo( $ch, CURLINFO_HTTP_CODE );
 				$body = (string) curl_multi_getcontent( $ch );
 				if ( 200 !== $code || '' === $body ) {
 					$msg = sprintf( 'Runware image download HTTP %d for "%s" (%d bytes)', $code, $key, strlen( $body ) );
 					PRAutoBlogger_Logger::instance()->error( $msg, 'runware-image-batch' );
-					$out[ $key ] = [ 'error' => $msg ];
+					$out[ $key ] = array( 'error' => $msg );
 				} else {
-					$out[ $key ] = [ 'bytes' => $body ];
+					$out[ $key ] = array( 'bytes' => $body );
 				}
 			}
 			curl_multi_remove_handle( $mh, $ch );
@@ -231,9 +236,12 @@ class PRAutoBlogger_Runware_Image_Batch {
 	 * @return array<int, array<string, mixed>>
 	 */
 	private function build_payload( string $api_key, string $prompt, int $width, int $height, string $model, int $seed, int $steps ): array {
-		return [
-			[ 'taskType' => 'authentication', 'apiKey' => $api_key ],
-			[
+		return array(
+			array(
+				'taskType' => 'authentication',
+				'apiKey'   => $api_key,
+			),
+			array(
 				'taskType'       => 'imageInference',
 				'taskUUID'       => wp_generate_uuid4(),
 				'positivePrompt' => $prompt,
@@ -245,8 +253,8 @@ class PRAutoBlogger_Runware_Image_Batch {
 				'outputFormat'   => 'PNG',
 				'outputType'     => 'URL',
 				'seed'           => $seed,
-			],
-		];
+			),
+		);
 	}
 
 	/**
@@ -263,7 +271,7 @@ class PRAutoBlogger_Runware_Image_Batch {
 		if ( 0 !== $errno ) {
 			$msg = sprintf( 'Runware batch inference cURL error %d for "%s": %s', $errno, $key, curl_error( $ch ) );
 			PRAutoBlogger_Logger::instance()->error( $msg, 'runware-image-batch' );
-			return [ 'error' => $msg ];
+			return array( 'error' => $msg );
 		}
 
 		$http_code = (int) curl_getinfo( $ch, CURLINFO_HTTP_CODE );
@@ -271,7 +279,7 @@ class PRAutoBlogger_Runware_Image_Batch {
 		if ( $http_code >= 400 ) {
 			$msg = sprintf( 'Runware batch inference HTTP %d for "%s": %s', $http_code, $key, substr( $raw, 0, 300 ) );
 			PRAutoBlogger_Logger::instance()->error( $msg, 'runware-image-batch' );
-			return [ 'error' => $msg ];
+			return array( 'error' => $msg );
 		}
 
 		try {
@@ -279,16 +287,16 @@ class PRAutoBlogger_Runware_Image_Batch {
 		} catch ( \Throwable $e ) {
 			$msg = sprintf( 'Runware batch inference parse error for "%s": %s', $key, $e->getMessage() );
 			PRAutoBlogger_Logger::instance()->error( $msg, 'runware-image-batch' );
-			return [ 'error' => $msg ];
+			return array( 'error' => $msg );
 		}
 
-		return [
+		return array(
 			'image_url'  => $image_url,
 			'width'      => (int) $entry['width'],
 			'height'     => (int) $entry['height'],
 			'model'      => (string) $entry['model'],
 			'seed'       => (int) $entry['seed'],
 			'started_at' => $start,
-		];
+		);
 	}
 }

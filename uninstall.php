@@ -1,7 +1,7 @@
 <?php
-declare(strict_types=1);
-
 /**
+ * phpcs:ignore Generic.PHP.RequireStrictTypes.MissingDeclaration -- strict_types must precede docblock
+ *
  * Fired when the plugin is uninstalled (deleted) from WordPress.
  *
  * Removes ALL plugin data: custom tables, options, post meta, transients, and cron events.
@@ -9,6 +9,7 @@ declare(strict_types=1);
  *
  * @see class-deactivator.php — Lighter cleanup on deactivation (preserves data).
  */
+declare(strict_types=1);
 
 // Abort if not called by WordPress uninstall process.
 if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
@@ -24,13 +25,13 @@ global $wpdb;
 */
 
 $prefix = $wpdb->prefix . 'prautoblogger_';
-$tables = [
+$tables = array(
 	$prefix . 'source_data',
 	$prefix . 'analysis_results',
 	$prefix . 'generation_log',
 	$prefix . 'content_scores',
 	$prefix . 'event_log',
-];
+);
 
 foreach ( $tables as $table ) {
 	// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table names are hardcoded above, not user input.
@@ -77,10 +78,10 @@ $wpdb->query(
 |--------------------------------------------------------------------------
 */
 
-$hooks = [
+$hooks = array(
 	'prautoblogger_daily_generation',
 	'prautoblogger_collect_metrics',
-];
+);
 
 foreach ( $hooks as $hook ) {
 	$timestamp = wp_next_scheduled( $hook );

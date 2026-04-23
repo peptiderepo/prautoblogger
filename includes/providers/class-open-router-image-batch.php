@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Parallel image generation via curl_multi for OpenRouter.
  *
  * Fires multiple chat/completions requests concurrently using PHP's
@@ -73,7 +75,7 @@ class PRAutoBlogger_OpenRouter_Image_Batch {
 	 */
 	public function execute( array $requests ): array {
 		if ( empty( $requests ) ) {
-			return [];
+			return array();
 		}
 
 		$api_key  = $this->support->get_api_key();
@@ -86,15 +88,15 @@ class PRAutoBlogger_OpenRouter_Image_Batch {
 		);
 
 		// Convert associative headers to curl-style indexed array.
-		$curl_headers = [];
+		$curl_headers = array();
 		foreach ( $headers as $name => $value ) {
 			$curl_headers[] = $name . ': ' . $value;
 		}
 
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_multi_init
 		$multi_handle = curl_multi_init();
-		$handles      = [];
-		$start_times  = [];
+		$handles      = array();
+		$start_times  = array();
 
 		foreach ( $requests as $key => $req ) {
 			$model   = $this->pricing->resolve_model( (string) ( $req['options']['model'] ?? '' ) );
@@ -119,7 +121,11 @@ class PRAutoBlogger_OpenRouter_Image_Batch {
 
 			// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_multi_add_handle
 			curl_multi_add_handle( $multi_handle, $ch );
-			$handles[ $key ]     = [ 'handle' => $ch, 'model' => $model, 'req' => $req ];
+			$handles[ $key ]     = array(
+				'handle' => $ch,
+				'model'  => $model,
+				'req'    => $req,
+			);
 			$start_times[ $key ] = microtime( true );
 		}
 
@@ -127,7 +133,7 @@ class PRAutoBlogger_OpenRouter_Image_Batch {
 		$this->run_multi( $multi_handle );
 
 		// Collect results.
-		$results = [];
+		$results = array();
 		foreach ( $handles as $key => $entry ) {
 			$results[ $key ] = $this->collect_result(
 				(string) $key,
@@ -200,7 +206,7 @@ class PRAutoBlogger_OpenRouter_Image_Batch {
 				$detail
 			);
 			PRAutoBlogger_Logger::instance()->error( $msg, 'openrouter-image-batch' );
-			return [ 'error' => $msg ];
+			return array( 'error' => $msg );
 		}
 
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_getinfo
@@ -216,7 +222,7 @@ class PRAutoBlogger_OpenRouter_Image_Batch {
 				substr( $raw, 0, 300 )
 			);
 			PRAutoBlogger_Logger::instance()->error( $msg, 'openrouter-image-batch' );
-			return [ 'error' => $msg ];
+			return array( 'error' => $msg );
 		}
 
 		try {
@@ -228,10 +234,10 @@ class PRAutoBlogger_OpenRouter_Image_Batch {
 				$e->getMessage()
 			);
 			PRAutoBlogger_Logger::instance()->error( $msg, 'openrouter-image-batch' );
-			return [ 'error' => $msg ];
+			return array( 'error' => $msg );
 		}
 
-		return [
+		return array(
 			'bytes'      => $image_bytes,
 			'mime_type'  => 'image/png',
 			'width'      => $req['width'],
@@ -240,7 +246,7 @@ class PRAutoBlogger_OpenRouter_Image_Batch {
 			'seed'       => null,
 			'cost_usd'   => $this->pricing->estimate_cost( $req['width'], $req['height'], $model ),
 			'latency_ms' => $latency_ms,
-		];
+		);
 	}
 
 	/**
@@ -259,17 +265,45 @@ class PRAutoBlogger_OpenRouter_Image_Batch {
 		$target = $height > 0 ? (float) $width / (float) $height : 1.0;
 
 		// Snap to nearest standard aspect ratio.
-		$aspects = [
-			[ 'w' => 1,  'h' => 1,  'r' => 1.0 ],
-			[ 'w' => 3,  'h' => 2,  'r' => 1.5 ],
-			[ 'w' => 2,  'h' => 3,  'r' => 0.6667 ],
-			[ 'w' => 4,  'h' => 3,  'r' => 1.3333 ],
-			[ 'w' => 3,  'h' => 4,  'r' => 0.75 ],
-			[ 'w' => 16, 'h' => 9,  'r' => 1.7778 ],
-			[ 'w' => 9,  'h' => 16, 'r' => 0.5625 ],
-		];
-		$best   = $aspects[0];
-		$best_d = abs( $target - $best['r'] );
+		$aspects = array(
+			array(
+				'w' => 1,
+				'h' => 1,
+				'r' => 1.0,
+			),
+			array(
+				'w' => 3,
+				'h' => 2,
+				'r' => 1.5,
+			),
+			array(
+				'w' => 2,
+				'h' => 3,
+				'r' => 0.6667,
+			),
+			array(
+				'w' => 4,
+				'h' => 3,
+				'r' => 1.3333,
+			),
+			array(
+				'w' => 3,
+				'h' => 4,
+				'r' => 0.75,
+			),
+			array(
+				'w' => 16,
+				'h' => 9,
+				'r' => 1.7778,
+			),
+			array(
+				'w' => 9,
+				'h' => 16,
+				'r' => 0.5625,
+			),
+		);
+		$best    = $aspects[0];
+		$best_d  = abs( $target - $best['r'] );
 		foreach ( $aspects as $c ) {
 			$d = abs( $target - $c['r'] );
 			if ( $d < $best_d ) {
@@ -279,16 +313,16 @@ class PRAutoBlogger_OpenRouter_Image_Batch {
 		}
 		$aspect = $best['w'] . ':' . $best['h'];
 
-		return [
+		return array(
 			'model'        => $model,
-			'messages'     => [
-				[
+			'messages'     => array(
+				array(
 					'role'    => 'user',
 					'content' => 'Generate an image: ' . $prompt,
-				],
-			],
-			'modalities'   => [ 'image', 'text' ],
-			'image_config' => [ 'aspect_ratio' => $aspect ],
-		];
+				),
+			),
+			'modalities'   => array( 'image', 'text' ),
+			'image_config' => array( 'aspect_ratio' => $aspect ),
+		);
 	}
 }

@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Admin page listing generated draft posts for editorial review.
  *
  * Provides approve (publish), edit (opens WP editor), and reject (trash)
@@ -28,11 +30,11 @@ class PRAutoBlogger_Review_Queue {
 			__( 'Review Queue', 'prautoblogger' ),
 			'manage_options',
 			'prautoblogger-review-queue',
-			[ $this, 'render_page' ]
+			array( $this, 'render_page' )
 		);
 
 		if ( false !== $hook ) {
-			add_action( "load-{$hook}", [ $this, 'on_handle_bulk_actions' ] );
+			add_action( "load-{$hook}", array( $this, 'on_handle_bulk_actions' ) );
 		}
 	}
 
@@ -60,20 +62,22 @@ class PRAutoBlogger_Review_Queue {
 	 * @return \WP_Query
 	 */
 	public function get_pending_posts( int $paged = 1 ): \WP_Query {
-		return new \WP_Query( [
-			'post_type'      => 'post',
-			'post_status'    => 'draft',
-			'posts_per_page' => 20,
-			'paged'          => $paged,
-			'meta_query'     => [
-				[
-					'key'   => '_prautoblogger_generated',
-					'value' => '1',
-				],
-			],
-			'orderby'        => 'date',
-			'order'          => 'DESC',
-		] );
+		return new \WP_Query(
+			array(
+				'post_type'      => 'post',
+				'post_status'    => 'draft',
+				'posts_per_page' => 20,
+				'paged'          => $paged,
+				'meta_query'     => array(
+					array(
+						'key'   => '_prautoblogger_generated',
+						'value' => '1',
+					),
+				),
+				'orderby'        => 'date',
+				'order'          => 'DESC',
+			)
+		);
 	}
 
 	/**
@@ -100,7 +104,7 @@ class PRAutoBlogger_Review_Queue {
 		$action   = sanitize_text_field( wp_unslash( $_POST['prautoblogger_bulk_action'] ) );
 		$post_ids = isset( $_POST['prautoblogger_post_ids'] ) && is_array( $_POST['prautoblogger_post_ids'] )
 			? array_map( 'absint', $_POST['prautoblogger_post_ids'] )
-			: [];
+			: array();
 
 		if ( empty( $post_ids ) ) {
 			return;
@@ -113,25 +117,31 @@ class PRAutoBlogger_Review_Queue {
 			}
 
 			if ( 'approve' === $action ) {
-				$result = wp_update_post( [ 'ID' => $post_id, 'post_status' => 'publish' ], true );
+				$result = wp_update_post(
+					array(
+						'ID'          => $post_id,
+						'post_status' => 'publish',
+					),
+					true
+				);
 				if ( ! is_wp_error( $result ) ) {
 					update_post_meta( $post_id, '_prautoblogger_approved_at', gmdate( 'c' ) );
-					$count++;
+					++$count;
 				}
 			} elseif ( 'reject' === $action ) {
 				$result = wp_trash_post( $post_id );
 				if ( false !== $result ) {
-					$count++;
+					++$count;
 				}
 			}
 		}
 
 		$redirect = add_query_arg(
-			[
-				'page'                  => 'prautoblogger-review-queue',
+			array(
+				'page'                    => 'prautoblogger-review-queue',
 				'prautoblogger_bulk_done' => $count,
 				'prautoblogger_bulk_type' => $action,
-			],
+			),
 			admin_url( 'admin.php' )
 		);
 
@@ -150,25 +160,36 @@ class PRAutoBlogger_Review_Queue {
 		check_ajax_referer( 'prautoblogger_review_queue', 'nonce' );
 
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'prautoblogger' ) ], 403 );
+			wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'prautoblogger' ) ), 403 );
 			return;
 		}
 
 		$post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
 		if ( $post_id <= 0 ) {
-			wp_send_json_error( [ 'message' => __( 'Invalid post ID.', 'prautoblogger' ) ] );
+			wp_send_json_error( array( 'message' => __( 'Invalid post ID.', 'prautoblogger' ) ) );
 			return;
 		}
 
-		$result = wp_update_post( [ 'ID' => $post_id, 'post_status' => 'publish' ], true );
+		$result = wp_update_post(
+			array(
+				'ID'          => $post_id,
+				'post_status' => 'publish',
+			),
+			true
+		);
 
 		if ( is_wp_error( $result ) ) {
-			wp_send_json_error( [ 'message' => $result->get_error_message() ] );
+			wp_send_json_error( array( 'message' => $result->get_error_message() ) );
 			return;
 		}
 
 		update_post_meta( $post_id, '_prautoblogger_approved_at', gmdate( 'c' ) );
-		wp_send_json_success( [ 'message' => __( 'Post published.', 'prautoblogger' ), 'post_id' => $post_id ] );
+		wp_send_json_success(
+			array(
+				'message' => __( 'Post published.', 'prautoblogger' ),
+				'post_id' => $post_id,
+			)
+		);
 	}
 
 	/**
@@ -182,22 +203,27 @@ class PRAutoBlogger_Review_Queue {
 		check_ajax_referer( 'prautoblogger_review_queue', 'nonce' );
 
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'prautoblogger' ) ], 403 );
+			wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'prautoblogger' ) ), 403 );
 			return;
 		}
 
 		$post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
 		if ( $post_id <= 0 ) {
-			wp_send_json_error( [ 'message' => __( 'Invalid post ID.', 'prautoblogger' ) ] );
+			wp_send_json_error( array( 'message' => __( 'Invalid post ID.', 'prautoblogger' ) ) );
 			return;
 		}
 
 		$result = wp_trash_post( $post_id );
 		if ( false === $result || null === $result ) {
-			wp_send_json_error( [ 'message' => __( 'Failed to reject post.', 'prautoblogger' ) ] );
+			wp_send_json_error( array( 'message' => __( 'Failed to reject post.', 'prautoblogger' ) ) );
 			return;
 		}
 
-		wp_send_json_success( [ 'message' => __( 'Post rejected.', 'prautoblogger' ), 'post_id' => $post_id ] );
+		wp_send_json_success(
+			array(
+				'message' => __( 'Post rejected.', 'prautoblogger' ),
+				'post_id' => $post_id,
+			)
+		);
 	}
 }

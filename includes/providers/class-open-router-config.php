@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Configuration helpers for OpenRouter provider.
  *
  * Resolves admin-configured settings for API endpoint selection

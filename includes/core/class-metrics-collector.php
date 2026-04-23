@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Collects post performance metrics from WordPress native data and Google Analytics 4.
  *
  * Runs on a separate cron schedule (every 6 hours) to gather pageviews, bounce rate,
@@ -35,8 +37,8 @@ class PRAutoBlogger_Metrics_Collector {
 		}
 
 		$ga4_client = new PRAutoBlogger_GA4_Client();
-		$ga4_data = $ga4_client->fetch_data( $posts );
-		$scored   = 0;
+		$ga4_data   = $ga4_client->fetch_data( $posts );
+		$scored     = 0;
 
 		foreach ( $posts as $post ) {
 			$post_id    = (int) $post->ID;
@@ -47,11 +49,11 @@ class PRAutoBlogger_Metrics_Collector {
 				continue;
 			}
 
-			$ga_metrics = $ga4_data[ $post_id ] ?? [];
+			$ga_metrics = $ga4_data[ $post_id ] ?? array();
 
 			$score = $this->compute_composite_score( $wp_metrics, $ga_metrics, $post );
 			$this->store_score( $post_id, $wp_metrics, $ga_metrics, $score );
-			$scored++;
+			++$scored;
 		}
 
 		PRAutoBlogger_Logger::instance()->info( sprintf( 'Metrics collected for %d posts.', $scored ), 'metrics' );
@@ -64,15 +66,17 @@ class PRAutoBlogger_Metrics_Collector {
 	 * @return \WP_Post[]
 	 */
 	private function get_generated_posts(): array {
-		$query = new \WP_Query( [
-			'post_type'      => 'post',
-			'post_status'    => 'publish',
-			'meta_key'       => '_prautoblogger_generated',
-			'meta_value'     => '1',
-			'posts_per_page' => 100,
-			'orderby'        => 'date',
-			'order'          => 'DESC',
-		] );
+		$query = new \WP_Query(
+			array(
+				'post_type'      => 'post',
+				'post_status'    => 'publish',
+				'meta_key'       => '_prautoblogger_generated',
+				'meta_value'     => '1',
+				'posts_per_page' => 100,
+				'orderby'        => 'date',
+				'order'          => 'DESC',
+			)
+		);
 
 		return $query->posts;
 	}
@@ -93,10 +97,10 @@ class PRAutoBlogger_Metrics_Collector {
 			return null;
 		}
 
-		return [
+		return array(
 			'comment_count'  => (int) ( $post->comment_count ?? 0 ),
 			'days_published' => max( 1, (int) ( ( time() - strtotime( $post->post_date ) ) / DAY_IN_SECONDS ) ),
-		];
+		);
 	}
 
 
@@ -110,10 +114,10 @@ class PRAutoBlogger_Metrics_Collector {
 	 * @return array{score: float, factors: array<string, float>}
 	 */
 	private function compute_composite_score( array $wp_metrics, array $ga_metrics, \WP_Post $post ): array {
-		$factors = [];
+		$factors = array();
 
 		// Comment engagement (0-25 points).
-		$comments_per_day = $wp_metrics['comment_count'] / max( 1, $wp_metrics['days_published'] );
+		$comments_per_day    = $wp_metrics['comment_count'] / max( 1, $wp_metrics['days_published'] );
 		$factors['comments'] = min( 25.0, $comments_per_day * 25.0 );
 
 		// Pageview performance (0-30 points, if GA4 available).
@@ -142,10 +146,10 @@ class PRAutoBlogger_Metrics_Collector {
 
 		$total = array_sum( $factors );
 
-		return [
+		return array(
 			'score'   => round( $total, 2 ),
 			'factors' => $factors,
-		];
+		);
 	}
 
 	/**
@@ -162,16 +166,18 @@ class PRAutoBlogger_Metrics_Collector {
 		global $wpdb;
 		$table = $wpdb->prefix . 'prautoblogger_content_scores';
 
-		$entry = new PRAutoBlogger_Content_Score( [
-			'post_id'          => $post_id,
-			'pageviews'        => $ga_metrics['pageviews'] ?? 0,
-			'avg_time_on_page' => $ga_metrics['avg_time_on_page'] ?? 0.0,
-			'bounce_rate'      => $ga_metrics['bounce_rate'] ?? 0.0,
-			'comment_count'    => $wp_metrics['comment_count'] ?? 0,
-			'composite_score'  => $score_data['score'],
-			'score_factors'    => $score_data['factors'],
-			'measured_at'      => current_time( 'mysql' ),
-		] );
+		$entry = new PRAutoBlogger_Content_Score(
+			array(
+				'post_id'          => $post_id,
+				'pageviews'        => $ga_metrics['pageviews'] ?? 0,
+				'avg_time_on_page' => $ga_metrics['avg_time_on_page'] ?? 0.0,
+				'bounce_rate'      => $ga_metrics['bounce_rate'] ?? 0.0,
+				'comment_count'    => $wp_metrics['comment_count'] ?? 0,
+				'composite_score'  => $score_data['score'],
+				'score_factors'    => $score_data['factors'],
+				'measured_at'      => current_time( 'mysql' ),
+			)
+		);
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$wpdb->insert( $table, $entry->to_db_row() );

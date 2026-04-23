@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Post-creation assembly helpers: taxonomy, log linking, images, content sanitization.
  *
  * What: After wp_insert_post, assigns categories/tags, links generation logs,
@@ -21,12 +23,12 @@ class PRAutoBlogger_Post_Assembler {
 	 * @param PRAutoBlogger_Article_Idea $idea    Article idea with type and keywords.
 	 */
 	public static function assign_taxonomy_terms( int $post_id, PRAutoBlogger_Article_Idea $idea ): void {
-		$type_category_map = [
+		$type_category_map = array(
 			'guide'      => 'Guides',
 			'solution'   => 'Solutions',
 			'comparison' => 'Comparisons',
 			'article'    => 'Articles',
-		];
+		);
 
 		$category_name = $type_category_map[ $idea->get_article_type() ] ?? 'Articles';
 		$category      = get_term_by( 'name', $category_name, 'category' );
@@ -34,10 +36,10 @@ class PRAutoBlogger_Post_Assembler {
 		if ( ! $category ) {
 			$result = wp_insert_term( $category_name, 'category' );
 			if ( ! is_wp_error( $result ) ) {
-				wp_set_post_categories( $post_id, [ $result['term_id'] ] );
+				wp_set_post_categories( $post_id, array( $result['term_id'] ) );
 			}
 		} else {
-			wp_set_post_categories( $post_id, [ $category->term_id ] );
+			wp_set_post_categories( $post_id, array( $category->term_id ) );
 		}
 
 		$keywords = $idea->get_target_keywords();
@@ -63,7 +65,7 @@ class PRAutoBlogger_Post_Assembler {
 			// to a single post. See amortize_research_costs().
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 			$wpdb->query(
-				$wpdb->prepare(
+				$wpdb->prepare(  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 					"UPDATE {$table} SET post_id = %d WHERE post_id IS NULL AND run_id = %s AND stage != 'llm_research'",
 					$post_id,
 					$run_id
@@ -73,7 +75,7 @@ class PRAutoBlogger_Post_Assembler {
 			// Legacy fallback: timestamp-based linking for pre-migration log entries.
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 			$wpdb->query(
-				$wpdb->prepare(
+				$wpdb->prepare(  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 					"UPDATE {$table} SET post_id = %d WHERE post_id IS NULL AND created_at >= %s",
 					$post_id,
 					gmdate( 'Y-m-d H:i:s', time() - HOUR_IN_SECONDS )
@@ -107,7 +109,7 @@ class PRAutoBlogger_Post_Assembler {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$research_row = $wpdb->get_row(
 			$wpdb->prepare(
-				"SELECT id, estimated_cost, provider, model, prompt_tokens, completion_tokens
+				"SELECT id, estimated_cost, provider, model, prompt_tokens, completion_tokens  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				FROM {$table}
 				WHERE run_id = %s AND stage = 'llm_research' AND post_id IS NULL
 				LIMIT 1",
@@ -122,7 +124,7 @@ class PRAutoBlogger_Post_Assembler {
 		// Count distinct articles produced in this run.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$post_ids = $wpdb->get_col(
-			$wpdb->prepare(
+			$wpdb->prepare(  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				"SELECT DISTINCT post_id FROM {$table} WHERE run_id = %s AND post_id IS NOT NULL",
 				$run_id
 			)
@@ -133,34 +135,37 @@ class PRAutoBlogger_Post_Assembler {
 			return; // No articles produced — nothing to amortize into.
 		}
 
-		$total_cost        = (float) $research_row->estimated_cost;
-		$amortized_cost    = $total_cost / $post_count;
-		$total_prompt      = (int) $research_row->prompt_tokens;
-		$total_completion  = (int) $research_row->completion_tokens;
-		$amortized_prompt  = (int) round( $total_prompt / $post_count );
-		$amortized_compl   = (int) round( $total_completion / $post_count );
+		$total_cost       = (float) $research_row->estimated_cost;
+		$amortized_cost   = $total_cost / $post_count;
+		$total_prompt     = (int) $research_row->prompt_tokens;
+		$total_completion = (int) $research_row->completion_tokens;
+		$amortized_prompt = (int) round( $total_prompt / $post_count );
+		$amortized_compl  = (int) round( $total_completion / $post_count );
 
 		// Insert one amortized research row per article.
 		foreach ( $post_ids as $post_id ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-			$wpdb->insert( $table, [
-				'post_id'           => (int) $post_id,
-				'run_id'            => $run_id,
-				'stage'             => 'llm_research',
-				'provider'          => $research_row->provider,
-				'model'             => $research_row->model,
-				'prompt_tokens'     => $amortized_prompt,
-				'completion_tokens' => $amortized_compl,
-				'estimated_cost'    => $amortized_cost,
-				'response_status'   => 'success',
-				'error_message'     => '',
-				'created_at'        => current_time( 'mysql' ),
-			] );
+			$wpdb->insert(
+				$table,
+				array(
+					'post_id'           => (int) $post_id,
+					'run_id'            => $run_id,
+					'stage'             => 'llm_research',
+					'provider'          => $research_row->provider,
+					'model'             => $research_row->model,
+					'prompt_tokens'     => $amortized_prompt,
+					'completion_tokens' => $amortized_compl,
+					'estimated_cost'    => $amortized_cost,
+					'response_status'   => 'success',
+					'error_message'     => '',
+					'created_at'        => current_time( 'mysql' ),
+				)
+			);
 		}
 
 		// Remove the original unlinked row — it's been replaced by per-article rows.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$wpdb->delete( $table, [ 'id' => (int) $research_row->id ] );
+		$wpdb->delete( $table, array( 'id' => (int) $research_row->id ) );
 
 		PRAutoBlogger_Logger::instance()->info(
 			sprintf(
@@ -213,7 +218,13 @@ class PRAutoBlogger_Post_Assembler {
 			return $author_id;
 		}
 
-		$admins = get_users( [ 'role' => 'administrator', 'number' => 1, 'fields' => 'ID' ] );
+		$admins = get_users(
+			array(
+				'role'   => 'administrator',
+				'number' => 1,
+				'fields' => 'ID',
+			)
+		);
 		return ! empty( $admins ) ? (int) $admins[0] : 1;
 	}
 

@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Declarative settings fields and sections for the PRAutoBlogger admin page.
  *
  * Centralizes all field and section definitions in one place, making it trivial
@@ -24,53 +26,53 @@ class PRAutoBlogger_Settings_Fields {
 	 * @return array<string, array{title: string, icon: string, description: string}>
 	 */
 	public static function get_sections(): array {
-		return [
-			'prautoblogger_api' => [
+		return array(
+			'prautoblogger_api'        => array(
 				'title'       => __( 'API Keys', 'prautoblogger' ),
 				'icon'        => 'dashicons-admin-network',
 				'description' => __( 'Connect your external services. Keys are encrypted at rest.', 'prautoblogger' ),
-			],
-			'prautoblogger_models' => [
+			),
+			'prautoblogger_models'     => array(
 				'title'       => __( 'AI Models', 'prautoblogger' ),
 				'icon'        => 'dashicons-superhero-alt',
 				'description' => __( 'Choose which models power each stage of the pipeline.', 'prautoblogger' ),
-			],
-			'prautoblogger_content' => [
+			),
+			'prautoblogger_content'    => array(
 				'title'       => __( 'Content', 'prautoblogger' ),
 				'icon'        => 'dashicons-edit-large',
 				'description' => __( 'Control tone, length, pipeline mode, and topic guardrails.', 'prautoblogger' ),
-			],
-			'prautoblogger_sources' => [
+			),
+			'prautoblogger_sources'    => array(
 				'title'       => __( 'Sources', 'prautoblogger' ),
 				'icon'        => 'dashicons-rss',
 				'description' => __( 'Configure where PRAutoBlogger finds trending topics.', 'prautoblogger' ),
-			],
-			'prautoblogger_schedule' => [
+			),
+			'prautoblogger_schedule'   => array(
 				'title'       => __( 'Schedule & Budget', 'prautoblogger' ),
 				'icon'        => 'dashicons-calendar-alt',
 				'description' => __( 'Set daily generation schedule, volume, and spending limits.', 'prautoblogger' ),
-			],
-			'prautoblogger_publishing' => [
+			),
+			'prautoblogger_publishing' => array(
 				'title'       => __( 'Publishing', 'prautoblogger' ),
 				'icon'        => 'dashicons-megaphone',
 				'description' => __( 'Control how generated content is published.', 'prautoblogger' ),
-			],
-			'prautoblogger_analytics' => [
+			),
+			'prautoblogger_analytics'  => array(
 				'title'       => __( 'Analytics', 'prautoblogger' ),
 				'icon'        => 'dashicons-chart-area',
 				'description' => __( 'Connect Google Analytics 4 for post performance scoring.', 'prautoblogger' ),
-			],
-			'prautoblogger_display' => [
+			),
+			'prautoblogger_display'    => array(
 				'title'       => __( 'Display', 'prautoblogger' ),
 				'icon'        => 'dashicons-editor-textcolor',
 				'description' => __( 'Control how generated articles look on the frontend — fonts, sizes, and table styling.', 'prautoblogger' ),
-			],
-			'prautoblogger_images' => [
+			),
+			'prautoblogger_images'     => array(
 				'title'       => __( 'Images', 'prautoblogger' ),
 				'icon'        => 'dashicons-format-image',
 				'description' => __( 'Image provider, model, and style controls. OpenRouter reuses your existing API key.', 'prautoblogger' ),
-			],
-		];
+			),
+		);
 	}
 
 	/**
@@ -88,25 +90,25 @@ class PRAutoBlogger_Settings_Fields {
 	 * @return array<int, array<string, mixed>>
 	 */
 	private static function get_core_fields(): array {
-		return [
+		return array(
 			// ── API Keys ────────────────────────────────────────────────
-			[
+			array(
 				'id'          => 'prautoblogger_openrouter_api_key',
 				'label'       => __( 'OpenRouter API Key', 'prautoblogger' ),
 				'type'        => 'password',
 				'section'     => 'prautoblogger_api',
 				'description' => __( 'Get your key at openrouter.ai/keys', 'prautoblogger' ),
 				'icon'        => '🔑',
-			],
-			[
+			),
+			array(
 				'id'          => 'prautoblogger_reddit_source_status',
 				'label'       => __( 'Reddit Data Source', 'prautoblogger' ),
 				'type'        => 'source_status',
 				'section'     => 'prautoblogger_api',
 				'description' => __( 'Uses Reddit RSS (primary) and .json (fallback). No API key required.', 'prautoblogger' ),
 				'icon'        => '📡',
-			],
-			[
+			),
+			array(
 				'id'          => 'prautoblogger_ai_gateway_base_url',
 				'label'       => __( 'Cloudflare AI Gateway URL', 'prautoblogger' ),
 				'type'        => 'text',
@@ -114,8 +116,8 @@ class PRAutoBlogger_Settings_Fields {
 				'default'     => '',
 				'description' => __( 'Optional. Route OpenRouter calls through a Cloudflare AI Gateway for caching, cost logging, and rate limiting. Format: https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/openrouter — leave blank to call OpenRouter directly.', 'prautoblogger' ),
 				'icon'        => '☁️',
-			],
-			[
+			),
+			array(
 				'id'          => 'prautoblogger_ai_gateway_cache_ttl',
 				'label'       => __( 'AI Gateway Cache TTL (seconds)', 'prautoblogger' ),
 				'type'        => 'number',
@@ -124,10 +126,10 @@ class PRAutoBlogger_Settings_Fields {
 				'min'         => 0,
 				'max'         => 2592000,
 				'description' => __( 'How long Cloudflare may serve cached responses for identical LLM calls. 0 disables caching. Only used when a gateway URL is set above. Safe values: 0 for article generation (always fresh), 3600+ for repeated classification/scoring calls.', 'prautoblogger' ),
-			],
+			),
 
 			// ── AI Models ───────────────────────────────────────────────
-			[
+			array(
 				'id'          => 'prautoblogger_analysis_model',
 				'label'       => __( 'Analysis Model', 'prautoblogger' ),
 				'type'        => 'model_select',
@@ -136,8 +138,8 @@ class PRAutoBlogger_Settings_Fields {
 				'capability'  => 'text→text',
 				'description' => __( 'Used for source analysis. Pick a cheap, fast model.', 'prautoblogger' ),
 				'badge'       => __( 'Low cost', 'prautoblogger' ),
-			],
-			[
+			),
+			array(
 				'id'          => 'prautoblogger_writing_model',
 				'label'       => __( 'Writing Model', 'prautoblogger' ),
 				'type'        => 'model_select',
@@ -146,8 +148,8 @@ class PRAutoBlogger_Settings_Fields {
 				'capability'  => 'text→text',
 				'description' => __( 'Used for article generation. Quality matters here.', 'prautoblogger' ),
 				'badge'       => __( 'Quality', 'prautoblogger' ),
-			],
-			[
+			),
+			array(
 				'id'          => 'prautoblogger_editor_model',
 				'label'       => __( 'Editor Model', 'prautoblogger' ),
 				'type'        => 'model_select',
@@ -156,110 +158,110 @@ class PRAutoBlogger_Settings_Fields {
 				'capability'  => 'text→text',
 				'description' => __( 'Used for the chief editor review pass.', 'prautoblogger' ),
 				'badge'       => __( 'Quality', 'prautoblogger' ),
-			],
+			),
 
 			// ── Content ─────────────────────────────────────────────────
-			[
+			array(
 				'id'          => 'prautoblogger_niche_description',
 				'label'       => __( 'Niche Description', 'prautoblogger' ),
 				'type'        => 'textarea',
 				'section'     => 'prautoblogger_content',
 				'description' => __( 'Describe your site\'s niche. Guides content analysis and generation.', 'prautoblogger' ),
-			],
-			[
+			),
+			array(
 				'id'          => 'prautoblogger_analysis_instructions',
 				'label'       => __( 'Analysis Instructions', 'prautoblogger' ),
 				'type'        => 'textarea',
 				'section'     => 'prautoblogger_content',
 				'default'     => '',
 				'description' => __( 'Custom instructions for the topic analysis LLM. Steers how source data is evaluated and which ideas get surfaced — e.g. "Prioritize questions over news. Ignore price-related discussions."', 'prautoblogger' ),
-			],
-			[
+			),
+			array(
 				'id'      => 'prautoblogger_tone',
 				'label'   => __( 'Content Tone', 'prautoblogger' ),
 				'type'    => 'select',
 				'section' => 'prautoblogger_content',
 				'default' => 'informational',
-				'options' => [
+				'options' => array(
 					'informational'  => __( 'Informational', 'prautoblogger' ),
 					'conversational' => __( 'Conversational', 'prautoblogger' ),
 					'professional'   => __( 'Professional', 'prautoblogger' ),
 					'casual'         => __( 'Casual', 'prautoblogger' ),
 					'authoritative'  => __( 'Authoritative', 'prautoblogger' ),
-				],
-			],
-			[
+				),
+			),
+			array(
 				'id'      => 'prautoblogger_writing_pipeline',
 				'label'   => __( 'Writing Pipeline', 'prautoblogger' ),
 				'type'    => 'select',
 				'section' => 'prautoblogger_content',
 				'default' => 'multi_step',
-				'options' => [
+				'options' => array(
 					'multi_step'  => __( 'Multi-step (outline → draft → polish)', 'prautoblogger' ),
 					'single_pass' => __( 'Single-pass (one LLM call)', 'prautoblogger' ),
-				],
-			],
-			[
+				),
+			),
+			array(
 				'id'      => 'prautoblogger_min_word_count',
 				'label'   => __( 'Min Word Count', 'prautoblogger' ),
 				'type'    => 'number',
 				'section' => 'prautoblogger_content',
 				'default' => 800,
 				'min'     => 200,
-			],
-			[
+			),
+			array(
 				'id'      => 'prautoblogger_max_word_count',
 				'label'   => __( 'Max Word Count', 'prautoblogger' ),
 				'type'    => 'number',
 				'section' => 'prautoblogger_content',
 				'default' => 2000,
 				'min'     => 500,
-			],
-			[
+			),
+			array(
 				'id'          => 'prautoblogger_writing_instructions',
 				'label'       => __( 'Writing Instructions', 'prautoblogger' ),
 				'type'        => 'textarea',
 				'section'     => 'prautoblogger_content',
 				'default'     => '',
 				'description' => __( 'Custom instructions appended to the LLM\'s system prompt when writing articles. Use this to steer style, structure, voice, and formatting — e.g. "Always open with a hook question. Use short paragraphs. Cite at least two studies."', 'prautoblogger' ),
-			],
-			[
+			),
+			array(
 				'id'          => 'prautoblogger_editor_instructions',
 				'label'       => __( 'Editor Instructions', 'prautoblogger' ),
 				'type'        => 'textarea',
 				'section'     => 'prautoblogger_content',
 				'default'     => '',
 				'description' => __( 'Custom instructions for the chief editor LLM review pass. Steers what the editor looks for and how it revises — e.g. "Be strict about medical disclaimers. Reject any article under 800 words."', 'prautoblogger' ),
-			],
-			[
+			),
+			array(
 				'id'          => 'prautoblogger_topic_exclusions',
 				'label'       => __( 'Topic Exclusions', 'prautoblogger' ),
 				'type'        => 'textarea',
 				'section'     => 'prautoblogger_content',
 				'description' => __( 'Comma-separated topics to never write about.', 'prautoblogger' ),
-			],
+			),
 
 			// ── Sources ─────────────────────────────────────────────────
-			[
+			array(
 				'id'          => 'prautoblogger_target_subreddits',
 				'label'       => __( 'Target Subreddits', 'prautoblogger' ),
 				'type'        => 'textarea',
 				'section'     => 'prautoblogger_sources',
 				'description' => __( 'Comma-separated, without r/. E.g.: peptides, Nootropics, biohackers', 'prautoblogger' ),
-			],
-			[
+			),
+			array(
 				'id'          => 'prautoblogger_enabled_sources',
 				'label'       => __( 'Enabled Sources', 'prautoblogger' ),
 				'type'        => 'checkboxes',
 				'section'     => 'prautoblogger_sources',
-				'options'     => [
+				'options'     => array(
 					'reddit'       => __( 'Reddit (RSS + .json)', 'prautoblogger' ),
 					'llm_research' => __( 'LLM Deep Research (reasoning model)', 'prautoblogger' ),
-				],
+				),
 				'default'     => '["reddit"]',
 				'description' => __( 'Select which platforms to monitor for topics.', 'prautoblogger' ),
-			],
-			[
+			),
+			array(
 				'id'          => 'prautoblogger_pullpush_cache_ttl',
 				'label'       => __( 'Research Cache (hours)', 'prautoblogger' ),
 				'type'        => 'number',
@@ -268,21 +270,21 @@ class PRAutoBlogger_Settings_Fields {
 				'min'         => 1,
 				'max'         => 72,
 				'description' => __( 'How long to cache Reddit research results before re-fetching. Saves bandwidth on low-traffic sites.', 'prautoblogger' ),
-			],
-			[
+			),
+			array(
 				'id'          => 'prautoblogger_reddit_time_filter',
 				'label'       => __( 'Reddit Time Window', 'prautoblogger' ),
 				'type'        => 'select',
 				'section'     => 'prautoblogger_sources',
 				'default'     => 'day',
-				'options'     => [
+				'options'     => array(
 					'day'   => __( 'Past 24 hours', 'prautoblogger' ),
 					'week'  => __( 'Past week', 'prautoblogger' ),
 					'month' => __( 'Past month', 'prautoblogger' ),
-				],
+				),
 				'description' => __( 'How far back to search for trending posts and comments.', 'prautoblogger' ),
-			],
-			[
+			),
+			array(
 				'id'          => 'prautoblogger_reddit_posts_per_subreddit',
 				'label'       => __( 'Posts per Subreddit', 'prautoblogger' ),
 				'type'        => 'number',
@@ -291,7 +293,7 @@ class PRAutoBlogger_Settings_Fields {
 				'min'         => 5,
 				'max'         => 100,
 				'description' => __( 'Maximum posts to fetch per subreddit per collection run.', 'prautoblogger' ),
-			],
-		];
+			),
+		);
 	}
 }

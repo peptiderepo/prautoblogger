@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Pricing + model-id resolution helpers for the Runware image provider.
  *
  * Each Runware FLUX model has a flat per-image cost sourced from
@@ -26,12 +28,12 @@ class PRAutoBlogger_Runware_Image_Pricing {
 	 *
 	 * @var array<string, float>
 	 */
-	private const COST_PER_IMAGE = [
+	private const COST_PER_IMAGE = array(
 		// FLUX.1 schnell — 4-step distilled. Our new default (2026-04-21).
 		'runware:100@1' => 0.0006,
 		// FLUX.1 dev — 28-step full model. Higher fidelity, ~30x cost.
 		'runware:101@1' => 0.02,
-	];
+	);
 
 	/**
 	 * Default number of inference steps per model. Runware bills per image
@@ -39,10 +41,10 @@ class PRAutoBlogger_Runware_Image_Pricing {
 	 *
 	 * @var array<string, int>
 	 */
-	private const DEFAULT_STEPS = [
+	private const DEFAULT_STEPS = array(
 		'runware:100@1' => 4,
 		'runware:101@1' => 28,
-	];
+	);
 
 	/**
 	 * Resolve the model identifier from a hint, falling back to site option,

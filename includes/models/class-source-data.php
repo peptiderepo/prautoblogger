@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Value object representing a single piece of collected social media data
  * (e.g., a Reddit post or comment).
  *
@@ -111,7 +113,7 @@ class PRAutoBlogger_Source_Data {
 	 * @return array<string, mixed>
 	 */
 	public function to_db_row(): array {
-		return [
+		return array(
 			'source_type'   => $this->source_type,
 			'source_id'     => $this->source_id,
 			'subreddit'     => $this->subreddit,
@@ -123,6 +125,6 @@ class PRAutoBlogger_Source_Data {
 			'permalink'     => $this->permalink,
 			'collected_at'  => $this->collected_at,
 			'metadata_json' => null !== $this->metadata ? wp_json_encode( $this->metadata ) : null,
-		];
+		);
 	}
 }

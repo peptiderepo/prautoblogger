@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Admin page displaying structured application log entries.
  *
  * Provides level filtering (error/warning/info/debug), text search,
@@ -29,7 +31,7 @@ class PRAutoBlogger_Log_Viewer {
 			__( 'Activity Log', 'prautoblogger' ),
 			'manage_options',
 			'prautoblogger-logs',
-			[ $this, 'render_page' ]
+			array( $this, 'render_page' )
 		);
 	}
 
@@ -66,19 +68,21 @@ class PRAutoBlogger_Log_Viewer {
 		check_ajax_referer( 'prautoblogger_clear_logs', 'nonce' );
 
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'prautoblogger' ) ], 403 );
+			wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'prautoblogger' ) ), 403 );
 			return;
 		}
 
 		$days    = isset( $_POST['days'] ) ? absint( $_POST['days'] ) : 30;
 		$deleted = PRAutoBlogger_Logger::prune( $days );
 
-		wp_send_json_success( [
-			'message' => sprintf(
+		wp_send_json_success(
+			array(
+				'message' => sprintf(
 				/* translators: %d: number of entries deleted */
-				__( '%d log entries cleared.', 'prautoblogger' ),
-				$deleted
-			),
-		] );
+					__( '%d log entries cleared.', 'prautoblogger' ),
+					$deleted
+				),
+			)
+		);
 	}
 }

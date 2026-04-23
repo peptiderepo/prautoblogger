@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Orchestrates data collection from all enabled source providers.
  *
  * Iterates through enabled sources (Reddit, LLM Research), calls their
@@ -51,7 +53,7 @@ class PRAutoBlogger_Source_Collector {
 		// Only fall back to reddit if the option is corrupt (non-JSON).
 		// An empty array '[]' is a valid choice — the user disabled all sources.
 		if ( ! is_array( $enabled ) ) {
-			$enabled = [ 'reddit' ];
+			$enabled = array( 'reddit' );
 		}
 
 		$total_inserted = 0;
@@ -64,9 +66,9 @@ class PRAutoBlogger_Source_Collector {
 			}
 
 			try {
-				$data     = $provider->collect_data( $this->get_config_for_source( $source_type ) );
-				$inserted = $this->store_data( $data );
-				$refreshed = count( $data ) - $inserted;
+				$data            = $provider->collect_data( $this->get_config_for_source( $source_type ) );
+				$inserted        = $this->store_data( $data );
+				$refreshed       = count( $data ) - $inserted;
 				$total_inserted += $inserted;
 
 				PRAutoBlogger_Logger::instance()->info(
@@ -106,7 +108,7 @@ class PRAutoBlogger_Source_Collector {
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
 		$row = $wpdb->get_row(
-			$wpdb->prepare(
+			$wpdb->prepare(  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				"SELECT title, content, subreddit FROM {$table} WHERE id IN ({$placeholders}) ORDER BY score DESC LIMIT 1",
 				...$ids
 			),
@@ -117,10 +119,10 @@ class PRAutoBlogger_Source_Collector {
 			return null;
 		}
 
-		return [
+		return array(
 			'title'    => $row['title'] ?? 'Reddit Discussion',
 			'selftext' => $row['content'] ?? '',
-		];
+		);
 	}
 
 	/**
@@ -150,7 +152,7 @@ class PRAutoBlogger_Source_Collector {
 			// the analyzer's 24-hour window picks them up again.
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 			$result = $wpdb->query(
-				$wpdb->prepare(
+				$wpdb->prepare(  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 					"INSERT INTO {$table}
 					(source_type, source_id, subreddit, title, content, author, score, comment_count, permalink, collected_at, metadata_json)
 					VALUES (%s, %s, %s, %s, %s, %s, %d, %d, %s, %s, %s)
@@ -175,7 +177,7 @@ class PRAutoBlogger_Source_Collector {
 			// ON DUPLICATE KEY UPDATE returns 2 for updates, 1 for inserts.
 			// Only count genuine inserts toward the "new" tally.
 			if ( false !== $result && 1 === (int) $result ) {
-				$inserted++;
+				++$inserted;
 			}
 		}
 
@@ -190,10 +192,10 @@ class PRAutoBlogger_Source_Collector {
 	 * @return PRAutoBlogger_Source_Provider_Interface|null
 	 */
 	private function get_provider( string $source_type ): ?PRAutoBlogger_Source_Provider_Interface {
-		$providers = [
+		$providers = array(
 			'reddit'       => PRAutoBlogger_Reddit_Provider::class,
 			'llm_research' => PRAutoBlogger_LLM_Research_Provider::class,
-		];
+		);
 
 		/**
 		 * Filter the registered source providers.
@@ -230,20 +232,20 @@ class PRAutoBlogger_Source_Collector {
 	 */
 	private function get_config_for_source( string $source_type ): array {
 		if ( 'reddit' === $source_type ) {
-			return [
-				'subreddits'        => json_decode( get_option( 'prautoblogger_target_subreddits', '[]' ), true ) ?: [],
+			return array(
+				'subreddits'        => json_decode( get_option( 'prautoblogger_target_subreddits', '[]' ), true ) ?? array(),
 				'limit'             => 25,
 				'time_filter'       => 'day',
 				'include_comments'  => true,
 				'comments_per_post' => 10,
-			];
+			);
 		}
 
 		if ( 'llm_research' === $source_type ) {
-			$config = [
+			$config = array(
 				'model'  => get_option( 'prautoblogger_research_model', PRAUTOBLOGGER_DEFAULT_ANALYSIS_MODEL ),
 				'prompt' => get_option( 'prautoblogger_research_prompt', '' ),
-			];
+			);
 			// Pass the pipeline's cost tracker so research costs get tagged
 			// with the run_id for post-pipeline amortization across articles.
 			if ( null !== $this->cost_tracker ) {
@@ -252,6 +254,6 @@ class PRAutoBlogger_Source_Collector {
 			return $config;
 		}
 
-		return [];
+		return array();
 	}
 }

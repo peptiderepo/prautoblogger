@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Credential + connectivity validator for the OpenRouter LLM provider.
  *
  * Split out of the provider to keep each file under the 300-line cap and
@@ -79,20 +81,24 @@ class PRAutoBlogger_OpenRouter_Validator {
 				return;
 			}
 			// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt
-			curl_setopt( $handle, CURLOPT_HTTPHEADER, [
-				'Authorization: ' . $auth_header_value,
-			] );
+			curl_setopt(
+				$handle,
+				CURLOPT_HTTPHEADER,
+				array(
+					'Authorization: ' . $auth_header_value,
+				)
+			);
 		};
 		add_action( 'http_api_curl', $curl_auth_filter_cred, 99, 3 );
 
 		$response = wp_remote_get(
 			$base_url . '/auth/key',
-			[
+			array(
 				'timeout' => self::TIMEOUT_SECONDS,
-				'headers' => [
+				'headers' => array(
 					'Authorization' => 'Bearer ' . $api_key,
-				],
-			]
+				),
+			)
 		);
 
 		remove_action( 'http_api_curl', $curl_auth_filter_cred, 99 );
@@ -115,10 +121,10 @@ class PRAutoBlogger_OpenRouter_Validator {
 
 		$status_code = wp_remote_retrieve_response_code( $response );
 		if ( 200 === $status_code ) {
-			return [
+			return array(
 				'status'  => 'ok',
 				'message' => __( 'OpenRouter connected.', 'prautoblogger' ),
-			];
+			);
 		}
 
 		$body_raw = wp_remote_retrieve_body( $response );
@@ -143,10 +149,10 @@ class PRAutoBlogger_OpenRouter_Validator {
 	 * @return array{status: string, message: string, debug: string}
 	 */
 	private function err( string $debug, string $message ): array {
-		return [
+		return array(
 			'status'  => 'error',
 			'message' => $message,
 			'debug'   => $debug,
-		];
+		);
 	}
 }

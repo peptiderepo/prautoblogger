@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Provides historical cost reporting and analysis methods.
  *
  * Extracted from PRAutoBlogger_Cost_Tracker, this class handles all read-only
@@ -35,7 +37,7 @@ class PRAutoBlogger_Cost_Reporter {
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$result = $wpdb->get_var(
-			$wpdb->prepare(
+			$wpdb->prepare(  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				"SELECT COALESCE(SUM(estimated_cost), 0) FROM {$table} WHERE created_at >= %s AND response_status = 'success'",
 				$first_of_month
 			)
@@ -54,7 +56,7 @@ class PRAutoBlogger_Cost_Reporter {
 	public function get_daily_spend( int $days = 30 ): array {
 		global $wpdb;
 		if ( null === $wpdb ) {
-			return [];
+			return array();
 		}
 
 		$table = $wpdb->prefix . 'prautoblogger_generation_log';
@@ -64,7 +66,7 @@ class PRAutoBlogger_Cost_Reporter {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$results = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT DATE(created_at) as day, SUM(estimated_cost) as total_cost
+				"SELECT DATE(created_at) as day, SUM(estimated_cost) as total_cost  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				FROM {$table}
 				WHERE created_at >= %s AND response_status = 'success'
 				GROUP BY DATE(created_at)
@@ -74,8 +76,8 @@ class PRAutoBlogger_Cost_Reporter {
 			ARRAY_A
 		);
 
-		$daily = [];
-		foreach ( ( $results ?: [] ) as $row ) {
+		$daily = array();
+		foreach ( ( $results ?? array() ) as $row ) {
 			$daily[ $row['day'] ] = (float) $row['total_cost'];
 		}
 
@@ -93,7 +95,7 @@ class PRAutoBlogger_Cost_Reporter {
 	public function get_spend_by_stage( string $start_date, string $end_date ): array {
 		global $wpdb;
 		if ( null === $wpdb ) {
-			return [];
+			return array();
 		}
 
 		$table = $wpdb->prefix . 'prautoblogger_generation_log';
@@ -104,7 +106,7 @@ class PRAutoBlogger_Cost_Reporter {
 				"SELECT stage,
 					SUM(estimated_cost) as total_cost,
 					SUM(prompt_tokens + completion_tokens) as total_tokens,
-					COUNT(*) as call_count
+					COUNT(*) as call_count  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				FROM {$table}
 				WHERE created_at BETWEEN %s AND %s AND response_status = 'success'
 				GROUP BY stage",
@@ -114,13 +116,13 @@ class PRAutoBlogger_Cost_Reporter {
 			ARRAY_A
 		);
 
-		$breakdown = [];
-		foreach ( ( $results ?: [] ) as $row ) {
-			$breakdown[ $row['stage'] ] = [
+		$breakdown = array();
+		foreach ( ( $results ?? array() ) as $row ) {
+			$breakdown[ $row['stage'] ] = array(
 				'cost'   => (float) $row['total_cost'],
 				'tokens' => (int) $row['total_tokens'],
 				'calls'  => (int) $row['call_count'],
-			];
+			);
 		}
 
 		return $breakdown;

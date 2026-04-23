@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Builds image prompts from article content or source data.
  *
  * Uses a cheap LLM (via OpenRouter) to distill article content into concise
@@ -82,10 +84,10 @@ PROMPT;
 
 		$style_suffix = get_option( 'prautoblogger_image_style_suffix', PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX );
 
-		return [
+		return array(
 			'prompt'  => trim( $parsed['scene'] . ' ' . $style_suffix ),
 			'caption' => $parsed['caption'],
-		];
+		);
 	}
 
 	/**
@@ -97,17 +99,17 @@ PROMPT;
 	 */
 	public function build_source_prompt( array $source_data ): array {
 		$title    = $source_data['title'] ?? 'Reddit Discussion';
-		$comments = $source_data['comments'] ?? [];
+		$comments = $source_data['comments'] ?? array();
 		$context  = is_array( $comments ) && ! empty( $comments ) ? $comments[0] : '';
 
 		$parsed = $this->rewrite_via_llm( $title, $context );
 
 		$style_suffix = get_option( 'prautoblogger_image_style_suffix', PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX );
 
-		return [
+		return array(
 			'prompt'  => trim( $parsed['scene'] . ' ' . $style_suffix ),
 			'caption' => $parsed['caption'],
-		];
+		);
 	}
 
 	/**
@@ -146,15 +148,21 @@ PROMPT;
 			$system = $this->resolve_system_prompt();
 
 			$result = $llm->send_chat_completion(
-				[
-					[ 'role' => 'system', 'content' => $system ],
-					[ 'role' => 'user', 'content' => $user_message ],
-				],
+				array(
+					array(
+						'role'    => 'system',
+						'content' => $system,
+					),
+					array(
+						'role'    => 'user',
+						'content' => $user_message,
+					),
+				),
 				$model,
-				[
+				array(
 					'temperature' => 0.7,
 					'max_tokens'  => self::REWRITER_MAX_TOKENS,
-				]
+				)
 			);
 
 			$raw = trim( $result['content'] ?? '' );
@@ -217,11 +225,17 @@ PROMPT;
 			$caption = trim( $parts[1] );
 			// Strip surrounding quotes from caption — the LLM wraps it in quotes.
 			$caption = trim( $caption, '"\'' );
-			return [ 'scene' => $scene, 'caption' => $caption ];
+			return array(
+				'scene'   => $scene,
+				'caption' => $caption,
+			);
 		}
 
 		// No blank-line separator found — treat entire response as scene.
-		return [ 'scene' => trim( $raw ), 'caption' => '' ];
+		return array(
+			'scene'   => trim( $raw ),
+			'caption' => '',
+		);
 	}
 
 	/**
@@ -256,10 +270,10 @@ PROMPT;
 	public function build_fallback_prompt( string $title ): array {
 		$parsed       = $this->synthesize_visual_concepts_fallback( $title, '' );
 		$style_suffix = get_option( 'prautoblogger_image_style_suffix', PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX );
-		return [
+		return array(
 			'prompt'  => trim( $parsed['scene'] . ' ' . $style_suffix ),
 			'caption' => $parsed['caption'],
-		];
+		);
 	}
 
 	/**
@@ -278,10 +292,10 @@ PROMPT;
 			$title
 		);
 
-		return [
+		return array(
 			'scene'   => trim( $scene ),
 			'caption' => 'Science is full of surprises.',
-		];
+		);
 	}
 
 	/** Lazy-load the OpenRouter provider. */

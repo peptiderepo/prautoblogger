@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Value object representing an analyzed topic pattern (recurring question,
  * complaint, or comparison detected in source data).
  *
@@ -43,7 +45,7 @@ class PRAutoBlogger_Analysis_Result {
 		$this->summary         = $data['summary'] ?? null;
 		$this->frequency       = (int) ( $data['frequency'] ?? 1 );
 		$this->relevance_score = (float) ( $data['relevance_score'] ?? 0.0 );
-		$this->source_ids      = $data['source_ids'] ?? [];
+		$this->source_ids      = $data['source_ids'] ?? array();
 		$this->analyzed_at     = $data['analyzed_at'] ?? current_time( 'mysql' );
 		$this->metadata        = $data['metadata'] ?? null;
 	}
@@ -88,7 +90,7 @@ class PRAutoBlogger_Analysis_Result {
 	 * @return array<string, mixed>
 	 */
 	public function to_db_row(): array {
-		return [
+		return array(
 			'analysis_type'   => $this->analysis_type,
 			'topic'           => $this->topic,
 			'summary'         => $this->summary,
@@ -97,6 +99,6 @@ class PRAutoBlogger_Analysis_Result {
 			'source_ids_json' => wp_json_encode( $this->source_ids ),
 			'analyzed_at'     => $this->analyzed_at,
 			'metadata_json'   => null !== $this->metadata ? wp_json_encode( $this->metadata ) : null,
-		];
+		);
 	}
 }

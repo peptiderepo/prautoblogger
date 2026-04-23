@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * WordPress Dashboard widget showing PRAutoBlogger generation status at a glance.
  *
  * Displays: last generation time, articles generated today, monthly cost,
@@ -27,7 +29,7 @@ class PRAutoBlogger_Dashboard_Widget {
 		wp_add_dashboard_widget(
 			'prautoblogger_status',
 			__( 'PRAutoBlogger Status', 'prautoblogger' ),
-			[ $this, 'render_widget' ]
+			array( $this, 'render_widget' )
 		);
 	}
 
@@ -44,7 +46,8 @@ class PRAutoBlogger_Dashboard_Widget {
 
 		$next_run = wp_next_scheduled( 'prautoblogger_daily_generation' );
 
-		printf( '<p><strong>%s</strong> $%.2f / $%.2f (%.0f%%)</p>',
+		printf(
+			'<p><strong>%s</strong> $%.2f / $%.2f (%.0f%%)</p>',
 			esc_html__( 'Monthly Spend:', 'prautoblogger' ),
 			$monthly_spend,
 			$budget,
@@ -52,7 +55,8 @@ class PRAutoBlogger_Dashboard_Widget {
 		);
 
 		if ( false !== $next_run ) {
-			printf( '<p><strong>%s</strong> %s</p>',
+			printf(
+				'<p><strong>%s</strong> %s</p>',
 				esc_html__( 'Next Generation:', 'prautoblogger' ),
 				esc_html( wp_date( 'M j, Y g:i A', $next_run ) )
 			);

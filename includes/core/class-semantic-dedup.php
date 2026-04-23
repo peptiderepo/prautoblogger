@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * Semantic deduplication using embedding cosine similarity.
  *
  * Embeds candidate topics and recent post titles in a single batch API call,
@@ -24,13 +26,13 @@ class PRAutoBlogger_Semantic_Dedup {
 	private const SIMILARITY_THRESHOLD = 0.72;
 
 	/** @var float[][] Cached embeddings for recent post titles, keyed by index. */
-	private array $title_embeddings = [];
+	private array $title_embeddings = array();
 
 	/** @var string[] Recent post titles. */
-	private array $recent_titles = [];
+	private array $recent_titles = array();
 
 	/** @var float[][] Cached embeddings for accepted ideas, accumulated per-batch. */
-	private array $accepted_embeddings = [];
+	private array $accepted_embeddings = array();
 
 	/** @var bool Whether embeddings are available (false after API failure). */
 	private bool $embeddings_available = true;
@@ -158,7 +160,7 @@ class PRAutoBlogger_Semantic_Dedup {
 			if ( null === $this->provider ) {
 				$this->provider = new PRAutoBlogger_OpenRouter_Embedding_Provider();
 			}
-			$result = $this->provider->get_embeddings( [ $text ] );
+			$result = $this->provider->get_embeddings( array( $text ) );
 			return $result[0] ?? null;
 		} catch ( \Throwable $e ) {
 			// Degrade gracefully — one failed embed shouldn't kill the pipeline.
@@ -220,18 +222,20 @@ class PRAutoBlogger_Semantic_Dedup {
 	 * @return string[]
 	 */
 	private function fetch_recent_post_titles(): array {
-		$query = new \WP_Query( [
-			'post_type'      => 'post',
-			'post_status'    => [ 'publish', 'draft', 'pending' ],
-			'meta_key'       => '_prautoblogger_generated',
-			'meta_value'     => '1',
-			'date_query'     => [ [ 'after' => '30 days ago' ] ],
-			'posts_per_page' => 100,
-			'fields'         => 'ids',
-			'no_found_rows'  => true,
-		] );
+		$query = new \WP_Query(
+			array(
+				'post_type'      => 'post',
+				'post_status'    => array( 'publish', 'draft', 'pending' ),
+				'meta_key'       => '_prautoblogger_generated',
+				'meta_value'     => '1',
+				'date_query'     => array( array( 'after' => '30 days ago' ) ),
+				'posts_per_page' => 100,
+				'fields'         => 'ids',
+				'no_found_rows'  => true,
+			)
+		);
 
-		$titles = [];
+		$titles = array();
 		foreach ( $query->posts as $post_id ) {
 			$titles[] = get_the_title( $post_id );
 		}
@@ -245,27 +249,122 @@ class PRAutoBlogger_Semantic_Dedup {
 	 * @return string[] Unique lowercase keywords.
 	 */
 	private function extract_meaningful_keywords( string $text ): array {
-		static $stopwords = [
-			'a', 'an', 'the', 'and', 'or', 'but', 'is', 'are', 'was', 'were',
-			'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'as',
-			'it', 'its', 'this', 'that', 'your', 'you', 'how', 'what', 'when',
-			'why', 'where', 'which', 'who', 'do', 'does', 'did', 'not', 'no',
-			'can', 'will', 'should', 'could', 'would', 'may', 'might', 'have',
-			'has', 'had', 'be', 'been', 'being', 'about', 'into', 'through',
-			'during', 'before', 'after', 'above', 'below', 'between', 'same',
-			'up', 'down', 'out', 'off', 'over', 'under', 'again', 'then',
-			'here', 'there', 'all', 'each', 'every', 'both', 'few', 'more',
-			'most', 'other', 'some', 'such', 'than', 'too', 'very', 'just',
-			'also', 'only', 'own', 'so', 'if', 'while', 'because', 'until',
-			'vs', 'versus', 'guide', 'complete', 'ultimate', 'best', 'top',
-			'new', 'first', 'need', 'know', 'everything',
-		];
+		static $stopwords = array(
+			'a',
+			'an',
+			'the',
+			'and',
+			'or',
+			'but',
+			'is',
+			'are',
+			'was',
+			'were',
+			'in',
+			'on',
+			'at',
+			'to',
+			'for',
+			'of',
+			'with',
+			'by',
+			'from',
+			'as',
+			'it',
+			'its',
+			'this',
+			'that',
+			'your',
+			'you',
+			'how',
+			'what',
+			'when',
+			'why',
+			'where',
+			'which',
+			'who',
+			'do',
+			'does',
+			'did',
+			'not',
+			'no',
+			'can',
+			'will',
+			'should',
+			'could',
+			'would',
+			'may',
+			'might',
+			'have',
+			'has',
+			'had',
+			'be',
+			'been',
+			'being',
+			'about',
+			'into',
+			'through',
+			'during',
+			'before',
+			'after',
+			'above',
+			'below',
+			'between',
+			'same',
+			'up',
+			'down',
+			'out',
+			'off',
+			'over',
+			'under',
+			'again',
+			'then',
+			'here',
+			'there',
+			'all',
+			'each',
+			'every',
+			'both',
+			'few',
+			'more',
+			'most',
+			'other',
+			'some',
+			'such',
+			'than',
+			'too',
+			'very',
+			'just',
+			'also',
+			'only',
+			'own',
+			'so',
+			'if',
+			'while',
+			'because',
+			'until',
+			'vs',
+			'versus',
+			'guide',
+			'complete',
+			'ultimate',
+			'best',
+			'top',
+			'new',
+			'first',
+			'need',
+			'know',
+			'everything',
+		);
 
 		$text  = strtolower( $text );
 		$words = preg_split( '/[^a-z0-9-]+/', $text, -1, PREG_SPLIT_NO_EMPTY );
-		$words = array_filter( $words, static function ( string $w ) use ( $stopwords ): bool {
-			return strlen( $w ) >= 2 && ! in_array( $w, $stopwords, true );
-		} );
+		$words = array_filter(
+			$words,
+			static function ( string $w ) use ( $stopwords ): bool {
+				return strlen( $w ) >= 2 && ! in_array( $w, $stopwords, true );
+			}
+		);
 
 		return array_values( array_unique( $words ) );
 	}

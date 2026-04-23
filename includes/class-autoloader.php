@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 /**
+ * phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
+ *
  * PSR-4-inspired autoloader for PRAutoBlogger classes.
  *
  * Maps class names like `PRAutoBlogger_Content_Generator` to file paths like
@@ -19,7 +21,7 @@ class PRAutoBlogger_Autoloader {
 	 *
 	 * @var string[]
 	 */
-	private static array $directories = [
+	private static array $directories = array(
 		'',           // includes/ root
 		'admin/',
 		'admin/fields/',
@@ -28,7 +30,7 @@ class PRAutoBlogger_Autoloader {
 		'models/',
 		'frontend/',
 		'services/',
-	];
+	);
 
 	/**
 	 * Register the autoloader with SPL.
@@ -36,7 +38,7 @@ class PRAutoBlogger_Autoloader {
 	 * @return void
 	 */
 	public static function register(): void {
-		spl_autoload_register( [ __CLASS__, 'autoload' ] );
+		spl_autoload_register( array( __CLASS__, 'autoload' ) );
 	}
 
 	/**
