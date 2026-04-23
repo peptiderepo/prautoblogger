@@ -232,11 +232,12 @@ class PRAutoBlogger_Post_Assembler {
 	 * Generate and attach images to a published post.
 	 * Non-blocking — logs errors but doesn't re-throw since the post is already created.
 	 *
-	 * @param int                        $post_id   Post ID.
-	 * @param PRAutoBlogger_Article_Idea $idea      Article idea (contains source IDs).
-	 * @param array                      $post_data Post data array (for article content).
+	 * @param int                        $post_id      Post ID.
+	 * @param PRAutoBlogger_Article_Idea $idea         Article idea (contains source IDs).
+	 * @param array                      $post_data    Post data array (for article content).
+	 * @param ?PRAutoBlogger_Cost_Tracker $cost_tracker Optional cost tracker for image generation cost logging.
 	 */
-	public static function attach_generated_images( int $post_id, PRAutoBlogger_Article_Idea $idea, array $post_data ): void {
+	public static function attach_generated_images( int $post_id, PRAutoBlogger_Article_Idea $idea, array $post_data, ?PRAutoBlogger_Cost_Tracker $cost_tracker = null ): void {
 		// Fetch the original Reddit source data for Image B's source-driven prompt.
 		// The idea's source_ids point to rows in the source_data table collected
 		// during the pipeline's collection step.
@@ -247,7 +248,7 @@ class PRAutoBlogger_Post_Assembler {
 			// internally, immediately after each image generates. This
 			// ensures attachment persists even if the process times out
 			// before this method returns.
-			$result = ( new PRAutoBlogger_Image_Pipeline() )->generate_and_attach_images( $post_id, $post_data, $source_data );
+			$result = ( new PRAutoBlogger_Image_Pipeline( null, $cost_tracker ) )->generate_and_attach_images( $post_id, $post_data, $source_data );
 
 			if ( ! empty( $result['errors'] ) ) {
 				foreach ( $result['errors'] as $error ) {

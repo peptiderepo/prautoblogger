@@ -82,7 +82,7 @@ PROMPT;
 
 		$parsed = $this->rewrite_via_llm( $title, $first_para );
 
-		$style_suffix = get_option( 'prautoblogger_image_style_suffix', PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX );
+		$style_suffix = $this->get_style_suffix();
 
 		return array(
 			'prompt'  => trim( $parsed['scene'] . ' ' . $style_suffix ),
@@ -104,7 +104,7 @@ PROMPT;
 
 		$parsed = $this->rewrite_via_llm( $title, $context );
 
-		$style_suffix = get_option( 'prautoblogger_image_style_suffix', PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX );
+		$style_suffix = $this->get_style_suffix();
 
 		return array(
 			'prompt'  => trim( $parsed['scene'] . ' ' . $style_suffix ),
@@ -269,7 +269,7 @@ PROMPT;
 	 */
 	public function build_fallback_prompt( string $title ): array {
 		$parsed       = $this->synthesize_visual_concepts_fallback( $title, '' );
-		$style_suffix = get_option( 'prautoblogger_image_style_suffix', PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX );
+		$style_suffix = $this->get_style_suffix();
 		return array(
 			'prompt'  => trim( $parsed['scene'] . ' ' . $style_suffix ),
 			'caption' => $parsed['caption'],
@@ -311,4 +311,21 @@ PROMPT;
 		$override = (string) get_option( 'prautoblogger_image_prompt_instructions', '' );
 		return '' !== trim( $override ) ? $override : self::REWRITER_SYSTEM_PROMPT;
 	}
+
+	/**
+	 * Get image style suffix with empty-string safeguard.
+	 * 
+	 * Treats both absent and empty string as "use default" to prevent
+	 * silent style loss if the admin settings field is saved empty.
+	 *
+	 * @return string The style suffix with safe fallback.
+	 */
+	private function get_style_suffix(): string {
+		$style_suffix = (string) get_option( 'prautoblogger_image_style_suffix', '' );
+		if ( '' === trim( $style_suffix ) ) {
+			$style_suffix = PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX;
+		}
+		return $style_suffix;
+	}
+
 }

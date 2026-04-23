@@ -35,9 +35,10 @@ class PRAutoBlogger_Publisher {
 		string $content,
 		PRAutoBlogger_Article_Idea $idea,
 		PRAutoBlogger_Editorial_Review $review,
-		?string $run_id = null
+		?string $run_id = null,
+		?PRAutoBlogger_Cost_Tracker $cost_tracker = null
 	): int {
-		return $this->create_post( $content, $idea, $review, 'publish', $run_id );
+		return $this->create_post( $content, $idea, $review, 'publish', $run_id, $cost_tracker );
 	}
 
 	/**
@@ -54,9 +55,10 @@ class PRAutoBlogger_Publisher {
 		string $content,
 		PRAutoBlogger_Article_Idea $idea,
 		PRAutoBlogger_Editorial_Review $review,
-		?string $run_id = null
+		?string $run_id = null,
+		?PRAutoBlogger_Cost_Tracker $cost_tracker = null
 	): int {
-		return $this->create_post( $content, $idea, $review, 'draft', $run_id );
+		return $this->create_post( $content, $idea, $review, 'draft', $run_id, $cost_tracker );
 	}
 
 	/**
@@ -75,7 +77,8 @@ class PRAutoBlogger_Publisher {
 		PRAutoBlogger_Article_Idea $idea,
 		PRAutoBlogger_Editorial_Review $review,
 		string $post_status,
-		?string $run_id = null
+		?string $run_id = null,
+		?PRAutoBlogger_Cost_Tracker $cost_tracker = null
 	): int {
 		// Clean LLM artifacts, then inject peptide hyperlinks deterministically
 		// before the content enters WordPress. Peptide linker no-ops gracefully
@@ -106,7 +109,7 @@ class PRAutoBlogger_Publisher {
 		PRAutoBlogger_Post_Assembler::link_generation_logs( $post_id, $run_id );
 
 		if ( 'publish' === $post_status ) {
-			PRAutoBlogger_Post_Assembler::attach_generated_images( $post_id, $idea, $post_data );
+			PRAutoBlogger_Post_Assembler::attach_generated_images( $post_id, $idea, $post_data, $cost_tracker );
 		}
 
 		PRAutoBlogger_Logger::instance()->info(
