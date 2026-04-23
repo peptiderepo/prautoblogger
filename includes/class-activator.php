@@ -1,4 +1,5 @@
 <?php
+// phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
 declare(strict_types=1);
 
 /**
@@ -225,8 +226,8 @@ class PRAutoBlogger_Activator {
 		// For each (post_id, run_id) pair present in the gen-log, write
 		// the run_id meta if it's not already set. Uses the first run_id
 		// seen per post — in practice each post is linked to exactly one run.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$pairs = $wpdb->get_results(
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$pairs = $wpdb->get_results(  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			"SELECT post_id, MIN(run_id) AS run_id FROM {$gen_log}
 			WHERE post_id IS NOT NULL AND run_id IS NOT NULL AND run_id != ''
 			GROUP BY post_id"

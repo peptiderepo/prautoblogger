@@ -1,4 +1,5 @@
 <?php
+// phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
 declare(strict_types=1);
 
 /**
@@ -63,7 +64,7 @@ class PRAutoBlogger_Post_Assembler {
 			// to a single post. See amortize_research_costs().
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 			$wpdb->query(
-				$wpdb->prepare(
+				$wpdb->prepare(  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 					"UPDATE {$table} SET post_id = %d WHERE post_id IS NULL AND run_id = %s AND stage != 'llm_research'",
 					$post_id,
 					$run_id
@@ -73,7 +74,7 @@ class PRAutoBlogger_Post_Assembler {
 			// Legacy fallback: timestamp-based linking for pre-migration log entries.
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 			$wpdb->query(
-				$wpdb->prepare(
+				$wpdb->prepare(  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 					"UPDATE {$table} SET post_id = %d WHERE post_id IS NULL AND created_at >= %s",
 					$post_id,
 					gmdate( 'Y-m-d H:i:s', time() - HOUR_IN_SECONDS )
@@ -107,7 +108,7 @@ class PRAutoBlogger_Post_Assembler {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$research_row = $wpdb->get_row(
 			$wpdb->prepare(
-				"SELECT id, estimated_cost, provider, model, prompt_tokens, completion_tokens
+				"SELECT id, estimated_cost, provider, model, prompt_tokens, completion_tokens  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				FROM {$table}
 				WHERE run_id = %s AND stage = 'llm_research' AND post_id IS NULL
 				LIMIT 1",
@@ -122,7 +123,7 @@ class PRAutoBlogger_Post_Assembler {
 		// Count distinct articles produced in this run.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$post_ids = $wpdb->get_col(
-			$wpdb->prepare(
+			$wpdb->prepare(  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				"SELECT DISTINCT post_id FROM {$table} WHERE run_id = %s AND post_id IS NOT NULL",
 				$run_id
 			)

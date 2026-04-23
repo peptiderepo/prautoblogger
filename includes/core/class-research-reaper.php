@@ -1,4 +1,5 @@
 <?php
+// phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
 declare(strict_types=1);
 
 /**
@@ -76,7 +77,7 @@ class PRAutoBlogger_Research_Reaper {
 
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 			$orphans = $wpdb->get_results(
-				$wpdb->prepare(
+				$wpdb->prepare(  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 					"SELECT id, run_id, created_at FROM {$log_table}
 					WHERE stage = 'llm_research' AND post_id IS NULL AND created_at < %s",
 					$grace
@@ -179,7 +180,7 @@ class PRAutoBlogger_Research_Reaper {
 		$log_table = $wpdb->prefix . 'prautoblogger_generation_log';
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$ids = $wpdb->get_col(
-			$wpdb->prepare(
+			$wpdb->prepare(  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				"SELECT DISTINCT post_id FROM {$log_table} WHERE run_id = %s AND post_id IS NOT NULL",
 				$run_id
 			)

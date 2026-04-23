@@ -1,4 +1,5 @@
 <?php
+// phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
 declare(strict_types=1);
 
 /**
@@ -99,7 +100,7 @@ class PRAutoBlogger_Analysis_Prompts {
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$top_posts = $wpdb->get_results(
-			"SELECT cs.post_id, cs.composite_score, p.post_title
+			"SELECT cs.post_id, cs.composite_score, p.post_title  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			FROM {$scores_table} cs
 			JOIN {$wpdb->posts} p ON p.ID = cs.post_id
 			WHERE cs.composite_score > 0

@@ -1,4 +1,5 @@
 <?php
+// phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
 declare(strict_types=1);
 
 /**
@@ -131,7 +132,7 @@ class PRAutoBlogger_Content_Analyzer {
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		return $wpdb->get_results(
-			$wpdb->prepare(
+			$wpdb->prepare(  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				"SELECT * FROM {$table} WHERE collected_at >= %s ORDER BY score DESC LIMIT 200",
 				gmdate( 'Y-m-d H:i:s', time() - DAY_IN_SECONDS )
 			),

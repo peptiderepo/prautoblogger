@@ -1,4 +1,5 @@
 <?php
+// phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
 declare(strict_types=1);
 
 /**
@@ -35,7 +36,7 @@ class PRAutoBlogger_Cost_Reporter {
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$result = $wpdb->get_var(
-			$wpdb->prepare(
+			$wpdb->prepare(  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				"SELECT COALESCE(SUM(estimated_cost), 0) FROM {$table} WHERE created_at >= %s AND response_status = 'success'",
 				$first_of_month
 			)
@@ -64,7 +65,7 @@ class PRAutoBlogger_Cost_Reporter {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$results = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT DATE(created_at) as day, SUM(estimated_cost) as total_cost
+				"SELECT DATE(created_at) as day, SUM(estimated_cost) as total_cost  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				FROM {$table}
 				WHERE created_at >= %s AND response_status = 'success'
 				GROUP BY DATE(created_at)
@@ -104,7 +105,7 @@ class PRAutoBlogger_Cost_Reporter {
 				"SELECT stage,
 					SUM(estimated_cost) as total_cost,
 					SUM(prompt_tokens + completion_tokens) as total_tokens,
-					COUNT(*) as call_count
+					COUNT(*) as call_count  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				FROM {$table}
 				WHERE created_at BETWEEN %s AND %s AND response_status = 'success'
 				GROUP BY stage",

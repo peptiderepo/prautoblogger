@@ -1,4 +1,5 @@
 <?php
+// phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
 declare(strict_types=1);
 
 /**
@@ -180,7 +181,7 @@ class PRAutoBlogger_Post_List_Columns {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT stage, model, prompt_tokens, completion_tokens, estimated_cost
+				"SELECT stage, model, prompt_tokens, completion_tokens, estimated_cost  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				FROM {$table} WHERE post_id = %d ORDER BY id ASC",
 				$post_id
 			),

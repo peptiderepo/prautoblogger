@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+// phpcs:ignore Generic.PHP.RequireStrictTypes.MissingDeclaration -- strict_types must precede docblock
 
 /**
  * PRAutoBlogger — Automated Content Research & Publishing

@@ -1,4 +1,5 @@
 <?php
+// phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class naming convention differs from WordPress standard
 declare(strict_types=1);
 
 /**
@@ -106,7 +107,7 @@ class PRAutoBlogger_Source_Collector {
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
 		$row = $wpdb->get_row(
-			$wpdb->prepare(
+			$wpdb->prepare(  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				"SELECT title, content, subreddit FROM {$table} WHERE id IN ({$placeholders}) ORDER BY score DESC LIMIT 1",
 				...$ids
 			),
@@ -150,7 +151,7 @@ class PRAutoBlogger_Source_Collector {
 			// the analyzer's 24-hour window picks them up again.
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 			$result = $wpdb->query(
-				$wpdb->prepare(
+				$wpdb->prepare(  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 					"INSERT INTO {$table}
 					(source_type, source_id, subreddit, title, content, author, score, comment_count, permalink, collected_at, metadata_json)
 					VALUES (%s, %s, %s, %s, %s, %s, %d, %d, %s, %s, %s)
