@@ -44,7 +44,7 @@ jobs:
   phpcs:
     name: PHPCS (WordPress standards)
     runs-on: ubuntu-latest
-    continue-on-error: true  # non-blocking for now — see CONVENTIONS.md
+    continue-on-error: false  # now strict after PHPCS cleanup in v0.8.3
     steps:
       - uses: actions/checkout@v4
       - name: Setup PHP
