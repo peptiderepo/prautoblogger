@@ -171,7 +171,7 @@ class PRAutoBlogger_Posts_Widget {
 				'category'   => sanitize_text_field( $atts['category'] ),
 				'title'      => sanitize_text_field( $atts['title'] ),
 				'subtitle'   => sanitize_text_field( $atts['subtitle'] ),
-				'archiveUrl' => esc_url( get_post_type_archive_link( 'post' ) ?: '' ),
+				'archiveUrl' => esc_url( get_post_type_archive_link( 'post' ) ?? '' ),
 			)
 		);
 	}
@@ -259,7 +259,7 @@ class PRAutoBlogger_Posts_Widget {
 			'date'           => get_the_date( 'c', $post ),
 			'category_name'  => $category_name,
 			'category_slug'  => $category_slug,
-			'featured_image' => $featured_image ?: '',
+			'featured_image' => $featured_image ?? '',
 			'word_count'     => $word_count,
 		);
 	}

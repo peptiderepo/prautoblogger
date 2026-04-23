@@ -266,7 +266,7 @@ class PRAutoBlogger_Ideas_Browser {
 			return null;
 		}
 
-		$meta = json_decode( $row['metadata_json'] ?? '{}', true ) ?: array();
+		$meta = json_decode( $row['metadata_json'] ?? '{}', true ) ?? array();
 		return array(
 			'topic'           => $row['topic'],
 			'article_type'    => $row['analysis_type'],
@@ -274,7 +274,7 @@ class PRAutoBlogger_Ideas_Browser {
 			'summary'         => $row['summary'] ?? '',
 			'score'           => (float) $row['relevance_score'],
 			'analysis_id'     => (int) $row['id'],
-			'source_ids'      => json_decode( $row['source_ids_json'] ?? '[]', true ) ?: array(),
+			'source_ids'      => json_decode( $row['source_ids_json'] ?? '[]', true ) ?? array(),
 			'key_points'      => $meta['key_points'] ?? array(),
 			'target_keywords' => $meta['target_keywords'] ?? array(),
 		);
@@ -312,7 +312,7 @@ class PRAutoBlogger_Ideas_Browser {
 			: $wpdb->get_results( $wpdb->prepare( $full_sql, ...$params ), ARRAY_A );
 
 		return array(
-			'rows'  => $rows ?: array(),
+			'rows'  => $rows ?? array(),
 			'total' => $total,
 		);
 	}
@@ -329,7 +329,7 @@ class PRAutoBlogger_Ideas_Browser {
 		);
 
 		$counts = array();
-		foreach ( $rows ?: array() as $row ) {
+		foreach ( $rows ?? array() as $row ) {
 			$counts[ $row['analysis_type'] ] = (int) $row['cnt'];
 		}
 		return $counts;

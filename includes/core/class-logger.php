@@ -207,7 +207,7 @@ class PRAutoBlogger_Logger {
 		);
 
 		return array(
-			'rows'  => $rows ?: array(),
+			'rows'  => $rows ?? array(),
 			'total' => $total,
 		);
 	}

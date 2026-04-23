@@ -233,7 +233,7 @@ class PRAutoBlogger_Source_Collector {
 	private function get_config_for_source( string $source_type ): array {
 		if ( 'reddit' === $source_type ) {
 			return array(
-				'subreddits'        => json_decode( get_option( 'prautoblogger_target_subreddits', '[]' ), true ) ?: array(),
+				'subreddits'        => json_decode( get_option( 'prautoblogger_target_subreddits', '[]' ), true ) ?? array(),
 				'limit'             => 25,
 				'time_filter'       => 'day',
 				'include_comments'  => true,

@@ -77,7 +77,7 @@ class PRAutoBlogger_Cost_Reporter {
 		);
 
 		$daily = array();
-		foreach ( ( $results ?: array() ) as $row ) {
+		foreach ( ( $results ?? array() ) as $row ) {
 			$daily[ $row['day'] ] = (float) $row['total_cost'];
 		}
 
@@ -117,7 +117,7 @@ class PRAutoBlogger_Cost_Reporter {
 		);
 
 		$breakdown = array();
-		foreach ( ( $results ?: array() ) as $row ) {
+		foreach ( ( $results ?? array() ) as $row ) {
 			$breakdown[ $row['stage'] ] = array(
 				'cost'   => (float) $row['total_cost'],
 				'tokens' => (int) $row['total_tokens'],

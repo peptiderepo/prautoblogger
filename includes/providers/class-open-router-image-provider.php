@@ -68,7 +68,7 @@ class PRAutoBlogger_OpenRouter_Image_Provider implements PRAutoBlogger_Image_Pro
 
 		$curl_filter = $this->request_builder->register_curl_auth_filter(
 			$headers,
-			wp_parse_url( $base_url, PHP_URL_HOST ) ?: ''
+			wp_parse_url( $base_url, PHP_URL_HOST ) ?? ''
 		);
 
 		$started_at = microtime( true );

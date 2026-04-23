@@ -138,7 +138,7 @@ class PRAutoBlogger_Content_Analyzer {
 				gmdate( 'Y-m-d H:i:s', time() - DAY_IN_SECONDS )
 			),
 			ARRAY_A
-		) ?: array();
+		) ?? array();
 	}
 
 	/**

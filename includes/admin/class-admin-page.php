@@ -178,7 +178,7 @@ class PRAutoBlogger_Admin_Page {
 				break;
 
 			case 'checkboxes':
-				$current = json_decode( (string) $value, true ) ?: array();
+				$current = json_decode( (string) $value, true ) ?? array();
 				// Hidden input ensures an empty value is POSTed when all boxes
 				// are unchecked — without this, the browser omits the field
 				// entirely, so WordPress never fires the sanitize callback and

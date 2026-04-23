@@ -51,7 +51,7 @@ class PRAutoBlogger_Content_Generator {
 			absint( get_option( 'prautoblogger_min_word_count', 800 ) ),
 			absint( get_option( 'prautoblogger_max_word_count', 2000 ) ),
 			get_option( 'prautoblogger_niche_description', '' ),
-			json_decode( get_option( 'prautoblogger_topic_exclusions', '[]' ), true ) ?: array(),
+			json_decode( get_option( 'prautoblogger_topic_exclusions', '[]' ), true ) ?? array(),
 			get_option( 'prautoblogger_writing_instructions', '' )
 		);
 

@@ -46,7 +46,7 @@ class PRAutoBlogger_Idea_Scorer {
 	 * @return PRAutoBlogger_Article_Idea[] Top-ranked ideas, sorted by score desc.
 	 */
 	public function score_and_rank( array $analysis_results, int $target_count ): array {
-		$exclusions     = json_decode( get_option( 'prautoblogger_topic_exclusions', '[]' ), true ) ?: array();
+		$exclusions     = json_decode( get_option( 'prautoblogger_topic_exclusions', '[]' ), true ) ?? array();
 		$ideas          = array();
 		$excluded_count = 0;
 		$deduped_count  = 0;
