@@ -43,9 +43,9 @@ class PRAutoBlogger_Model_Registry_Refresh {
 		// Nonce check.
 		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'prautoblogger_refresh_models' ) ) {
 			wp_send_json_error(
-				[
+				array(
 					'message' => __( 'Security check failed. Please refresh the page and try again.', 'prautoblogger' ),
-				],
+				),
 				403
 			);
 		}
@@ -53,9 +53,9 @@ class PRAutoBlogger_Model_Registry_Refresh {
 		// Capability check.
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error(
-				[
+				array(
 					'message' => __( 'Insufficient permissions. Only administrators can refresh the model list.', 'prautoblogger' ),
-				],
+				),
 				403
 			);
 		}
@@ -68,15 +68,15 @@ class PRAutoBlogger_Model_Registry_Refresh {
 		$mins_ago    = $fetched_at > 0 ? intval( ( time() - $fetched_at ) / 60 ) : 0;
 
 		wp_send_json_success(
-			[
+			array(
 				'count'       => $count,
 				'fetched_at'  => $fetched_at,
 				'message'     => sprintf(
-					__( 'Model registry refreshed: %d models loaded, last updated %s', 'prautoblogger' ),
+					__( 'Model registry refreshed: %1$d models loaded, last updated %2$s', 'prautoblogger' ),
 					$count,
 					0 === $mins_ago ? __( 'just now', 'prautoblogger' ) : sprintf( __( '%d minutes ago', 'prautoblogger' ), $mins_ago )
 				),
-			]
+			)
 		);
 	}
 }
