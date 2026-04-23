@@ -328,4 +328,3 @@ PROMPT;
 		return $style_suffix;
 	}
 }
-
