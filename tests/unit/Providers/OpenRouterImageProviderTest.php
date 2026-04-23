@@ -18,13 +18,21 @@ class OpenRouterImageProviderTest extends BaseTestCase {
 	protected function setUp(): void {
 		parent::setUp();
 
+		// Generate valid encrypted API key using the real Encryption class.
+		// BaseTestCase stubs wp_salt() to return a deterministic value,
+		// so encrypt/decrypt round-trips correctly in tests.
+		$encrypted_key = \PRAutoBlogger_Encryption::encrypt( 'sk-or-test-key-123' );
+
 		// Provide a valid encrypted API key.
-		Functions\when( 'get_option' )->alias( function ( $key, $default = false ) {
-			static $options = [
-				'prautoblogger_openrouter_api_key' => 'enc:fake-encrypted-key',
-				'prautoblogger_image_model'        => 'black-forest-labs/flux-2-pro',
-				'prautoblogger_ai_gateway_base_url' => '',
-			];
+		Functions\when( 'get_option' )->alias( function ( $key, $default = false ) use ( $encrypted_key ) {
+			static $options = [];
+			if ( empty( $options ) ) {
+				$options = [
+					'prautoblogger_openrouter_api_key' => $encrypted_key,
+					'prautoblogger_image_model'        => 'black-forest-labs/flux-2-pro',
+					'prautoblogger_ai_gateway_base_url' => '',
+				];
+			}
 			return $options[ $key ] ?? $default;
 		} );
 
@@ -33,17 +41,6 @@ class OpenRouterImageProviderTest extends BaseTestCase {
 		} );
 		Functions\when( 'esc_html' )->returnArg();
 		Functions\when( 'esc_html__' )->returnArg();
-
-		// Mock encryption: decrypt returns a valid sk-or- key.
-		if ( ! class_exists( 'PRAutoBlogger_Encryption' ) ) {
-			eval( '
-				class PRAutoBlogger_Encryption {
-					public static function is_encrypted( $v ) { return 0 === strpos( $v, "enc:" ); }
-					public static function decrypt( $v ) { return "sk-or-test-key-123"; }
-					public static function encrypt( $v ) { return "enc:" . $v; }
-				}
-			' );
-		}
 	}
 
 	/** Provider name matches expected identifier. */
