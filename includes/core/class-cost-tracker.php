@@ -228,11 +228,11 @@ class PRAutoBlogger_Cost_Tracker {
 		global $wpdb;
 
 		if ( empty( $stages ) ) {
-			return [
+			return array(
 				'avg_prompt_tokens'      => 0.0,
 				'avg_completion_tokens'  => 0.0,
 				'sample_size'            => 0,
-			];
+			);
 		}
 
 		$cutoff_time   = time() - ( $days * DAY_IN_SECONDS );
@@ -254,17 +254,17 @@ class PRAutoBlogger_Cost_Tracker {
 		$result = $wpdb->get_row( $query, ARRAY_A );
 
 		if ( ! $result || 0 === (int) ( $result['sample_count'] ?? 0 ) ) {
-			return [
+			return array(
 				'avg_prompt_tokens'      => 0.0,
 				'avg_completion_tokens'  => 0.0,
 				'sample_size'            => 0,
-			];
+			);
 		}
 
-		return [
+		return array(
 			'avg_prompt_tokens'      => (float) ( $result['avg_input'] ?? 0 ),
 			'avg_completion_tokens'  => (float) ( $result['avg_output'] ?? 0 ),
 			'sample_size'            => (int) ( $result['sample_count'] ?? 0 ),
-		];
+		);
 	}
 }

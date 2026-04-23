@@ -137,12 +137,12 @@ class PRAutoBlogger_OpenRouter_Model_Field {
 	 * @return string[] Stage names, e.g. ['outline', 'draft', 'polish'] for writing model.
 	 */
 	private static function get_stages_for_setting( string $field_id ): array {
-		$map = [
-			'prautoblogger_analysis_model' => [ 'analysis' ],
-			'prautoblogger_writing_model'  => [ 'outline', 'draft', 'polish' ],
-			'prautoblogger_editor_model'   => [ 'review' ],
-		];
-		return $map[ $field_id ] ?? [];
+		$map = array(
+			'prautoblogger_analysis_model' => array( 'analysis' ),
+			'prautoblogger_writing_model'  => array( 'outline', 'draft', 'polish' ),
+			'prautoblogger_editor_model'   => array( 'review' ),
+		);
+		return $map[ $field_id ] ?? array();
 	}
 
 	/**
