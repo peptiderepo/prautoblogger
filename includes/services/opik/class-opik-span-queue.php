@@ -83,7 +83,7 @@ class PRAutoBlogger_Opik_Span_Queue {
 		$now   = time();
 		$queue = array_filter(
 			$queue,
-			function( $item ) use ( $now ) {
+			function ( $item ) use ( $now ) {
 				return ( $now - $item['enqueued'] ) < self::ITEM_TTL_SECONDS;
 			}
 		);

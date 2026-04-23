@@ -66,11 +66,20 @@ class PRAutoBlogger_Content_Generator {
 
 		$response = $this->llm->send_chat_completion(
 			array(
-				array( 'role' => 'system', 'content' => PRAutoBlogger_Content_Prompts::build_system( $request ) ),
-				array( 'role' => 'user', 'content' => PRAutoBlogger_Content_Prompts::build_single_pass( $request ) ),
+				array(
+					'role'    => 'system',
+					'content' => PRAutoBlogger_Content_Prompts::build_system( $request ),
+				),
+				array(
+					'role'    => 'user',
+					'content' => PRAutoBlogger_Content_Prompts::build_single_pass( $request ),
+				),
 			),
 			$model,
-			array( 'temperature' => 0.7, 'max_tokens' => 4000 )
+			array(
+				'temperature' => 0.7,
+				'max_tokens'  => 4000,
+			)
 		);
 
 		$ctx->end_span(
@@ -85,8 +94,12 @@ class PRAutoBlogger_Content_Generator {
 		);
 
 		$this->cost_tracker->log_api_call(
-			null, 'draft', $this->llm->get_provider_name(),
-			$response['model'], $response['prompt_tokens'], $response['completion_tokens']
+			null,
+			'draft',
+			$this->llm->get_provider_name(),
+			$response['model'],
+			$response['prompt_tokens'],
+			$response['completion_tokens']
 		);
 
 		return $response['content'];
@@ -122,11 +135,20 @@ class PRAutoBlogger_Content_Generator {
 
 		$response = $this->llm->send_chat_completion(
 			array(
-				array( 'role' => 'system', 'content' => PRAutoBlogger_Content_Prompts::build_system( $request ) ),
-				array( 'role' => 'user', 'content' => PRAutoBlogger_Content_Prompts::build_outline( $request ) ),
+				array(
+					'role'    => 'system',
+					'content' => PRAutoBlogger_Content_Prompts::build_system( $request ),
+				),
+				array(
+					'role'    => 'user',
+					'content' => PRAutoBlogger_Content_Prompts::build_outline( $request ),
+				),
 			),
 			$model,
-			array( 'temperature' => 0.5, 'max_tokens' => 1500 )
+			array(
+				'temperature' => 0.5,
+				'max_tokens'  => 1500,
+			)
 		);
 
 		$ctx->end_span(
@@ -141,8 +163,12 @@ class PRAutoBlogger_Content_Generator {
 		);
 
 		$this->cost_tracker->log_api_call(
-			null, 'outline', $this->llm->get_provider_name(),
-			$response['model'], $response['prompt_tokens'], $response['completion_tokens']
+			null,
+			'outline',
+			$this->llm->get_provider_name(),
+			$response['model'],
+			$response['prompt_tokens'],
+			$response['completion_tokens']
 		);
 
 		return $response['content'];
@@ -165,11 +191,20 @@ class PRAutoBlogger_Content_Generator {
 
 		$response = $this->llm->send_chat_completion(
 			array(
-				array( 'role' => 'system', 'content' => PRAutoBlogger_Content_Prompts::build_system( $request ) ),
-				array( 'role' => 'user', 'content' => PRAutoBlogger_Content_Prompts::build_draft( $request, $outline ) ),
+				array(
+					'role'    => 'system',
+					'content' => PRAutoBlogger_Content_Prompts::build_system( $request ),
+				),
+				array(
+					'role'    => 'user',
+					'content' => PRAutoBlogger_Content_Prompts::build_draft( $request, $outline ),
+				),
 			),
 			$model,
-			array( 'temperature' => 0.7, 'max_tokens' => 4000 )
+			array(
+				'temperature' => 0.7,
+				'max_tokens'  => 4000,
+			)
 		);
 
 		$ctx->end_span(
@@ -184,8 +219,12 @@ class PRAutoBlogger_Content_Generator {
 		);
 
 		$this->cost_tracker->log_api_call(
-			null, 'draft', $this->llm->get_provider_name(),
-			$response['model'], $response['prompt_tokens'], $response['completion_tokens']
+			null,
+			'draft',
+			$this->llm->get_provider_name(),
+			$response['model'],
+			$response['prompt_tokens'],
+			$response['completion_tokens']
 		);
 
 		return $response['content'];
@@ -208,11 +247,20 @@ class PRAutoBlogger_Content_Generator {
 
 		$response = $this->llm->send_chat_completion(
 			array(
-				array( 'role' => 'system', 'content' => PRAutoBlogger_Content_Prompts::build_system( $request ) ),
-				array( 'role' => 'user', 'content' => PRAutoBlogger_Content_Prompts::build_polish( $draft ) ),
+				array(
+					'role'    => 'system',
+					'content' => PRAutoBlogger_Content_Prompts::build_system( $request ),
+				),
+				array(
+					'role'    => 'user',
+					'content' => PRAutoBlogger_Content_Prompts::build_polish( $draft ),
+				),
 			),
 			$model,
-			array( 'temperature' => 0.4, 'max_tokens' => 4000 )
+			array(
+				'temperature' => 0.4,
+				'max_tokens'  => 4000,
+			)
 		);
 
 		$ctx->end_span(
@@ -227,8 +275,12 @@ class PRAutoBlogger_Content_Generator {
 		);
 
 		$this->cost_tracker->log_api_call(
-			null, 'polish', $this->llm->get_provider_name(),
-			$response['model'], $response['prompt_tokens'], $response['completion_tokens']
+			null,
+			'polish',
+			$this->llm->get_provider_name(),
+			$response['model'],
+			$response['prompt_tokens'],
+			$response['completion_tokens']
 		);
 
 		return $response['content'];

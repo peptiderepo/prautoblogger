@@ -80,7 +80,7 @@ class PRAutoBlogger_Opik_Dispatcher {
 					$failed_items,
 					array_filter(
 						$batch,
-						function( $item ) {
+						function ( $item ) {
 							return 'trace' === $item['type'];
 						}
 					)
@@ -96,7 +96,7 @@ class PRAutoBlogger_Opik_Dispatcher {
 					$failed_items,
 					array_filter(
 						$batch,
-						function( $item ) {
+						function ( $item ) {
 							return 'span' === $item['type'];
 						}
 					)

@@ -50,8 +50,14 @@ class PRAutoBlogger_Chief_Editor {
 
 		$response = $this->llm->send_chat_completion(
 			array(
-				array( 'role' => 'system', 'content' => $system_prompt ),
-				array( 'role' => 'user', 'content' => $user_prompt ),
+				array(
+					'role'    => 'system',
+					'content' => $system_prompt,
+				),
+				array(
+					'role'    => 'user',
+					'content' => $user_prompt,
+				),
 			),
 			$model,
 			array(
@@ -73,8 +79,12 @@ class PRAutoBlogger_Chief_Editor {
 		);
 
 		$this->cost_tracker->log_api_call(
-			null, 'review', $this->llm->get_provider_name(),
-			$response['model'], $response['prompt_tokens'], $response['completion_tokens']
+			null,
+			'review',
+			$this->llm->get_provider_name(),
+			$response['model'],
+			$response['prompt_tokens'],
+			$response['completion_tokens']
 		);
 
 		return $this->parse_review_response( $response['content'] );

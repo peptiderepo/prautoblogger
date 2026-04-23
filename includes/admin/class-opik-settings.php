@@ -66,7 +66,10 @@ class PRAutoBlogger_Opik_Settings {
 		register_setting(
 			'prautoblogger_settings',
 			'prautoblogger_opik_project_name',
-			array( 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' )
+			array(
+				'type'              => 'string',
+				'sanitize_callback' => 'sanitize_text_field',
+			)
 		);
 
 		add_settings_field(
