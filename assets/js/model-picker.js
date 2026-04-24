@@ -175,8 +175,8 @@
 					( model.deprecated ? '<span class="ab-mp-dep-badge">deprecated</span>' : '' ) +
 				'</div>' +
 				'<div class="ab-mp-row-meta">' +
-					'<span class="ab-mp-price" title="' + priceTitle + '">' + priceHtml + '</span>' +
 					metaRight +
+					'<span class="ab-mp-price" title="' + priceTitle + '">' + priceHtml + '</span>' +
 				'</div>' +
 			'</div>'
 		);
@@ -219,8 +219,8 @@
 				'<div class="ab-mp-col-headers">' +
 					'<button type="button" class="ab-mp-col-header ab-mp-col-model" data-col="name">Model <span class="ab-mp-sort-arrow"></span></button>' +
 					'<div class="ab-mp-col-headers-meta">' +
-						'<button type="button" class="ab-mp-col-header ab-mp-col-price" data-col="price">Price (in / out) <span class="ab-mp-sort-arrow"></span></button>' +
 						'<button type="button" class="ab-mp-col-header ab-mp-col-ctx" data-col="context">Context <span class="ab-mp-sort-arrow"></span></button>' +
+						'<button type="button" class="ab-mp-col-header ab-mp-col-price" data-col="price">Price (in / out) <span class="ab-mp-sort-arrow"></span></button>' +
 					'</div>' +
 				'</div>' +
 				'<div class="ab-mp-list"><div class="ab-mp-loading">Loading models…</div></div>' +

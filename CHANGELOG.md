@@ -5,6 +5,11 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.13.4] - 2026-04-24
+
+### Fixed
+- Model picker price column now consistently right-aligned. Root cause: price and description were siblings inside .ab-mp-row-meta, with description first and variable-length — this shifted price left/right per row. Fix: moved price to last position with flex-shrink: 0 so its right edge is always pinned to the row edge; capped description at max-width 200px with ellipsis; swapped column headers to match new DOM order.
+
 ## [0.13.3] - 2026-04-24
 
 ### Fixed
