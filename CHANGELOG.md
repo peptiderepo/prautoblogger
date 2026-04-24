@@ -6,6 +6,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
 ## [0.12.3] — 2026-04-24
+## [0.13.1] - 2026-04-24
+
+### Fixed
+- Model picker price column now right-aligned with a minimum width so values like `$0.0006/image` and `$0.0800/image` stack cleanly instead of floating at uneven offsets.
+
 ## [0.13.0] - 2026-04-24
 
 ### Added

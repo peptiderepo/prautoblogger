@@ -142,6 +142,7 @@
 	color: var(--ab-text-muted, #64748b);
 	font-variant-numeric: tabular-nums;
 	white-space: nowrap;
+	min-width: 90px; text-align: right;
 }
 
 .ab-mp-ctx {
