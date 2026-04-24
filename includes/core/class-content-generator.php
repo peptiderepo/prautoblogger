@@ -29,7 +29,10 @@ class PRAutoBlogger_Content_Generator {
 	 * @param PRAutoBlogger_Article_Idea $idea The scored idea to generate content for.
 	 * @return string Generated HTML content.
 	 */
-	public function generate( PRAutoBlogger_Article_Idea $idea ): string {
+	public function generate( PRAutoBlogger_Article_Idea $idea, bool $eval_mode = false ): string {
+		// In eval mode, suppress publishing and image generation side effects.
+		define( 'PRAUTOBLOGGER_EVAL_MODE', $eval_mode );
+
 		$mode = get_option( 'prautoblogger_writing_pipeline', 'multi_step' );
 
 		$request = new PRAutoBlogger_Content_Request(
@@ -284,5 +287,15 @@ class PRAutoBlogger_Content_Generator {
 		);
 
 		return $response['content'];
+	}
+
+	/**
+	 * Generate content in eval mode (no publishing, no image generation).
+	 *
+	 * @param PRAutoBlogger_Article_Idea $idea The scored idea to generate content for.
+	 * @return string Generated HTML content.
+	 */
+	public function generate_eval( PRAutoBlogger_Article_Idea $idea ): string {
+		return $this->generate( $idea, true );
 	}
 }

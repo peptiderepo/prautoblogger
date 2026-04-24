@@ -47,12 +47,14 @@ class PRAutoBlogger_Image_Pipeline {
 	 */
 	public function __construct(
 		?PRAutoBlogger_Image_Provider_Interface $provider = null,
-		?PRAutoBlogger_Cost_Tracker $cost_tracker = null
+		?PRAutoBlogger_Cost_Tracker $cost_tracker = null,
+		?PRAutoBlogger_Opik_Trace_Context $trace_context = null
 	) {
 		$this->provider       = $provider ?? self::create_default_provider();
-		$this->prompt_builder = new PRAutoBlogger_Image_Prompt_Builder();
+		$this->prompt_builder = new PRAutoBlogger_Image_Prompt_Builder( $trace_context );
 		$this->sideloader     = new PRAutoBlogger_Image_Media_Sideloader();
 		$this->cost_tracker   = $cost_tracker ?? new PRAutoBlogger_Cost_Tracker();
+		$this->trace_context  = $trace_context;
 	}
 
 	/**

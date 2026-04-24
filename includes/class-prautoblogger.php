@@ -55,6 +55,7 @@ class PRAutoBlogger {
 		$this->register_cron_hooks();
 		$this->register_frontend_hooks();
 		$this->register_ajax_hooks();
+		$this->register_cli_hooks();
 
 		/** Fires after PRAutoBlogger has finished registering all hooks. */
 		do_action( 'prautoblogger_loaded' );
@@ -301,7 +302,12 @@ class PRAutoBlogger {
 	 * @param object $transient The update_plugins transient data.
 	 * @return object Modified transient.
 	 */
-	public function filter_block_false_updates( $transient ) {
+/** Register WP-CLI commands. */
+	private function register_cli_hooks(): void {
+		PRAutoBlogger_WP_CLI_Commands::register();
+	}
+
+		public function filter_block_false_updates( $transient ) {
 		if ( isset( $transient->response[ PRAUTOBLOGGER_PLUGIN_BASENAME ] ) ) {
 			unset( $transient->response[ PRAUTOBLOGGER_PLUGIN_BASENAME ] );
 		}
