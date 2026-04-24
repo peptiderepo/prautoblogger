@@ -216,10 +216,10 @@ class PRAutoBlogger_Opik_Eval_Runner {
 	 */
 	private function push_to_opik( string $experiment_id, array $item, array $scores, string $content ): void {
 		$payload = array(
-			'experiment_id'  => $experiment_id,
+			'experiment_id'   => $experiment_id,
 			'dataset_item_id' => $item['id'] ?? 'unknown',
-			'output'         => substr( $content, 0, 1000 ), // Truncate for Opik.
-			'metadata'       => array(
+			'output'          => substr( $content, 0, 1000 ), // Truncate for Opik.
+			'metadata'        => array(
 				'scientific_signal' => $scores['scientific_signal'],
 				'readability'       => $scores['readability'],
 				'style_adherence'   => $scores['style_adherence'],
