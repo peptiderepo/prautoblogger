@@ -86,7 +86,11 @@ class PRAutoBlogger_Opik_Eval_Runner {
 		}
 
 		$items_run = 0;
-		$total_scores = array( 'scientific_signal' => 0, 'readability' => 0, 'style_adherence' => 0 );
+		$total_scores = array(
+			'scientific_signal' => 0,
+			'readability'       => 0,
+			'style_adherence'   => 0,
+		);
 		$total_cost = 0.0;
 
 		foreach ( $dataset as $idx => $item ) {
