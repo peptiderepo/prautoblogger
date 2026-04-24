@@ -5,6 +5,11 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.13.7] - 2026-04-24
+
+### Fixed
+- Posts list column layout: title was set to 35% which, combined with 3 fixed-width PRAB columns, left ~50px for every remaining column (Author, Categories, Tags, Date all word-wrapping). Replaced with a balanced budget: title 22%, author 6%, categories 7%, tags 9%, date 8%, PRAB columns 85/85/50px, Peptide Topics 75px.
+
 ## [0.13.6] - 2026-04-24
 
 ### Fixed
