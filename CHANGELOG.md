@@ -6,6 +6,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
 ## [0.12.3] — 2026-04-24
+## [0.13.0] - 2026-04-24
+
+### Added
+- **Wave 2 Eval Harness**: Complete evaluation framework for PRAutoBlogger output quality
+  - Frozen eval dataset (`eval/dataset.json`) with 20 curated peptide topics
+  - LLM-as-judge scorer (`class-opik-eval-scorer.php`) using Gemini Flash 1.5
+  - Eval runner orchestrator (`class-opik-eval-runner.php`) with Opik experiment support
+  - WP-CLI command: `wp prautoblogger opik:eval [--limit=<n>] [--dry-run]`
+  - Image pipeline instrumentation: Opik span wrapping for `image_prompt_rewrite` step
+- **Image Prompt Builder Refactor**: Extracted scene/caption parsing into `PRAutoBlogger_Image_Scene_Parser`
+  - Three static methods: `parse_scene_and_caption()`, `extract_first_paragraph()`, `synthesize_visual_concepts_fallback()`
+  - Cleaner separation of concerns; builder now ~255 lines (was 331)
+- **Content Generator Eval Mode**: Added `$eval_mode` parameter to suppress publishing and image generation side effects
+- **Trace Context Integration**: Optional trace instrumentation in `PRAutoBlogger_Image_Prompt_Builder` constructor
+
+### Changed
+- `PRAutoBlogger_Image_Prompt_Builder` constructor now accepts optional `PRAutoBlogger_Opik_Trace_Context` parameter
+- `PRAutoBlogger_Image_Pipeline` constructor passes trace context through to prompt builder
+- Image prompt rewrite LLM calls now emit Opik spans when trace context is available
+
+### Fixed
+- Image prompt builder now properly delegates to static parser methods
+
 
 ### Fixed
 - **Opik autoloader gap** — `class-autoloader.php` listed `services/` as a scan directory but not `services/opik/`, where all four Opik classes live (`Opik_Client`, `Opik_Trace_Context`, `Opik_Span_Queue`, `Opik_Dispatcher`). Composer's classmap (used in PHPUnit) covers `includes/` recursively so tests passed, but the WordPress runtime autoloader would fatal on first Opik class reference in production. Added `services/opik/` to the scan list.

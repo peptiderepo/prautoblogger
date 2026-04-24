@@ -1,0 +1,142 @@
+[
+  {
+    "id": "bpc157-healing",
+    "topic": "BPC-157 healing protocols for tendons and gut lining",
+    "expected_keywords": ["BPC-157", "tendon", "gut", "healing"],
+    "min_words": 700,
+    "style": "comic"
+  },
+  {
+    "id": "tb500-muscle-recovery",
+    "topic": "TB-500 for accelerated muscle recovery and repair",
+    "expected_keywords": ["TB-500", "muscle", "recovery", "growth"],
+    "min_words": 700,
+    "style": "comic"
+  },
+  {
+    "id": "ghk-cu-skin-collagen",
+    "topic": "GHK-Cu peptide for skin collagen synthesis and anti-aging",
+    "expected_keywords": ["GHK-Cu", "collagen", "skin", "aging"],
+    "min_words": 700,
+    "style": "comic"
+  },
+  {
+    "id": "semaglutide-glp1-weight",
+    "topic": "GLP-1 receptor agonists like Semaglutide for metabolic health",
+    "expected_keywords": ["Semaglutide", "GLP-1", "weight", "metabolism"],
+    "min_words": 700,
+    "style": "comic"
+  },
+  {
+    "id": "ipamorelin-growth-hormone",
+    "topic": "Ipamorelin for natural growth hormone stimulation and recovery",
+    "expected_keywords": ["Ipamorelin", "growth hormone", "HGH", "secretagogue"],
+    "min_words": 700,
+    "style": "comic"
+  },
+  {
+    "id": "hexarelin-strength-gains",
+    "topic": "Hexarelin peptide for lean muscle and strength improvement",
+    "expected_keywords": ["Hexarelin", "muscle", "strength", "lean"],
+    "min_words": 700,
+    "style": "comic"
+  },
+  {
+    "id": "semax-cognitive-enhancement",
+    "topic": "Semax nootropic peptide for cognitive function and focus",
+    "expected_keywords": ["Semax", "cognition", "focus", "neuroprotection"],
+    "min_words": 700,
+    "style": "comic"
+  },
+  {
+    "id": "selank-anxiety-stress",
+    "topic": "Selank peptide for anxiety reduction and stress management",
+    "expected_keywords": ["Selank", "anxiety", "stress", "mood"],
+    "min_words": 700,
+    "style": "comic"
+  },
+  {
+    "id": "oxytocin-social-bonding",
+    "topic": "Oxytocin peptide hormone and its role in social connection",
+    "expected_keywords": ["Oxytocin", "social", "bonding", "neuropeptide"],
+    "min_words": 700,
+    "style": "comic"
+  },
+  {
+    "id": "kisspeptin-fertility-hormone",
+    "topic": "Kisspeptin's role in reproductive health and hormone signaling",
+    "expected_keywords": ["Kisspeptin", "fertility", "hormone", "reproduction"],
+    "min_words": 700,
+    "style": "comic"
+  },
+  {
+    "id": "melanotan-tanning-peptide",
+    "topic": "Melanotan peptide for pigmentation and UV protection",
+    "expected_keywords": ["Melanotan", "melanin", "tanning", "skin"],
+    "min_words": 700,
+    "style": "comic"
+  },
+  {
+    "id": "cerebrolysin-neuroprotection",
+    "topic": "Cerebrolysin for brain health and neuroprotection",
+    "expected_keywords": ["Cerebrolysin", "brain", "neuroprotection", "cognition"],
+    "min_words": 700,
+    "style": "comic"
+  },
+  {
+    "id": "epithalon-telomerase-aging",
+    "topic": "Epithalon peptide and telomerase activation for longevity",
+    "expected_keywords": ["Epithalon", "telomerase", "aging", "longevity"],
+    "min_words": 700,
+    "style": "comic"
+  },
+  {
+    "id": "thymosin-immune-function",
+    "topic": "Thymosin alpha-1 for immune system enhancement",
+    "expected_keywords": ["Thymosin", "immune", "T-cells", "immunity"],
+    "min_words": 700,
+    "style": "comic"
+  },
+  {
+    "id": "igf1-muscle-growth-aging",
+    "topic": "IGF-1 peptide for muscle growth, recovery, and anti-aging",
+    "expected_keywords": ["IGF-1", "muscle", "growth", "aging"],
+    "min_words": 700,
+    "style": "comic"
+  },
+  {
+    "id": "mechano-growth-factor",
+    "topic": "MGF (Mechano Growth Factor) for muscle hypertrophy",
+    "expected_keywords": ["MGF", "mechano", "muscle", "hypertrophy"],
+    "min_words": 700,
+    "style": "comic"
+  },
+  {
+    "id": "ll37-antimicrobial-peptide",
+    "topic": "LL-37 antimicrobial peptide for immune and skin health",
+    "expected_keywords": ["LL-37", "antimicrobial", "immune", "peptide"],
+    "min_words": 700,
+    "style": "comic"
+  },
+  {
+    "id": "lactoferrin-iron-immunity",
+    "topic": "Lactoferrin peptide for iron absorption and immune support",
+    "expected_keywords": ["Lactoferrin", "iron", "immune", "absorption"],
+    "min_words": 700,
+    "style": "comic"
+  },
+  {
+    "id": "collagen-peptides-joints",
+    "topic": "Collagen peptides for joint health and connective tissue repair",
+    "expected_keywords": ["Collagen", "peptides", "joints", "connective tissue"],
+    "min_words": 700,
+    "style": "comic"
+  },
+  {
+    "id": "ckgp-cognitive-longevity",
+    "topic": "Cognitive peptides and nootropic stacks for brain longevity",
+    "expected_keywords": ["peptide", "cognitive", "nootropic", "brain"],
+    "min_words": 700,
+    "style": "comic"
+  }
+]
