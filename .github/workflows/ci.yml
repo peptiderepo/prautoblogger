@@ -45,8 +45,15 @@ jobs:
     name: PHPCS (WordPress standards)
     runs-on: ubuntu-latest
     continue-on-error: false  # now strict after PHPCS cleanup in v0.8.3
+    permissions:
+      contents: write  # allows phpcbf auto-fix commits back to the PR branch
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Check out the actual branch so phpcbf can push fixes back.
+          # github.head_ref is set on PR events; github.ref_name on push events.
+          ref: ${{ github.head_ref || github.ref_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -64,13 +71,28 @@ jobs:
             "wp-coding-standards/wpcs:^3.0" \
             "phpcsstandards/phpcsutils:^1.0" \
             "phpcsstandards/phpcsextra:^1.0"
-      - name: Run PHPCS
+      - name: Auto-fix with phpcbf (commit back to branch if changed)
+        # phpcbf exits 1 when it makes fixes, 0 when nothing to fix — both are success here.
+        # Commits made via GITHUB_TOKEN do not trigger a new CI run (GitHub prevents loops).
+        run: |
+          phpcbf --standard=phpcs.xml \
+            --extensions=php \
+            --ignore=vendor/*,tests/*,node_modules/* \
+            includes/ prautoblogger.php uninstall.php || true
+          if ! git diff --quiet; then
+            git config user.name "peptiderepo"
+            git config user.email "peptiderepo@users.noreply.github.com"
+            git add -A
+            git commit -m "style: auto-fix PHPCS violations via phpcbf"
+            git push
+          fi
+      - name: Run PHPCS (only non-auto-fixable violations can fail here)
         run: |
           phpcs --standard=phpcs.xml \
             --extensions=php \
             --ignore=vendor/*,tests/*,node_modules/* \
             --warning-severity=0 \
-            --report=summary \
+            --report=full \
             includes/ prautoblogger.php uninstall.php
 
   phpunit:
