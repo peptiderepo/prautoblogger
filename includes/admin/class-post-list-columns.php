@@ -115,7 +115,7 @@ class PRAutoBlogger_Post_List_Columns {
 			. '.column-prab_writing_model{width:100px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
 			. '.column-prab_image_model{width:100px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
 			. '.column-prab_cost{width:55px;white-space:nowrap;overflow:visible}'
-			. '.column-taxonomy-peptide_topic{min-width:80px}'
+			. '.column-taxonomy-peptide_topic{width:80px}'
 			. '.prab-cost-wrap{position:relative;display:inline-block}'
 			. '.prab-cost-trigger{font-size:12px;color:#2271b1;text-decoration:underline;cursor:pointer}'
 			. '.prab-cost-popover{display:none;position:absolute;right:0;top:100%;z-index:9999;'

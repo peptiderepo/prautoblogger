@@ -5,6 +5,11 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.13.6] - 2026-04-24
+
+### Fixed
+- Peptide Topics column still rendering vertically: WordPress posts table uses `table-layout: fixed` which ignores `min-width` entirely. Changed to explicit `width: 80px` which is respected under fixed-layout tables.
+
 ## [0.13.5] - 2026-04-24
 
 ### Fixed
