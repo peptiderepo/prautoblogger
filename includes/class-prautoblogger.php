@@ -55,6 +55,7 @@ class PRAutoBlogger {
 		$this->register_cron_hooks();
 		$this->register_frontend_hooks();
 		$this->register_ajax_hooks();
+		$this->register_cli_hooks();
 
 		/** Fires after PRAutoBlogger has finished registering all hooks. */
 		do_action( 'prautoblogger_loaded' );
@@ -292,6 +293,11 @@ class PRAutoBlogger {
 			'display'  => __( 'Every Six Hours', 'prautoblogger' ),
 		);
 		return $schedules;
+	}
+
+	/** Register WP-CLI commands. */
+	private function register_cli_hooks(): void {
+		PRAutoBlogger_WP_CLI_Commands::register();
 	}
 
 	/**

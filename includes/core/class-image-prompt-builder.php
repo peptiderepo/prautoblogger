@@ -66,6 +66,22 @@ PROMPT;
 	private ?PRAutoBlogger_OpenRouter_Provider $llm = null;
 
 	/**
+	 * Opik trace context for instrumentation.
+	 *
+	 * @var PRAutoBlogger_Opik_Trace_Context|null
+	 */
+	private ?PRAutoBlogger_Opik_Trace_Context $trace_context = null;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param PRAutoBlogger_Opik_Trace_Context|null $trace_context Optional trace context for instrumentation.
+	 */
+	public function __construct( ?PRAutoBlogger_Opik_Trace_Context $trace_context = null ) {
+		$this->trace_context = $trace_context;
+	}
+
+	/**
 	 * Build a visual prompt from finished article content.
 	 *
 	 * Tries LLM rewriting first; falls back to rule-based synthesis on
@@ -78,7 +94,7 @@ PROMPT;
 	public function build_article_prompt( array $article_data ): array {
 		$title      = $article_data['post_title'] ?? $article_data['suggested_title'] ?? 'Product';
 		$content    = $article_data['post_content'] ?? '';
-		$first_para = $this->extract_first_paragraph( $content );
+		$first_para = PRAutoBlogger_Image_Scene_Parser::extract_first_paragraph( $content );
 
 		$parsed = $this->rewrite_via_llm( $title, $first_para );
 
@@ -142,7 +158,24 @@ PROMPT;
 			$user_message .= "\n\nSummary: {$context}";
 		}
 
+		$span_id = null;
+
 		try {
+			if ( null !== $this->trace_context ) {
+				$span_id = $this->trace_context->start_span(
+					array(
+						'name'     => 'image_prompt_rewrite',
+						'type'     => 'llm',
+						'model'    => get_option( 'prautoblogger_analysis_model', PRAUTOBLOGGER_DEFAULT_ANALYSIS_MODEL ),
+						'provider' => 'openrouter',
+						'input'    => array(
+							'title'   => $title,
+							'context' => substr( $context, 0, 200 ),
+						),
+					)
+				);
+			}
+
 			$llm    = $this->get_llm_provider();
 			$model  = get_option( 'prautoblogger_analysis_model', PRAUTOBLOGGER_DEFAULT_ANALYSIS_MODEL );
 			$system = $this->resolve_system_prompt();
@@ -188,8 +221,24 @@ PROMPT;
 				'image_prompt_builder'
 			);
 
+			if ( null !== $span_id && null !== $this->trace_context ) {
+				$this->trace_context->end_span(
+					$span_id,
+					array(
+						'output' => array(
+							'raw_response' => substr( $raw, 0, 200 ),
+						),
+						'usage'  => array(
+							'prompt_tokens'     => $result['prompt_tokens'] ?? 0,
+							'completion_tokens' => $result['completion_tokens'] ?? 0,
+							'total_tokens'      => ( $result['prompt_tokens'] ?? 0 ) + ( $result['completion_tokens'] ?? 0 ),
+						),
+					)
+				);
+			}
+
 			if ( '' !== $raw ) {
-				return $this->parse_scene_and_caption( $raw );
+				return PRAutoBlogger_Image_Scene_Parser::parse_scene_and_caption( $raw );
 			}
 		} catch ( \Throwable $e ) {
 			// LLM failure is not fatal — fall back to rule-based synthesis.
@@ -199,64 +248,7 @@ PROMPT;
 			);
 		}
 
-		return $this->synthesize_visual_concepts_fallback( $title, $context );
-	}
-
-	/**
-	 * Parse the LLM response into separate scene and caption parts.
-	 *
-	 * Expected format from the LLM:
-	 *   Scene description text here.
-	 *
-	 *   "Caption punchline here."
-	 *
-	 * Falls back gracefully: if no blank-line separator is found, the entire
-	 * response becomes the scene with an empty caption.
-	 *
-	 * @param string $raw Raw LLM response text.
-	 * @return array{scene: string, caption: string}
-	 */
-	private function parse_scene_and_caption( string $raw ): array {
-		// Split on blank line (the format the system prompt requests).
-		$parts = preg_split( '/\n\s*\n/', $raw, 2 );
-
-		if ( count( $parts ) >= 2 ) {
-			$scene   = trim( $parts[0] );
-			$caption = trim( $parts[1] );
-			// Strip surrounding quotes from caption — the LLM wraps it in quotes.
-			$caption = trim( $caption, '"\'' );
-			return array(
-				'scene'   => $scene,
-				'caption' => $caption,
-			);
-		}
-
-		// No blank-line separator found — treat entire response as scene.
-		return array(
-			'scene'   => trim( $raw ),
-			'caption' => '',
-		);
-	}
-
-	/**
-	 * Extract the first paragraph from HTML content.
-	 *
-	 * Removes all tags and captures the text up to the first double-newline
-	 * or 200 characters, whichever comes first.
-	 *
-	 * @param string $html HTML content.
-	 * @return string Plain text of the first paragraph.
-	 */
-	private function extract_first_paragraph( string $html ): string {
-		$text  = wp_strip_all_tags( $html );
-		$paras = preg_split( '/\n\n+/', $text );
-		$para  = isset( $paras[0] ) ? trim( $paras[0] ) : '';
-
-		if ( strlen( $para ) > 200 ) {
-			$para = substr( $para, 0, 200 ) . '...';
-		}
-
-		return $para;
+		return PRAutoBlogger_Image_Scene_Parser::synthesize_visual_concepts_fallback( $title, $context );
 	}
 
 	/**
@@ -268,33 +260,11 @@ PROMPT;
 	 * @return array{prompt: string, caption: string}
 	 */
 	public function build_fallback_prompt( string $title ): array {
-		$parsed       = $this->synthesize_visual_concepts_fallback( $title, '' );
+		$parsed       = PRAutoBlogger_Image_Scene_Parser::synthesize_visual_concepts_fallback( $title, '' );
 		$style_suffix = $this->get_style_suffix();
 		return array(
 			'prompt'  => trim( $parsed['scene'] . ' ' . $style_suffix ),
 			'caption' => $parsed['caption'],
-		);
-	}
-
-	/**
-	 * Rule-based fallback when LLM rewriting is unavailable.
-	 *
-	 * Kept deliberately simple — this only runs if OpenRouter is down.
-	 *
-	 * @param string $title           Main heading / topic.
-	 * @param string $supporting_text Additional context.
-	 * @return array{scene: string, caption: string} Scene for image gen, caption for HTML.
-	 */
-	private function synthesize_visual_concepts_fallback( string $title, string $supporting_text ): array {
-		// Fallback produces a simple comic concept when the LLM is unavailable.
-		$scene = sprintf(
-			'A cartoon scientist in a lab coat looking bewildered while examining something related to: %s.',
-			$title
-		);
-
-		return array(
-			'scene'   => trim( $scene ),
-			'caption' => 'Science is full of surprises.',
 		);
 	}
 
