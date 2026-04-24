@@ -295,6 +295,11 @@ class PRAutoBlogger {
 		return $schedules;
 	}
 
+	/** Register WP-CLI commands. */
+	private function register_cli_hooks(): void {
+		PRAutoBlogger_WP_CLI_Commands::register();
+	}
+
 	/**
 	 * Block false update notifications from wordpress.org.
 	 * Our plugin slug may collide with a different plugin in the directory.
@@ -302,12 +307,7 @@ class PRAutoBlogger {
 	 * @param object $transient The update_plugins transient data.
 	 * @return object Modified transient.
 	 */
-/** Register WP-CLI commands. */
-	private function register_cli_hooks(): void {
-		PRAutoBlogger_WP_CLI_Commands::register();
-	}
-
-		public function filter_block_false_updates( $transient ) {
+	public function filter_block_false_updates( $transient ) {
 		if ( isset( $transient->response[ PRAUTOBLOGGER_PLUGIN_BASENAME ] ) ) {
 			unset( $transient->response[ PRAUTOBLOGGER_PLUGIN_BASENAME ] );
 		}
