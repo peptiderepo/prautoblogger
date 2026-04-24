@@ -4,21 +4,20 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  group: deploy-prautoblogger-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
     name: PHP Lint Gate
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.1'
           coverage: none
-
       - name: PHP Lint Check
         run: |
           set -e
@@ -29,38 +28,62 @@ jobs:
             -not -path './.github/*' \
             -print0 | xargs -0 -n1 -P4 php -l > /dev/null
 
-  deploy:
+  deploy-staging:
+    name: Deploy to Staging
     needs: validate
-    name: Deploy to Production
     runs-on: ubuntu-latest
-
+    environment: staging
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
-
-      - name: Deploy via rsync
+      - name: Deploy via rsync → staging
         run: |
           rsync -avz --delete \
-            --exclude '.git' \
-            --exclude '.github' \
-            --exclude 'tests' \
-            --exclude 'phpunit.xml.dist' \
-            --exclude 'composer.json' \
-            --exclude 'composer.lock' \
-            --exclude 'vendor' \
-            --exclude '.distignore' \
-            --exclude 'ARCHITECTURE.md' \
-            --exclude 'CONVENTIONS.md' \
+            --exclude '.git' --exclude '.github' \
+            --exclude 'tests' --exclude 'phpunit.xml.dist' \
+            --exclude 'composer.json' --exclude 'composer.lock' \
+            --exclude 'vendor' --exclude '.distignore' \
+            --exclude 'ARCHITECTURE.md' --exclude 'CONVENTIONS.md' \
+            -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }}" \
+            ./ ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:~/domains/peptiderepo.com/public_html/staging/wp-content/plugins/prautoblogger/
+      - name: Staging health check
+        run: |
+          sleep 5
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://staging.peptiderepo.com/ || echo "000")
+          echo "Staging responded: HTTP $STATUS"
+          [ "$STATUS" = "000" ] && echo "Warning: staging DNS may still be propagating" || true
+      - name: Cleanup
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
+
+  deploy-production:
+    name: Deploy to Production
+    needs: [validate, deploy-staging]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+      - name: Deploy via rsync → production
+        run: |
+          rsync -avz --delete \
+            --exclude '.git' --exclude '.github' \
+            --exclude 'tests' --exclude 'phpunit.xml.dist' \
+            --exclude 'composer.json' --exclude 'composer.lock' \
+            --exclude 'vendor' --exclude '.distignore' \
+            --exclude 'ARCHITECTURE.md' --exclude 'CONVENTIONS.md' \
             -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }}" \
             ./ ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:~/domains/peptiderepo.com/public_html/wp-content/plugins/prautoblogger/
-
       - name: Purge LiteSpeed Cache
         run: |
           ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} \
@@ -68,22 +91,15 @@ jobs:
             "cd ~/domains/peptiderepo.com/public_html && \
              wp litespeed-purge all 2>/dev/null || \
              (find wp-content/litespeed/ -type f -delete 2>/dev/null; touch .lscache_purge 2>/dev/null) || true"
-
-      - name: Health check
+      - name: Production health check
         run: |
           sleep 5
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://peptiderepo.com)
-          # 200 = normal healthy response.
-          # 403 = peptide-starter-theme v1.5.2 CF-peer validator rejecting this
-          #       GHA-runner direct-to-origin request as non-Cloudflare traffic.
-          #       That rejection is the validator working — itself a positive
-          #       liveness signal. Real user traffic via Cloudflare gets 200.
           if [ "$STATUS" != "200" ] && [ "$STATUS" != "403" ]; then
             echo "ERROR: Site returned unexpected HTTP $STATUS after deploy"
             exit 1
           fi
-          echo "Site is responsive (HTTP $STATUS)"
-
+          echo "Production healthy (HTTP $STATUS)"
       - name: Cleanup
         if: always()
         run: rm -f ~/.ssh/deploy_key
