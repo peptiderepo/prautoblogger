@@ -5,6 +5,12 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.13.5] - 2026-04-24
+
+### Fixed
+- Cost column in Posts list was always showing $0.00: a PHP `// phpcs:ignore` comment was embedded inside the SQL string literal, causing a MariaDB syntax error on every query. Moved comment above the `prepare()` call.
+- Peptide Topics column header in Posts list was being squeezed to near-zero width by the fixed-width PRAB columns. Added `min-width: 80px` to `.column-taxonomy-peptide_topic`.
+
 ## [0.13.4] - 2026-04-24
 
 ### Fixed
