@@ -85,13 +85,13 @@ class PRAutoBlogger_Opik_Eval_Runner {
 			$experiment_id = $this->create_experiment();
 		}
 
-		$items_run        = 0;
-		$total_scores     = array( 'scientific_signal' => 0, 'readability' => 0, 'style_adherence' => 0 );
-		$total_cost       = 0.0;
+		$items_run = 0;
+		$total_scores = array( 'scientific_signal' => 0, 'readability' => 0, 'style_adherence' => 0 );
+		$total_cost = 0.0;
 
 		foreach ( $dataset as $idx => $item ) {
 			$item_num = $idx + 1;
-			$total    = count( $dataset );
+			$total = count( $dataset );
 
 			// Generate content (no publishing, no image generation).
 			$content = $this->generate_eval_content( $item['topic'] );
@@ -105,9 +105,9 @@ class PRAutoBlogger_Opik_Eval_Runner {
 			$scores = $this->scorer->score( $item['topic'], $content );
 
 			$total_scores['scientific_signal'] += $scores['scientific_signal'];
-			$total_scores['readability']       += $scores['readability'];
-			$total_scores['style_adherence']   += $scores['style_adherence'];
-			$total_cost                        += $scores['cost_usd'];
+			$total_scores['readability'] += $scores['readability'];
+			$total_scores['style_adherence'] += $scores['style_adherence'];
+			$total_cost += $scores['cost_usd'];
 
 			// Push to Opik if enabled and not dry-run.
 			if ( ! $dry_run && null !== $experiment_id ) {
@@ -198,8 +198,8 @@ class PRAutoBlogger_Opik_Eval_Runner {
 	 */
 	private function create_experiment(): ?string {
 		$version = PRAUTOBLOGGER_VERSION;
-		$today   = gmdate( 'Y-m-d' );
-		$name    = "prautoblogger-eval-v{$version}-{$today}";
+		$today = gmdate( 'Y-m-d' );
+		$name = "prautoblogger-eval-v{$version}-{$today}";
 
 		// Opik auto-creates experiments on first item POST, so we just use the name.
 		// The actual experiment object is created when the first item is pushed.
