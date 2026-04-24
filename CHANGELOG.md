@@ -5,6 +5,12 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.12.3] — 2026-04-24
+
+### Fixed
+- **Opik autoloader gap** — `class-autoloader.php` listed `services/` as a scan directory but not `services/opik/`, where all four Opik classes live (`Opik_Client`, `Opik_Trace_Context`, `Opik_Span_Queue`, `Opik_Dispatcher`). Composer's classmap (used in PHPUnit) covers `includes/` recursively so tests passed, but the WordPress runtime autoloader would fatal on first Opik class reference in production. Added `services/opik/` to the scan list.
+
+
 ## [0.12.2] — 2026-04-24
 
 ### Fixed
