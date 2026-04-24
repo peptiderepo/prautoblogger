@@ -5,6 +5,11 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.13.3] - 2026-04-24
+
+### Fixed
+- Price column header now right-aligned with `min-width: 90px` to match data cells — header and prices now track the same column edge.
+
 ## [0.13.2] - 2026-04-24
 
 ### Changed

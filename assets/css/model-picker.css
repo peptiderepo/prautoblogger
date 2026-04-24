@@ -246,6 +246,7 @@
 /* "Price" header width matches .ab-mp-price */
 .ab-mp-col-price {
 	font-variant-numeric: tabular-nums;
+	min-width: 90px; justify-content: flex-end;
 }
 
 /* "Context" header width matches .ab-mp-ctx (min-width 36px + padding) */
