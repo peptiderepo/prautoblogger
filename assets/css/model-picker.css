@@ -205,3 +205,58 @@
 	.ab-mp-row { padding: 10px 14px; }
 	.ab-mp-row-meta { gap: 8px; }
 }
+
+/* ── Column headers (sortable) ──────────────────────────────────────── */
+.ab-mp-col-headers {
+	display: flex; align-items: center; justify-content: space-between;
+	padding: 5px 20px;
+	border-bottom: 1px solid var(--ab-border, #e2e8f0);
+	background: var(--ab-bg, #f8fafc);
+	gap: 12px; /* must match .ab-mp-row gap */
+}
+
+.ab-mp-col-headers-meta {
+	display: flex; align-items: center;
+	gap: 16px; /* must match .ab-mp-row-meta gap */
+	flex-shrink: 0;
+}
+
+.ab-mp-col-header {
+	display: inline-flex; align-items: center;
+	font-size: 10px; font-weight: 700; text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--ab-text-muted, #64748b);
+	cursor: pointer; user-select: none;
+	background: none; border: none; padding: 3px 0;
+	white-space: nowrap; line-height: 1.2;
+	transition: color 0.1s ease;
+}
+.ab-mp-col-header:hover {
+	color: var(--ab-text, #1e293b);
+}
+.ab-mp-col-header.ab-mp-col-active {
+	color: var(--ab-primary, #4f46e5);
+}
+
+/* "Model" header spans the left flex-1 area */
+.ab-mp-col-model {
+	flex: 1; min-width: 0;
+}
+
+/* "Price" header width matches .ab-mp-price */
+.ab-mp-col-price {
+	font-variant-numeric: tabular-nums;
+}
+
+/* "Context" header width matches .ab-mp-ctx (min-width 36px + padding) */
+.ab-mp-col-ctx {
+	min-width: 48px; justify-content: center; text-align: center;
+}
+
+.ab-mp-sort-arrow {
+	font-size: 9px; opacity: 0.5;
+	transition: opacity 0.1s ease;
+}
+.ab-mp-col-header.ab-mp-col-active .ab-mp-sort-arrow {
+	opacity: 1;
+}

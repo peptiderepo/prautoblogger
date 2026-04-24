@@ -5,6 +5,11 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.13.2] - 2026-04-24
+
+### Changed
+- Model picker: added sortable column headers (Model, Price, Context); clicking a header sorts the list ascending/descending; active column highlighted with sort arrow; sort preference persists while the picker is open.
+
 ## [0.12.3] — 2026-04-24
 ## [0.13.1] - 2026-04-24
 
