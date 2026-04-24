@@ -45,8 +45,8 @@ class PRAutoBlogger_Opik_Eval_Runner {
 		?PRAutoBlogger_Opik_Client $opik_client = null,
 		?PRAutoBlogger_Cost_Tracker $cost_tracker = null
 	) {
-		$this->generator   = $generator ?? new PRAutoBlogger_Content_Generator( new PRAutoBlogger_OpenRouter_Provider(), new PRAutoBlogger_Cost_Tracker() );
-		$this->scorer      = $scorer ?? new PRAutoBlogger_Opik_Eval_Scorer();
+		$this->generator = $generator ?? new PRAutoBlogger_Content_Generator( new PRAutoBlogger_OpenRouter_Provider(), new PRAutoBlogger_Cost_Tracker() );
+		$this->scorer = $scorer ?? new PRAutoBlogger_Opik_Eval_Scorer();
 		$this->opik_client = $opik_client ?? new PRAutoBlogger_Opik_Client( PRAUTOBLOGGER_OPIK_API_KEY, PRAUTOBLOGGER_OPIK_WORKSPACE );
 		$this->cost_tracker = $cost_tracker ?? new PRAutoBlogger_Cost_Tracker();
 	}
