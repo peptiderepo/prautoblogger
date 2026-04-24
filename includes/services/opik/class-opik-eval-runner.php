@@ -69,8 +69,8 @@ class PRAutoBlogger_Opik_Eval_Runner {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_echo -- CLI output
 			echo "Error: Could not load eval dataset.\n";
 			return array(
-				'items_run'   => 0,
-				'avg_scores'  => array(),
+				'items_run'      => 0,
+				'avg_scores'     => array(),
 				'total_cost_usd' => 0.0,
 			);
 		}
