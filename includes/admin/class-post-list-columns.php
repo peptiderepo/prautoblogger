@@ -184,8 +184,8 @@ class PRAutoBlogger_Post_List_Columns {
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			"SELECT stage, model, prompt_tokens, completion_tokens, estimated_cost
-				FROM {$table} WHERE post_id = %d ORDER BY id ASC",
+				"SELECT stage, model, prompt_tokens, completion_tokens, estimated_cost
+					FROM {$table} WHERE post_id = %d ORDER BY id ASC",
 				$post_id
 			),
 			ARRAY_A
