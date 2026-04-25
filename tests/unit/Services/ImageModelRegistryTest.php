@@ -99,4 +99,56 @@ class ImageModelRegistryTest extends BaseTestCase {
 			\PRAutoBlogger_Image_Model_Registry::provider_for( '' )
 		);
 	}
+
+	/**
+	 * Test that runware:400@4 resolves to runware provider.
+	 */
+	public function test_provider_for_runware_400_at_4(): void {
+		$this->assertSame(
+			'runware',
+			\PRAutoBlogger_Image_Model_Registry::provider_for( 'runware:400@4' )
+		);
+	}
+
+	/**
+	 * Test that runware:glm-image@0 resolves to runware provider.
+	 */
+	public function test_provider_for_runware_glm_image(): void {
+		$this->assertSame(
+			'runware',
+			\PRAutoBlogger_Image_Model_Registry::provider_for( 'runware:glm-image@0' )
+		);
+	}
+
+	/**
+	 * Test that openai/gpt-5.4-image-2 resolves to openrouter provider.
+	 */
+	public function test_provider_for_gpt_5_4_image_2(): void {
+		$this->assertSame(
+			'openrouter',
+			\PRAutoBlogger_Image_Model_Registry::provider_for( 'openai/gpt-5.4-image-2' )
+		);
+	}
+
+	/**
+	 * Test that get_models() returns 21 models.
+	 */
+	public function test_get_models_returns_21_models(): void {
+		$models = \PRAutoBlogger_Image_Model_Registry::get_models();
+		$this->assertCount( 21, $models );
+	}
+
+	/**
+	 * Test that every model has required non-empty fields.
+	 */
+	public function test_every_model_has_required_fields(): void {
+		$models = \PRAutoBlogger_Image_Model_Registry::get_models();
+		foreach ( $models as $model ) {
+			$this->assertNotEmpty( $model['id'] ?? '', 'Model missing id' );
+			$this->assertNotEmpty( $model['name'] ?? '', 'Model missing name' );
+			$this->assertNotEmpty( $model['provider'] ?? '', 'Model missing provider' );
+			$this->assertTrue( isset( $model['cost_per_image'] ), 'Model missing cost_per_image' );
+			$this->assertIsNumeric( $model['cost_per_image'], 'cost_per_image is not numeric' );
+		}
+	}
 }

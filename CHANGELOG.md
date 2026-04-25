@@ -5,6 +5,22 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.13.8] - 2026-04-26
+
+### Added
+- Image model picker expanded from 7 to 21 models
+- New Runware text-to-image models: Stable Diffusion 3, HiDream-I1 Full/Dev/Fast,
+  FLUX.1 Krea [dev], Qwen-Image, FLUX.2 [dev], FLUX.2 [klein] 9B, FLUX.2 [klein] 4B,
+  GLM-Image, Z-Image, Z-Image-Turbo, TwinFlow Z-Image-Turbo
+- New OpenRouter model: openai/gpt-5.4-image-2
+- Registry now includes last-verified date and update instructions in source comment
+
+
+All notable changes to PRAutoBlogger will be documented in this file.
+
+Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project uses [Semantic Versioning](https://semver.org/).
+
 ## [0.13.7] - 2026-04-24
 
 ### Fixed
