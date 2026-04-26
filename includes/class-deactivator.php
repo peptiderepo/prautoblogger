@@ -39,6 +39,7 @@ class PRAutoBlogger_Deactivator {
 			'prautoblogger_daily_generation',
 			'prautoblogger_collect_metrics',
 			'prautoblogger_reap_orphan_research_rows',
+			'prautoblogger_sync_runware_models',
 		);
 
 		foreach ( $hooks as $hook ) {
