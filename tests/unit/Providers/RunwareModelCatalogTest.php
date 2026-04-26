@@ -125,52 +125,61 @@ class RunwareModelCatalogTest extends BaseTestCase {
 
 	/** Happy path: successful sync caches models and get_models returns them. */
 	public function test_sync_success_caches_and_returns_models(): void {
-		// Mock a valid Runware API response.
-		Functions\when( 'wp_remote_post' )->justReturn(
+		// The mocked API response body — models must have taskType=imageInference
+		// so normalize_models() doesn't filter them out.
+		$fake_body = json_encode(
 			array(
-				'response' => array( 'code' => 200 ),
-				'body'     => wp_json_encode(
+				'data' => array(
 					array(
-						'data' => array(
-							array(
-								'id'       => 'test-model-1',
-								'name'     => 'Test Model 1',
-								'cost'     => 0.001,
-								'provider' => 'runware',
-							),
-							array(
-								'id'       => 'test-model-2',
-								'name'     => 'Test Model 2',
-								'cost'     => 0.002,
-								'provider' => 'runware',
-							),
-						),
-					)
+						'id'       => 'test-model-1',
+						'name'     => 'Test Model 1',
+						'taskType' => 'imageInference',
+					),
+					array(
+						'id'       => 'test-model-2',
+						'name'     => 'Test Model 2',
+						'taskType' => 'imageInference',
+					),
 				),
 			)
 		);
 
-		// Mock the API key to exist.
-		Functions\when( 'get_option' )->alias( function ( $key, $default = false ) {
-			static $options = array();
-			if ( 'prautoblogger_runware_api_key' === $key ) {
-				return 'test-api-key';
+		$fake_response = array(
+			'response' => array( 'code' => 200 ),
+			'body'     => $fake_body,
+		);
+
+		Functions\when( 'wp_remote_post' )->justReturn( $fake_response );
+		// Alias the WP response-parsing helpers so they work against our array.
+		Functions\when( 'wp_remote_retrieve_response_code' )->alias(
+			function ( $r ) { return (int) ( $r['response']['code'] ?? 0 ); }
+		);
+		Functions\when( 'wp_remote_retrieve_body' )->alias(
+			function ( $r ) { return (string) ( $r['body'] ?? '' ); }
+		);
+		Functions\when( 'is_wp_error' )->justReturn( false );
+
+		// Shared options store so get_option/update_option stay in sync
+		// within this test. The API key must be non-empty for sync() to proceed.
+		$store = array( 'prautoblogger_runware_api_key' => 'test-api-key-plain' );
+		Functions\when( 'get_option' )->alias(
+			function ( $key, $default = false ) use ( &$store ) {
+				return $store[ $key ] ?? $default;
 			}
-			return $options[ $key ] ?? $default;
-		} );
+		);
+		Functions\when( 'update_option' )->alias(
+			function ( $key, $value ) use ( &$store ) {
+				$store[ $key ] = $value;
+				return true;
+			}
+		);
 
-		Functions\when( 'update_option' )->alias( function ( $key, $value ) {
-			static $options = array();
-			$options[ $key ] = $value;
-			return true;
-		} );
-
-		// Perform the sync.
+		// Sync should succeed: API key present, HTTP 200, 2 imageInference models.
 		$catalog = new \PRAutoBlogger_Runware_Model_Catalog();
 		$result = $catalog->sync();
-		$this->assertTrue( $result, 'Sync should return true on success' );
+		$this->assertTrue( $result, 'Sync should return true on HTTP 200 with valid models' );
 
-		// Verify get_models returns the synced models (not fallback).
+		// get_models() should now return the synced list from cache.
 		$models = $catalog->get_models();
 		$this->assertIsArray( $models );
 		$this->assertCount( 2, $models );
