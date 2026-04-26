@@ -476,7 +476,7 @@ Stored on every PRAutoBlogger-generated post:
 | Reddit RSS | Primary Reddit data source — Atom feeds for subreddit hot posts | None (unauthenticated) | No known rate limit; reliable from datacenter IPs | `providers/class-reddit-json-client.php` |
 | Reddit .json | Fallback for posts + only source for comments | None (unauthenticated) | ~10 req/min (datacenter IPs often blocked) | `providers/class-reddit-json-client.php` |
 | Google Analytics 4 | Post performance metrics | OAuth2 service account | Standard GA4 limits | `core/class-ga4-client.php`, `core/class-metrics-collector.php` |
-| Runware (FLUX.1 via runware.ai) | **Default** image backend (v0.9.0+): schnell ~$0.0006/image, dev ~$0.02/image. True parallel generation via curl_multi. | API key (encrypted in wp_options) | Account-level quotas | `providers/class-runware-image-provider.php`, `providers/class-runware-image-pricing.php`, `providers/class-runware-image-support.php`, `providers/class-runware-image-batch.php` |
+| Runware (FLUX.1 via runware.ai) | **Default** image backend (v0.9.0+): schnell ~$0.0006/image, dev ~$0.02/image. True parallel generation via curl_multi. **v0.15.0: live model catalog sync** from `/v1/models` endpoint (task-based API); normalized to Image_Model_Registry shape; cached with 24h TTL; on-demand refresh via AJAX. | API key (encrypted in wp_options) | Account-level quotas | `providers/class-runware-image-provider.php`, `providers/class-runware-image-pricing.php`, `providers/class-runware-image-support.php`, `providers/class-runware-image-batch.php`, `providers/class-runware-model-catalog.php` |
 
 ---
 

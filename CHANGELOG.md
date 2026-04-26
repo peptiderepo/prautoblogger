@@ -6,6 +6,44 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
 ## [0.14.0] - 2026-04-26
+## [0.15.0] - 2026-04-26
+
+### Added
+- **Live Runware Model Catalog Sync**: New `class-runware-model-catalog.php`
+  fetches the live Runware model list via their `/v1` endpoint (task-based API),
+  filters to `taskType=imageInference` (text-to-image only, excluding inpainting),
+  normalizes to the Image_Model_Registry shape, and caches in `prautoblogger_runware_model_cache`
+  with a 24-hour TTL. Fixes the pattern from v0.13.8 and v0.14.0 where the
+  hardcoded Runware model list was a maintenance burden and gaps (missing models,
+  wrong prices) went unnoticed until customer images generation broke.
+- Daily WP-Cron sync (`prautoblogger_sync_runware_models`) scheduled on activation
+  and unscheduled on deactivation.
+- On-demand "Sync now" AJAX button in PRAdmin (Images settings section) with
+  nonce protection and `manage_options` cap check. Refreshes model count and
+  last-synced timestamp in the UI without full page reload.
+- Smart caching + fallback strategy: if cache is < 24h old, use it; if stale,
+  trigger a sync; if sync fails, use the last-known-good cache; if no cache,
+  fall back to hardcoded list (never returns empty array).
+- Pricing merge: Runware API may not expose per-image cost. The catalog pulls
+  costs from `class-runware-image-pricing.php::COST_PER_IMAGE` on every sync,
+  ensuring pricing data is always authoritative and up-to-date.
+- Unit tests for `PRAutoBlogger_Runware_Model_Catalog`: sync success/failure,
+  fallback on API unreachable, stale cache behavior, cost merge logic.
+- `class-image-model-registry.php` refactored: `get_models()` now delegates to
+  the catalog for Runware models + static OpenRouter list. Extracted fallback
+  lists into private `get_runware_fallback_models()` and `get_openrouter_models()`
+  for clarity.
+
+### Fixed
+- Silent model list gaps no longer possible: Runware no longer depends on manual
+  model list maintenance in the pricing class. The live catalog is the source of
+  truth; pricing is merged in on every sync.
+
+### Changed
+- `class-image-model-registry.php`: `get_models()` is now a thin wrapper around
+  the catalog + OpenRouter static list. Breaking change: callers that expect a
+  specific static list should note the new dynamic Runware side.
+
 
 ### Fixed
 - Runware image generation now correctly uses the admin-selected model instead

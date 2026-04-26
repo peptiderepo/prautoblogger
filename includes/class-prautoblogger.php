@@ -116,6 +116,8 @@ class PRAutoBlogger {
 
 		$registry = $this->executor->get_model_registry();
 		add_action( 'prautoblogger_refresh_model_registry', array( $registry, 'refresh' ) );
+		// v0.15.0: daily Runware model catalog sync to keep the live model list fresh.
+		add_action( 'prautoblogger_sync_runware_models', array( new PRAutoBlogger_Runware_Model_Catalog(), 'sync' ) );
 
 		// Opik observability: async trace/span dispatch.
 		add_action(
@@ -179,6 +181,7 @@ class PRAutoBlogger {
 		add_action( 'wp_ajax_prautoblogger_test_connection', array( $this->ajax_handlers, 'on_ajax_test_connection' ) );
 		add_action( 'wp_ajax_prautoblogger_get_models', array( $this->ajax_handlers, 'on_ajax_get_models' ) );
 		add_action( 'wp_ajax_prautoblogger_refresh_models', array( new PRAutoBlogger_Model_Registry_Refresh( $this->ajax_handlers->get_registry() ), 'handle' ) );
+t	add_action( 'wp_ajax_prautoblogger_sync_runware_models_now', array( $this->ajax_handlers, 'on_ajax_sync_runware_models_now' ) );
 
 		$review_queue = new PRAutoBlogger_Review_Queue();
 		add_action( 'wp_ajax_prautoblogger_approve_post', array( $review_queue, 'on_ajax_approve_post' ) );

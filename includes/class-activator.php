@@ -130,6 +130,11 @@ class PRAutoBlogger_Activator {
 				wp_schedule_event( $tomorrow, 'daily', 'prautoblogger_reap_orphan_research_rows' );
 			}
 		}
+
+		// v0.15.0: daily Runware model catalog sync.
+		if ( ! wp_next_scheduled( 'prautoblogger_sync_runware_models' ) ) {
+			wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', 'prautoblogger_sync_runware_models' );
+		}
 	}
 
 	/**

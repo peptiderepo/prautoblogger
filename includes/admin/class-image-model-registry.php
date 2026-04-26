@@ -6,22 +6,25 @@ declare(strict_types=1);
  *
  * Static registry of available image generation models.
  *
- * What: Returns a hardcoded list of image models for the admin model picker.
- *       No API discovery — updated manually when providers add/remove models.
- *       As of 2026-04-26, registry includes 21 models across Runware (15) and
- *       OpenRouter (6), ordered cheapest-to-most-expensive within each provider.
+ * What: Returns a merged list of Runware models (from live catalog sync) and
+ *       OpenRouter models (static list). No API discovery for OpenRouter — updated
+ *       manually when new models are available.
+ *       As of 2026-04-26, registry includes 15 Runware models (live) + 6 OpenRouter
+ *       models (static), ordered cheapest-to-most-expensive within each provider.
  * Who calls it: PRAutoBlogger_Admin_Page (model picker UI + save-time provider
  *               derivation) and PRAutoBlogger_Image_Pipeline (provider lookup).
- * Dependencies: None.
+ * Dependencies: PRAutoBlogger_Runware_Model_Catalog (live Runware models),
+ *               hardcoded fallback lists for resilience.
  *
  * @see admin/class-settings-fields-extended.php — Image settings reference this registry.
  * @see core/class-image-pipeline.php            — Derives provider from picked model.
  * @see providers/class-runware-image-provider.php — Runware FLUX backend.
+ * @see providers/class-runware-model-catalog.php — Live model sync and caching.
  */
 class PRAutoBlogger_Image_Model_Registry {
 
 	/**
-	 * Get all available image generation models.
+	 * Get all available image generation models (Runware live + OpenRouter static).
 	 *
 	 * Each entry contains:
 	 * - id:             Model identifier used in API calls.
@@ -34,15 +37,44 @@ class PRAutoBlogger_Image_Model_Registry {
 	 * Ordered cheapest-to-most-expensive within each provider, with the
 	 * recommended default (Runware schnell) at the top.
 	 *
-	 * Last verified: 2026-04-26. To update: check https://runware.ai/models (text-to-image section)
-	 * and https://openrouter.ai/api/v1/models filtering output_modalities containing 'image'.
-	 * Exclude: inpainting (needs mask), img2img (needs seedImage), video, upscalers, background removal.
-	 *
 	 * @return array<int, array<string, mixed>>
 	 */
 	public static function get_models(): array {
+		$catalog = new PRAutoBlogger_Runware_Model_Catalog();
+		$runware_models = $catalog->get_models();
+		$openrouter_models = self::get_openrouter_models();
+		return array_merge( $runware_models, $openrouter_models );
+	}
+
+	/**
+	 * Return the provider id for a known model, or empty string if the
+	 * model id is not in the registry.
+	 *
+	 * @param string $model_id Model slug from the admin UI.
+	 * @return string Provider id ('runware' | 'openrouter' | '').
+	 */
+	public static function provider_for( string $model_id ): string {
+		foreach ( self::get_models() as $model ) {
+			if ( ( $model['id'] ?? '' ) === $model_id ) {
+				return (string) ( $model['provider'] ?? '' );
+			}
+		}
+		return '';
+	}
+
+	/**
+	 * Hardcoded Runware model list used as fallback when the live catalog
+	 * sync fails or API is unreachable. Kept in sync with actual Runware
+	 * pricing page (runware.ai/pricing). This is the source of truth for
+	 * pricing data when the Runware API doesn't expose cost information.
+	 *
+	 * Last verified: 2026-04-26. To update: check runware.ai/pricing for new
+	 * text-to-image models and their costs.
+	 *
+	 * @return array<int, array<string, mixed>>
+	 */
+	public static function get_runware_fallback_models(): array {
 		return array(
-			// RUNWARE MODELS
 			array(
 				'id'             => 'runware:100@1',
 				'name'           => 'FLUX.1 schnell (Runware)',
@@ -163,7 +195,22 @@ class PRAutoBlogger_Image_Model_Registry {
 				'capabilities'   => array( 'image_generation' ),
 				'description'    => __( 'GLM-Image. Hybrid autoregressive+diffusion, excellent text rendering.', 'prautoblogger' ),
 			),
-			// OPENROUTER MODELS
+		);
+	}
+
+	/**
+	 * Hardcoded OpenRouter image model list. Left static for now because
+	 * OpenRouter's catalog is large (hundreds of models) with noisy filtering.
+	 * Future iteration will add smart filtering strategy (output_modalities,
+	 * pricing, rate limits).
+	 *
+	 * Last verified: 2026-04-26. To update: check openrouter.ai/api/v1/models
+	 * filtering to output_modalities containing 'image'.
+	 *
+	 * @return array<int, array<string, mixed>>
+	 */
+	private static function get_openrouter_models(): array {
+		return array(
 			array(
 				'id'             => 'google/gemini-2.5-flash-image',
 				'name'           => 'Gemini 2.5 Flash Image (OpenRouter)',
@@ -213,21 +260,5 @@ class PRAutoBlogger_Image_Model_Registry {
 				'description'    => __( 'OpenAI premium. Photorealistic.', 'prautoblogger' ),
 			),
 		);
-	}
-
-	/**
-	 * Return the provider id for a known model, or empty string if the
-	 * model id is not in the registry.
-	 *
-	 * @param string $model_id Model slug from the admin UI.
-	 * @return string Provider id ('runware' | 'openrouter' | '').
-	 */
-	public static function provider_for( string $model_id ): string {
-		foreach ( self::get_models() as $model ) {
-			if ( ( $model['id'] ?? '' ) === $model_id ) {
-				return (string) ( $model['provider'] ?? '' );
-			}
-		}
-		return '';
 	}
 }

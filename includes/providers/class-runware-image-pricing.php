@@ -15,6 +15,7 @@ declare(strict_types=1);
  * Dependencies: None — pure calculation + option reads.
  *
  * @see class-runware-image-provider.php — Primary caller.
+ * @see class-runware-model-catalog.php — Live model sync; authoritative pricing source.
  * @see class-open-router-image-pricing.php — Sibling pattern for OpenRouter.
  * @see admin/class-image-model-registry.php — Source of truth for model list; keep in sync.
  */
