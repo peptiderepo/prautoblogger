@@ -266,6 +266,6 @@ class PRAutoBlogger_Settings_Fields_Extended {
 				'section'     => 'prautoblogger_images',
 				'description' => __( 'Live model catalog sync status and on-demand refresh.', 'prautoblogger' ),
 			),
-		);
+			);
 	}
 }
