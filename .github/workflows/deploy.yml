@@ -61,9 +61,17 @@ jobs:
         if: always()
         run: rm -f ~/.ssh/deploy_key
 
+  smoke:
+    name: Smoke tests (staging)
+    needs: deploy-staging
+    uses: peptiderepo/peptide-e2e/.github/workflows/smoke.yml@main
+    secrets:
+      STAGING_WP_ADMIN_USER: ${{ secrets.STAGING_WP_ADMIN_USER }}
+      STAGING_WP_ADMIN_PASSWORD: ${{ secrets.STAGING_WP_ADMIN_PASSWORD }}
+
   deploy-production:
     name: Deploy to Production
-    needs: [validate, deploy-staging]
+    needs: [validate, deploy-staging, smoke]
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -103,3 +111,8 @@ jobs:
       - name: Cleanup
         if: always()
         run: rm -f ~/.ssh/deploy_key
+      - name: Deploy summary
+        run: |
+          echo "## Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** \`${GITHUB_SHA::7}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deployed to:** peptiderepo.com" >> $GITHUB_STEP_SUMMARY
