@@ -17,6 +17,18 @@ use PRAutoBlogger\Tests\BaseTestCase;
 class ImageModelRegistryTest extends BaseTestCase {
 
 	/**
+	 * Stub WP cache functions so the catalog class falls back to the
+	 * hardcoded model list without hitting get_option or update_option.
+	 */
+	protected function setUp(): void {
+		parent::setUp();
+		// Catalog checks for cached data; return false → falls back to hardcoded list.
+		\Brain\Monkey\Functions\when( 'get_option' )->justReturn( false );
+		// Catalog writes cache on sync; stub so it doesn't throw in tests.
+		\Brain\Monkey\Functions\when( 'update_option' )->justReturn( true );
+	}
+
+	/**
 	 * Every entry returned by get_models() must carry a non-empty id and
 	 * a provider of 'runware' or 'openrouter' (Cloudflare Workers AI was
 	 * removed as an image provider in v0.10.0). If this breaks, the
