@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: ['7.4', '8.1', '8.3']
+        php: ['8.1', '8.2', '8.3']
     steps:
       - uses: actions/checkout@v4
       - name: Setup PHP ${{ matrix.php }}
@@ -31,7 +31,7 @@ jobs:
           coverage: none
       - name: Syntax check all PHP files
         # Exclude .github/mu-plugins — those run on the production server (PHP 8+)
-        # and may use PHP 8+ syntax (union types etc.) that 7.4 rejects.
+        # and may use PHP 8+ syntax (union types etc.) that older versions reject.
         run: |
           set -e
           find . -name '*.php' \
@@ -44,14 +44,12 @@ jobs:
   phpcs:
     name: PHPCS (WordPress standards)
     runs-on: ubuntu-latest
-    continue-on-error: false  # now strict after PHPCS cleanup in v0.8.3
+    continue-on-error: false  # strict after PHPCS cleanup in v0.8.3
     permissions:
       contents: write  # allows phpcbf auto-fix commits back to the PR branch
     steps:
       - uses: actions/checkout@v4
         with:
-          # Check out the actual branch so phpcbf can push fixes back.
-          # github.head_ref is set on PR events; github.ref_name on push events.
           ref: ${{ github.head_ref || github.ref_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Setup PHP
@@ -62,10 +60,7 @@ jobs:
           tools: composer:v2, phpcs
       - name: Install WordPress Coding Standards
         run: |
-          # Allow the PHPCS composer-installer plugin (auto-registers standards).
           composer global config --no-plugins allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
-          # WPCS 3.x requires PHPCSExtra (for the Universal.* and NormalizedArrays.* sniffs)
-          # AND phpcsutils. Installing the installer itself lets it auto-register the standards path.
           composer global require --no-interaction \
             "dealerdirect/phpcodesniffer-composer-installer:^1.0" \
             "wp-coding-standards/wpcs:^3.0" \
@@ -101,7 +96,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: ['7.4', '8.1', '8.3']
+        php: ['8.1', '8.2', '8.3']
     steps:
       - uses: actions/checkout@v4
       - name: Setup PHP ${{ matrix.php }}
