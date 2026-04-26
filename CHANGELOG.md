@@ -5,6 +5,23 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.14.0] - 2026-04-26
+
+### Fixed
+- Runware image generation now correctly uses the admin-selected model instead
+  of silently falling back to FLUX.1 schnell (runware:100@1) for all non-schnell
+  and non-dev selections. Root cause: `class-runware-image-pricing.php` only
+  had 2 models in its `COST_PER_IMAGE` whitelist (schnell + dev), but the
+  image model registry was expanded to 15 Runware models in v0.13.8 without a
+  matching update to the pricing class. Any model ID not in the whitelist caused
+  `resolve_model()` to fall back to schnell, so every Stable Diffusion, FLUX.2,
+  HiDream, TwinFlow, Z-Image, Qwen-Image, Krea, and GLM-Image selection was
+  silently downgraded.
+- Added all 15 Runware model IDs to `COST_PER_IMAGE` and `DEFAULT_STEPS` with
+  correct per-image costs and step counts sourced from runware.ai/pricing (April 2026).
+- Added `@see` cross-reference to `class-image-model-registry.php` in pricing
+  class docblock to prevent future drift.
+
 ## [0.13.9] - 2026-04-26
 
 ### Fixed
