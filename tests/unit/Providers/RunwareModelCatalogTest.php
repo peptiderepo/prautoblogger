@@ -122,4 +122,59 @@ class RunwareModelCatalogTest extends BaseTestCase {
 			$this->assertContains( 'image_generation', $model['capabilities'] );
 		}
 	}
+
+	/** Happy path: successful sync caches models and get_models returns them. */
+	public function test_sync_success_caches_and_returns_models(): void {
+		// Mock a valid Runware API response.
+		Functions\when( 'wp_remote_post' )->justReturn(
+			array(
+				'response' => array( 'code' => 200 ),
+				'body'     => wp_json_encode(
+					array(
+						'data' => array(
+							array(
+								'id'       => 'test-model-1',
+								'name'     => 'Test Model 1',
+								'cost'     => 0.001,
+								'provider' => 'runware',
+							),
+							array(
+								'id'       => 'test-model-2',
+								'name'     => 'Test Model 2',
+								'cost'     => 0.002,
+								'provider' => 'runware',
+							),
+						),
+					)
+				),
+			)
+		);
+
+		// Mock the API key to exist.
+		Functions\when( 'get_option' )->alias( function ( $key, $default = false ) {
+			static $options = array();
+			if ( 'prautoblogger_runware_api_key' === $key ) {
+				return 'test-api-key';
+			}
+			return $options[ $key ] ?? $default;
+		} );
+
+		Functions\when( 'update_option' )->alias( function ( $key, $value ) {
+			static $options = array();
+			$options[ $key ] = $value;
+			return true;
+		} );
+
+		// Perform the sync.
+		$catalog = new \PRAutoBlogger_Runware_Model_Catalog();
+		$result = $catalog->sync();
+		$this->assertTrue( $result, 'Sync should return true on success' );
+
+		// Verify get_models returns the synced models (not fallback).
+		$models = $catalog->get_models();
+		$this->assertIsArray( $models );
+		$this->assertCount( 2, $models );
+		$this->assertSame( 'test-model-1', $models[0]['id'] );
+		$this->assertSame( 'test-model-2', $models[1]['id'] );
+	}
 }

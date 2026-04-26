@@ -152,59 +152,58 @@ class PRAutoBlogger_Ajax_Handlers {
 	}
 
 	/**
+	 * AJAX handler: sync Runware model catalog on demand.
+	 *
+	 * Nonce-protected and requires manage_options capability.
+	 * Returns the updated cache timestamp and model count.
+	 *
+	 * Side effects: makes HTTP request to Runware API, writes WP options.
+	 */
+	public function on_ajax_sync_runware_models_now(): void {
+		check_ajax_referer( 'prautoblogger_sync_runware_models_now', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'prautoblogger' ) ), 403 );
+			return;
+		}
+
+		try {
+			$catalog = new PRAutoBlogger_Runware_Model_Catalog();
+			$success = $catalog->sync();
+
+			if ( ! $success ) {
+				wp_send_json_error( array( 'message' => __( 'Catalog sync failed. Check logs for details.', 'prautoblogger' ) ) );
+				return;
+			}
+
+			$models = $catalog->get_models();
+			$synced_at = $catalog->get_last_synced_at();
+			$synced_at_str = $synced_at
+				? wp_date( __( 'Y-m-d H:i:s', 'prautoblogger' ), $synced_at )
+				: __( 'Never', 'prautoblogger' );
+
+			wp_send_json_success(
+				array(
+					'message'   => __( 'Runware model catalog synced successfully.', 'prautoblogger' ),
+					'model_count' => count( $models ),
+					'synced_at' => $synced_at_str,
+				)
+			);
+		} catch ( \Throwable $e ) {
+			PRAutoBlogger_Logger::instance()->error(
+				sprintf( 'AJAX sync Runware models failed: %s (%s)', $e->getMessage(), get_class( $e ) ),
+				'runware-catalog'
+			);
+			wp_send_json_error( array( 'message' => $e->getMessage() ) );
+		}
+	}
+
+	/**
 	 * Get the shared model registry instance.
 	 *
 	 * @return PRAutoBlogger_OpenRouter_Model_Registry
 	 */
 	public function get_registry(): PRAutoBlogger_OpenRouter_Model_Registry {
-
-		/**
-		 * AJAX handler: sync Runware model catalog on demand.
-		 *
-		 * Nonce-protected and requires manage_options capability.
-		 * Returns the updated cache timestamp and model count.
-		 *
-		 * Side effects: makes HTTP request to Runware API, writes WP options.
-		 */
-		public function on_ajax_sync_runware_models_now(): void {
-			check_ajax_referer( 'prautoblogger_sync_runware_models_now', 'nonce' );
-
-			if ( ! current_user_can( 'manage_options' ) ) {
-				wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'prautoblogger' ) ), 403 );
-				return;
-			}
-
-			try {
-				$catalog = new PRAutoBlogger_Runware_Model_Catalog();
-				$success = $catalog->sync();
-
-				if ( ! $success ) {
-					wp_send_json_error( array( 'message' => __( 'Catalog sync failed. Check logs for details.', 'prautoblogger' ) ) );
-					return;
-				}
-
-				$models = $catalog->get_models();
-				$synced_at = $catalog->get_last_synced_at();
-				$synced_at_str = $synced_at
-				? wp_date( __( 'Y-m-d H:i:s', 'prautoblogger' ), $synced_at )
-				: __( 'Never', 'prautoblogger' );
-
-				wp_send_json_success(
-					array(
-						'message'   => __( 'Runware model catalog synced successfully.', 'prautoblogger' ),
-						'model_count' => count( $models ),
-						'synced_at' => $synced_at_str,
-					)
-				);
-			} catch ( \Throwable $e ) {
-				PRAutoBlogger_Logger::instance()->error(
-					sprintf( 'AJAX sync Runware models failed: %s (%s)', $e->getMessage(), get_class( $e ) ),
-					'runware-catalog'
-				);
-				wp_send_json_error( array( 'message' => $e->getMessage() ) );
-			}
-		}
-
 		return $this->model_registry;
 	}
 }
