@@ -63,6 +63,9 @@ if ( ! defined( 'PRAUTOBLOGGER_DEFAULT_EDITOR_MODEL' ) ) {
 if ( ! defined( 'PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL' ) ) {
     define( 'PRAUTOBLOGGER_DEFAULT_IMAGE_MODEL', 'runware:100@1' );
 }
+if ( ! defined( 'PRAUTOBLOGGER_DEFAULT_IMAGE_PROVIDER' ) ) {
+    define( 'PRAUTOBLOGGER_DEFAULT_IMAGE_PROVIDER', 'runware' );
+}
 
 // Default image style suffix used by ImagePromptBuilder and settings UI.
 if ( ! defined( 'PRAUTOBLOGGER_DEFAULT_IMAGE_STYLE_SUFFIX' ) ) {
