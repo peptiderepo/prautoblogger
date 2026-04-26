@@ -258,7 +258,6 @@ class PRAutoBlogger_Settings_Fields_Extended {
 				'default'     => '1',
 				'description' => __( 'When the provider rejects an image prompt as NSFW, retry once with a generic fallback scene built from the article title. Disable to fail fast if the filter gets trigger-happy.', 'prautoblogger' ),
 			),
-		);
 			array(
 				'id'          => 'prautoblogger_runware_model_catalog',
 				'label'       => __( 'Runware Model Catalog', 'prautoblogger' ),
@@ -266,6 +265,6 @@ class PRAutoBlogger_Settings_Fields_Extended {
 				'section'     => 'prautoblogger_images',
 				'description' => __( 'Live model catalog sync status and on-demand refresh.', 'prautoblogger' ),
 			),
-			);
+		);
 	}
 }
