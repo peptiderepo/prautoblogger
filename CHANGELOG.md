@@ -5,6 +5,14 @@ All notable changes to PRAutoBlogger will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.13.9] - 2026-04-26
+
+### Fixed
+- Model picker sort by price now works correctly for image models — previously
+  \`applySort\` always read \`input_price_per_m\` (undefined on image models),
+  so every image had an effective price of 0 and price sort was a no-op.
+  Fix: detect image models via \`cost_per_image\` and use that field instead.
+
 ## [0.13.8] - 2026-04-26
 
 ### Added

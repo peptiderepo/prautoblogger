@@ -101,8 +101,9 @@
 			var valA, valB;
 
 			if ( col === 'price' ) {
-				valA = a.input_price_per_m || 0;
-				valB = b.input_price_per_m || 0;
+				// Image models use cost_per_image; text models use input_price_per_m.
+				valA = ( a.cost_per_image !== undefined ) ? a.cost_per_image : ( a.input_price_per_m || 0 );
+				valB = ( b.cost_per_image !== undefined ) ? b.cost_per_image : ( b.input_price_per_m || 0 );
 			} else if ( col === 'context' ) {
 				valA = a.context_length || 0;
 				valB = b.context_length || 0;
